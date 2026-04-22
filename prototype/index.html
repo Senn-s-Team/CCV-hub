@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <!--
+    [INPUT]: 依赖 styles.css 的暖感工业视觉系统，依赖 app.js 的状态切换与视口预览逻辑
+    [OUTPUT]: 对外提供 ccv-hub 总览页高保真静态原型与启动弹窗结构
+    [POS]: prototype 的主入口页面，承载总览、状态、弹窗与三端预览骨架
+    [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+  -->
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CCV Hub Prototype</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar panel rise">
+        <div class="brand-block reveal-step" style="--delay: 0ms">
+          <p class="eyebrow">CCV HUB / LOCAL CONTROL SURFACE</p>
+          <div class="title-row">
+            <div>
+              <h1>本机实例总览台</h1>
+              <p class="subtitle">把分散的 cc-viewer 入口收拢成一个低摩擦工作面。</p>
+            </div>
+            <div class="heartbeat-card">
+              <span class="heartbeat-label">运行视野</span>
+              <strong id="heroActiveCount">06</strong>
+              <span class="heartbeat-meta">instances live</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="topbar-actions reveal-step" style="--delay: 90ms">
+          <button class="button button-secondary" type="button" id="refreshButton">
+            <span class="button-icon">⟳</span>
+            刷新列表
+          </button>
+          <button class="button button-primary" type="button" id="openModalButton">
+            <span class="button-icon">＋</span>
+            启动新实例
+          </button>
+        </div>
+      </header>
+
+      <main class="workspace-grid">
+        <aside class="control-rail panel rise reveal-step" style="--delay: 160ms">
+          <section class="rail-section">
+            <div class="section-heading">
+              <span class="section-kicker">ORIENT</span>
+              <h2>工作台节律</h2>
+            </div>
+            <div class="signal-stack">
+              <article class="signal-card active">
+                <span class="signal-label">在线实例</span>
+                <strong id="summaryRunning">06</strong>
+                <small>当前可直接进入</small>
+              </article>
+              <article class="signal-card warning">
+                <span class="signal-label">需关注</span>
+                <strong id="summaryAttention">01</strong>
+                <small>刷新延迟 / 发现异常</small>
+              </article>
+            </div>
+          </section>
+
+          <section class="rail-section">
+            <div class="section-heading">
+              <span class="section-kicker">FILTER</span>
+              <h2>项目筛选</h2>
+            </div>
+            <label class="search-field">
+              <span>项目名关键字</span>
+              <input id="searchInput" type="text" placeholder="例如：viewer / sdk / mobile" />
+            </label>
+          </section>
+
+          <section class="rail-section">
+            <div class="section-heading compact">
+              <span class="section-kicker">STATE</span>
+              <h2>状态预览</h2>
+            </div>
+            <div class="state-switcher" role="tablist" aria-label="Prototype states">
+              <button class="chip active" type="button" data-state="list-ready">list-ready</button>
+              <button class="chip" type="button" data-state="loading">loading</button>
+              <button class="chip" type="button" data-state="empty">empty</button>
+              <button class="chip" type="button" data-state="discovery-error">discovery-error</button>
+              <button class="chip" type="button" data-state="launch-failed">launch-failed</button>
+            </div>
+          </section>
+
+          <section class="rail-section device-preview-block">
+            <div class="section-heading compact">
+              <span class="section-kicker">RESPONSIVE</span>
+              <h2>视口切换</h2>
+            </div>
+            <div class="device-switcher" role="tablist" aria-label="Viewport preview">
+              <button class="device-chip active" type="button" data-device="desktop">Desktop</button>
+              <button class="device-chip" type="button" data-device="tablet">Tablet</button>
+              <button class="device-chip" type="button" data-device="mobile">Mobile</button>
+            </div>
+            <p class="device-note">通过容器宽度模拟三端结构，方便评审信息层级与动作可达性。</p>
+          </section>
+        </aside>
+
+        <section class="main-stage reveal-step" style="--delay: 240ms">
+          <div class="stage-header">
+            <div>
+              <p class="stage-kicker">SHOW STATUS</p>
+              <h2>实例工作面</h2>
+            </div>
+            <div class="stage-meta">
+              <span id="stageStateLabel">list-ready</span>
+              <span class="dot-sep"></span>
+              <span id="resultCountLabel">6 个实例</span>
+            </div>
+          </div>
+
+          <div class="preview-frame desktop" id="previewFrame">
+            <div class="board-shell panel sunken">
+              <div class="board-header">
+                <div>
+                  <p class="board-title">运行实例</p>
+                  <p class="board-subtitle">项目名、状态、路径、链接与动作在同一视野完成闭环。</p>
+                </div>
+                <div class="board-badge">Warm industrial / utility first</div>
+              </div>
+
+              <div class="board-content" id="boardContent">
+                <section class="state-pane" data-panel="loading" hidden>
+                  <div class="skeleton-stack">
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                  </div>
+                </section>
+
+                <section class="state-pane" data-panel="empty" hidden>
+                  <div class="empty-state-card">
+                    <span class="state-flag neutral">EMPTY</span>
+                    <h3>当前还没有运行中的实例</h3>
+                    <p>下一步动作保持清晰，直接从这里启动一个新的 cc-viewer 工作区。</p>
+                    <button class="button button-primary inline-launch" type="button">启动新实例</button>
+                  </div>
+                </section>
+
+                <section class="state-pane" data-panel="discovery-error" hidden>
+                  <div class="status-banner error">
+                    <span class="status-led"></span>
+                    <div>
+                      <strong>实例读取出现异常</strong>
+                      <p>保留已知结构，允许用户继续刷新并定位问题来源。</p>
+                    </div>
+                    <button class="button button-secondary slim" type="button">再次刷新</button>
+                  </div>
+                  <div class="card-grid dimmed" id="errorCardGrid"></div>
+                </section>
+
+                <section class="state-pane active" data-panel="list-ready">
+                  <div class="card-grid" id="cardGrid"></div>
+                </section>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" aria-live="polite"></div>
+
+    <div class="modal-backdrop" id="launchModal" hidden>
+      <div class="modal panel rise" role="dialog" aria-modal="true" aria-labelledby="launchModalTitle">
+        <div class="modal-header">
+          <div>
+            <p class="section-kicker">LAUNCH</p>
+            <h3 id="launchModalTitle">启动新的 cc-viewer 实例</h3>
+          </div>
+          <button class="icon-button" id="closeModalButton" type="button" aria-label="关闭弹窗">✕</button>
+        </div>
+        <p class="modal-copy">输入项目路径后，在当前上下文内完成启动并回到总览页看结果。</p>
+        <label class="path-field">
+          <span>项目路径</span>
+          <input id="pathInput" type="text" value="/home/opc/projects/ccvs/cc-viewer" />
+        </label>
+        <div class="inline-error" id="modalError" hidden>
+          <span class="status-led warm"></span>
+          <p>路径可读，但启动端口占用中。请修正后重试。</p>
+        </div>
+        <div class="modal-actions">
+          <button class="button button-secondary" id="cancelModalButton" type="button">关闭</button>
+          <button class="button button-primary" id="submitLaunchButton" type="button">确认启动</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

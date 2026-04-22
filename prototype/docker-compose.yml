@@ -1,0 +1,22 @@
+# [INPUT]: 依赖 ccv-hub/prototype 下的静态原型文件，依赖 Dokploy 提供的 dokploy-network 与 Traefik
+# [OUTPUT]: 对外提供可被 Docker Compose 与 Dokploy 直接部署的静态原型服务
+# [POS]: prototype 的部署清单，负责把高保真原型挂到独立子域名并接入 Dokploy 路由
+# [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+services:
+  ccv-hub-prototype:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    expose:
+      - "80"
+    volumes:
+      - /home/opc/projects/ccvs/ccv-hub/prototype:/usr/share/nginx/html:ro
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+    networks:
+      - dokploy-network
+      - default
+
+networks:
+  dokploy-network:
+    external: true

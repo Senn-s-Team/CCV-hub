@@ -4,6 +4,7 @@
 
 <directory>
 docs/ - 产品、架构与设计文档（5 子目录: prd, ia, system, api, design）
+prototype/ - 高保真静态原型目录（4 文件: index.html, styles.css, app.js, docker-compose.yml）
 </directory>
 
 <config>
