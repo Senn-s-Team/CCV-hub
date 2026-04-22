@@ -3,7 +3,7 @@
 > L1 | 父级: ../CLAUDE.md
 
 <directory>
-docs/ - 产品与架构文档（4 子目录: prd, ia, system, api）
+docs/ - 产品、架构与设计文档（5 子目录: prd, ia, system, api, design）
 </directory>
 
 <config>
@@ -20,6 +20,7 @@ CLAUDE.md - ccv-hub 模块地图、职责边界与文档协议
 - `docs/ia/` - 存放信息架构文档，定义页面清单、结构层级、主流程与状态边界。
 - `docs/system/` - 存放系统设计文档，定义组件职责、数据流、状态流转与异常处理。
 - `docs/api/` - 存放接口契约文档，定义本地服务接口、请求响应结构与实例对象格式。
+- `docs/design/` - 存放 UI/UX 设计文档，定义视觉语言、页面原型规则、状态表达与跨端体验基线。
 
 ## 设计法则
 
