@@ -34,19 +34,22 @@
 ### 3.2 运行时策略
 
 - Node 使用**最新稳定 LTS** 作为默认运行时。
-- 包管理器使用 `pnpm`，保证 workspace、多包共享依赖、安装速度与锁文件稳定性。
+- 包管理器使用 `Bun`，保证 workspace、多包共享依赖、安装速度与锁文件稳定性。
 
 ## 4. 推荐技术栈
 
 ### 4.1 前端
 
+当前已采用：
 - `React`：用于总览页、实例卡片、启动弹窗与状态视图
 - `TypeScript`：用于组件、接口模型、状态模型与共享类型
 - `Vite`：用于前端开发服务器与构建
 - `@vitejs/plugin-react`：用于 React 构建集成
-- `Tailwind CSS`：用于实现浅色控制台视觉、层级、响应式与按压反馈
 - `@tanstack/react-query`：用于实例列表读取、启动请求、刷新与错误状态管理
 - `zod`：用于运行时契约校验与前后端共享 schema
+
+预留项：
+- `Tailwind CSS`：可在后续视觉系统重构时接入，用于设计 token、布局类与响应式约束
 
 ### 4.2 后端
 
@@ -57,8 +60,12 @@
 
 ### 4.3 测试与质量工具
 
+当前已采用：
 - `Vitest`：用于前端与共享包单元测试
-- `ESLint`：用于统一工程质量基线
+- `TypeScript` 编译检查：用于当前工程质量基线
+
+预留项：
+- `ESLint`：可在后续规则体系稳定后接入，承接更细粒度的静态检查
 
 ### 4.4 进程与系统能力
 
@@ -72,9 +79,8 @@
 ### 5.1 运行时与工具链
 
 - `node`: `24.x`（最新稳定 LTS）
-- `pnpm`: `10.33.1`
+- `bun`: `1.3.10`
 - `typescript`: `6.0.3`
-- `eslint`: `10.2.1`
 - `tsx`: `4.21.0`
 
 ### 5.2 前端
@@ -82,7 +88,6 @@
 - `react`: `19.2.5`
 - `vite`: `8.0.9`
 - `@vitejs/plugin-react`: `6.0.1`
-- `tailwindcss`: `4.2.4`
 - `@tanstack/react-query`: `5.99.2`
 - `zod`: `4.3.6`
 
@@ -105,12 +110,13 @@
 - `docs/design/design-foundation.md` 强调桌面优先、卡片层级、状态稳定与跨端可达，Vite + React 能快速支撑迭代与响应式验证。
 - `docs/design/screens-and-states.md` 明确要求 loading、empty、launch-failed、discovery-error 等状态闭环，React 对状态驱动 UI 很合适。
 
-### 6.2 Tailwind CSS 作为样式系统
+### 6.2 当前样式策略：沿用原型 CSS
 
 选择理由：
 
-- 当前设计文档强调视觉层级、空间节奏、卡片结构和状态色复用，Tailwind 能把这些规则直接映射成可维护的设计 token 与布局类。
-- MVP 页面结构非常集中，Tailwind 的实用类足以覆盖首版需要，不必先引入更重的样式抽象层。
+- 当前实现直接复用 `prototype/styles.css` 的暖感工业视觉系统，迁移路径最短，页面结果与设计评审基线最贴近。
+- MVP 页面结构集中，现有 CSS 已足够承接总览页、卡片、弹窗与状态面，不需要额外引入样式框架分支。
+- 若后续出现更细的 token 管理或主题化需求，再评估 Tailwind CSS 是否值得接入。
 
 ### 6.3 Fastify 作为本地服务
 
@@ -330,7 +336,7 @@ ccv-hub/
 
 初始化工程后需要先验证：
 
-- Node 24.x 与 Vite 8 / React 19 / Tailwind 4 的组合是否稳定
+- Node 24.x 与 Bun 1.3 / Vite 8 / React 19 的组合是否稳定
 - Fastify 5 与 TypeScript 6 / tsx 4 的组合是否稳定
 - React Query 5 与 React 19 的组合是否稳定
 
@@ -356,7 +362,7 @@ ccv-hub/
 
 ### Phase 0：版本矩阵冻结
 
-- 锁定 Node、pnpm、TypeScript、React、Vite、Tailwind、Fastify、React Query、zod、pino、Vitest、ESLint、tsx
+- 锁定 Node、Bun、TypeScript、React、Vite、Fastify、React Query、zod、pino、Vitest、tsx
 - 跑通最小工作区工程
 - 冻结 lockfile
 
@@ -397,4 +403,4 @@ ccv-hub/
 
 ## 17. 结论
 
-`ccv-hub` 的首版技术路线应该采用**最新稳定大版本优先**的现代前后端组合：前端用 React 19 + Vite 8 + Tailwind 4，后端用 Fastify 5 + TypeScript 6，实例契约由 zod 统一，状态同步以轮询为主，运行态真相源以内存注册表为主。这个组合最贴合当前文档约束，也为后续公网访问增强保留了足够清晰的演进路径。
+`ccv-hub` 的首版技术路线应该采用**最新稳定大版本优先**的现代前后端组合：前端用 React 19 + Vite 8 + 原型 CSS，后端用 Fastify 5 + TypeScript 6，实例契约由 zod 统一，状态同步以轮询为主，运行态真相源以内存注册表为主。这个组合最贴合当前文档约束，也为后续样式系统升级与公网访问增强保留了足够清晰的演进路径。

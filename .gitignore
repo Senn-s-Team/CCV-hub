@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.bun/
+package-lock.json
+coverage/
+*.log

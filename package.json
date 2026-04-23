@@ -1,0 +1,22 @@
+{
+  "name": "ccv-hub",
+  "private": true,
+  "packageManager": "bun@1.3.10",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "bun run --workspaces build",
+    "test": "bun run --workspaces test",
+    "lint": "bun run --workspaces lint",
+    "dev:web": "bun run --filter hub-web dev",
+    "dev:service": "bun run --filter hub-service dev"
+  },
+  "devDependencies": {
+    "@types/node": "24.7.2"
+  }
+}
