@@ -176,15 +176,67 @@ Web 总览页
 
 实例异常退出时，本地服务需要在可接受时间内把该实例从运行列表移除，避免长期脏数据。
 
-## 10. 关键约束
+## 10. 公网暴露设计
+
+### 10.1 目标
+
+在保持单机实例发现模型不变的前提下，让任意项目启动的 `cc-viewer` 实例可以生成一个可公网访问的地址，并接入本机已有的 Dokploy + Traefik 路由体系。
+
+### 10.2 设计原则
+
+- 实例发现仍然限定在单机范围
+- 公网地址生成由 `cc-viewer` 负责
+- `ccv-hub` 只消费最终实例地址，不推导公网地址
+- Dokploy 作为统一公网入口，不为每个实例单独创建部署对象
+- 地址形态固定为单域名路径路由，例如 `https://ccv.example.com/view/<token>`
+
+### 10.3 组件职责补充
+
+#### 10.3.1 `cc-viewer` 插件层
+
+`cc-viewer` 在服务启动后通过现有插件钩子生成公网地址，并把实例的 `token -> port` 映射注册到 Dokploy 路由桥接层。
+
+#### 10.3.2 Dokploy bridge / gateway
+
+Dokploy 内新增一个常驻 bridge 服务，接入 `dokploy-network`，负责接收实例路由登记，并把 `/view/<token>` 转发到对应本机 `cc-viewer` 端口。
+
+#### 10.3.3 `ccv-hub` 本地服务与页面
+
+`ccv-hub` 继续维护单机实例注册表，但实例对象中的 `url` 语义升级为“最佳可打开地址”，因此可以直接展示公网代理地址。
+
+### 10.4 运行流程补充
+
+#### 10.4.1 公网地址生成流程
+
+用户在任意项目启动 `ccv` → `cc-viewer` 绑定本机端口并生成访问 token → 插件在 `serverStarted` 阶段把 `{ token, port }` 注册到 Dokploy bridge → 插件在 `localUrl` 阶段返回 `https://ccv.example.com/view/<token>` → `ccv-hub` 登记并展示该地址
+
+#### 10.4.2 实例停止流程
+
+`cc-viewer` 实例退出 → 插件在 `serverStopping` 阶段注销路由映射 → Dokploy bridge 移除 `/view/<token>` 到本机端口的转发关系 → `ccv-hub` 把该实例从运行中列表移除
+
+### 10.5 关键复用点
+
+- `cc-viewer/server.js:2474` — `/api/local-url` 作为分享地址出口
+- `cc-viewer/server.js:2938` — `serverStarted` hook 作为路由注册时机
+- `cc-viewer/server.js:3254` — `serverStopping` hook 作为路由清理时机
+- `cc-viewer/lib/plugin-loader.js:11` — 已有 `localUrl`、`serverStarted`、`serverStopping` hook 定义
+- `ccv-hub/prototype/docker-compose.yml` — 已有 Dokploy + Traefik 网络接入模式
+
+### 10.6 前提与风险
+
+实现前必须先验证 Dokploy/Traefik 后面的 bridge 服务可以访问宿主机上动态启动的 `cc-viewer` 端口。这是公网暴露能力成立的基础前提。
+
+## 11. 关键约束
 
 - 单机范围内运行
 - 本地服务持有运行实例真相源
 - 第一版只面向运行中实例
 - 默认排序规则固定为最近启动优先
 - 不为 MVP 添加历史视图、详情页或复杂控制流
+- 公网暴露不改变实例发现边界，只改变实例可打开地址
+- Dokploy 路由层故障时，实例仍应保持本地可访问
 
-## 11. 验证方式
+## 12. 验证方式
 
 1. 通过 `ccv-hub` 启动 1 个项目后，总览页出现该实例。
 2. 连续启动多个项目后，总览页可同时展示多个实例。
@@ -193,3 +245,6 @@ Web 总览页
 5. 点击复制链接可得到正确地址。
 6. 输入非法路径时，启动弹窗展示明确错误。
 7. 实例退出后，列表在可接受时间内更新。
+8. 配置 Dokploy bridge 后，请求 `cc-viewer` 的 `/api/local-url` 返回公网路径地址。
+9. 通过公网地址访问实例时，页面、SSE 与 WebSocket 行为保持正常。
+10. Dokploy bridge 不可用时，实例地址回退为本地地址或保持本地直连可用。

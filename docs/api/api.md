@@ -39,7 +39,7 @@
   "id": "ins_01HXYZ...",
   "projectName": "my-project",
   "projectPath": "/home/opc/projects/my-project",
-  "url": "http://127.0.0.1:4321",
+  "url": "https://ccv.example.com/view/9f3a...",
   "port": 4321,
   "pid": 12345,
   "status": "running",
@@ -54,8 +54,8 @@
 - `id`: 实例唯一标识
 - `projectName`: 项目名，用于列表主展示
 - `projectPath`: 项目绝对路径，用于区分同名项目
-- `url`: 可直接打开的实例地址
-- `port`: 实例监听端口
+- `url`: 最佳可打开地址，优先返回公网代理地址；在公网暴露不可用时可回退为本地地址
+- `port`: 实例本机监听端口，用于诊断、回退与路由桥接
 - `pid`: 实例进程号
 - `status`: 第一版固定返回 `running`
 - `source`: 实例来源，第一版至少支持 `launcher`
@@ -125,7 +125,7 @@
         "id": "ins_01HXYZ...",
         "projectName": "my-project",
         "projectPath": "/home/opc/projects/my-project",
-        "url": "http://127.0.0.1:4321",
+        "url": "https://ccv.example.com/view/9f3a...",
         "port": 4321,
         "pid": 12345,
         "status": "running",
@@ -142,6 +142,7 @@
 - 只返回运行中实例
 - 服务端已按 `startedAt` 降序排序
 - 第一版不接受筛选参数，由前端本地做项目名筛选
+- `url` 优先返回公网可打开地址，公网暴露未就绪时可返回本地地址
 
 ### 6.3 `POST /api/instances`
 
@@ -165,7 +166,7 @@
       "id": "ins_01HXYZ...",
       "projectName": "my-project",
       "projectPath": "/home/opc/projects/my-project",
-      "url": "http://127.0.0.1:4321",
+      "url": "https://ccv.example.com/view/9f3a...",
       "port": 4321,
       "pid": 12345,
       "status": "running",
@@ -193,6 +194,7 @@
 - 输入路径必须是绝对路径
 - 启动成功后才返回 `instance`
 - 半状态实例不得返回给页面
+- 返回的 `instance.url` 应与当前可打开地址保持一致，优先使用公网路径路由地址
 
 ## 7. 状态约定
 
@@ -234,3 +236,5 @@
 3. 连续启动多个实例后，返回顺序符合最近启动优先。
 4. 提交非法路径到 `POST /api/instances` 返回统一错误格式。
 5. 实例退出后，`GET /api/instances` 不再返回该实例。
+6. Dokploy 路径路由可用时，`url` 返回公网地址。
+7. Dokploy 路径路由不可用时，`url` 可回退为本地地址，`port` 保持本机监听端口语义。
