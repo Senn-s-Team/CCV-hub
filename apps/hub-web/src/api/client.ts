@@ -14,7 +14,7 @@ import {
   type ListInstancesResponse,
 } from '@ccv-hub/shared-contracts';
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:4318';
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '';
 
 export class ApiClientError extends Error {
   readonly code: string;
