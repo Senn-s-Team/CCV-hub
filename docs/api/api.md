@@ -10,6 +10,7 @@
 
 - 运行中实例列表读取
 - 启动新实例
+- 外部实例注册与注销
 - 健康检查
 - 统一错误返回格式
 - 实例对象字段定义
@@ -58,7 +59,7 @@
 - `port`: 实例本机监听端口，用于诊断、回退与路由桥接
 - `pid`: 实例进程号
 - `status`: 第一版固定返回 `running`
-- `source`: 实例来源，第一版至少支持 `launcher`
+- `source`: 实例来源，第一版至少支持 `launcher` 与 `manual`
 - `startedAt`: 启动时间，用于默认排序
 - `lastSeen`: 最近确认时间，用于内部状态收敛
 
@@ -91,6 +92,7 @@
 - `START_FAILED`: 启动失败
 - `REGISTER_FAILED`: 实例登记失败
 - `LIST_FAILED`: 实例列表读取失败
+- `UNREGISTER_FAILED`: 实例注销失败
 - `INTERNAL_ERROR`: 未归类内部错误
 
 ## 6. 接口清单
@@ -196,6 +198,63 @@
 - 半状态实例不得返回给页面
 - 返回的 `instance.url` 应与当前可打开地址保持一致，优先使用公网路径路由地址
 
+### 6.4 `POST /api/instances/register`
+
+用于接收 `cc-viewer` 插件上报的手动启动实例。
+
+请求体：
+
+```json
+{
+  "id": "/home/opc/projects/my-project:7008",
+  "projectName": "my-project",
+  "projectPath": "/home/opc/projects/my-project",
+  "url": "http://10.0.0.212:7008?token=abc",
+  "port": 7008,
+  "pid": 12345,
+  "source": "manual",
+  "startedAt": "2026-04-22T10:00:00.000Z"
+}
+```
+
+成功响应沿用 `POST /api/instances` 的 `instance` 结构。
+
+约束：
+- 只登记已启动成功的实例
+- `url` 由上报方提供，Hub 直接消费最终可打开地址
+- `source` 默认值为 `manual`
+
+### 6.5 `POST /api/instances/unregister`
+
+用于接收 `cc-viewer` 插件上报的手动停止事件。
+
+请求体：
+
+```json
+{
+  "id": "/home/opc/projects/my-project:7008",
+  "pid": 12345,
+  "port": 7008,
+  "projectPath": "/home/opc/projects/my-project"
+}
+```
+
+成功响应：
+
+```json
+{
+  "ok": true,
+  "data": {
+    "removed": true
+  }
+}
+```
+
+约束：
+- 至少提供一个匹配字段
+- 匹配成功后实例从运行列表移除
+- 重复注销返回 `removed: false`
+
 ## 7. 状态约定
 
 ### 7.1 对页面可见状态
@@ -218,6 +277,7 @@
 - 校验路径
 - 启动实例
 - 登记实例
+- 接收外部实例注册与注销事件
 - 过滤非运行中实例
 - 按启动时间排序
 - 返回统一错误结构
@@ -236,5 +296,7 @@
 3. 连续启动多个实例后，返回顺序符合最近启动优先。
 4. 提交非法路径到 `POST /api/instances` 返回统一错误格式。
 5. 实例退出后，`GET /api/instances` 不再返回该实例。
-6. Dokploy 路径路由可用时，`url` 返回公网地址。
-7. Dokploy 路径路由不可用时，`url` 可回退为本地地址，`port` 保持本机监听端口语义。
+6. 外部实例注册后，`GET /api/instances` 返回带 token 的上报地址。
+7. 外部实例注销后，`GET /api/instances` 不再返回该实例。
+8. Dokploy 路径路由可用时，`url` 返回公网地址。
+9. Dokploy 路径路由不可用时，`url` 可回退为本地地址，`port` 保持本机监听端口语义。

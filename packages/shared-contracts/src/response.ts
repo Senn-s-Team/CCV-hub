@@ -1,12 +1,12 @@
 /**
  * [INPUT]: 依赖 zod 泛型组合能力，依赖错误码与实例 schema
- * [OUTPUT]: 对外提供 apiSuccessSchema、apiFailureSchema、apiResponseSchema 与相关类型
+ * [OUTPUT]: 对外提供 apiSuccessSchema、apiFailureSchema、apiResponseSchema、实例创建/注册/注销契约与相关类型
  * [POS]: shared-contracts 的响应契约层，统一本地服务全部 JSON 结构
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { z } from 'zod';
 import { errorCodeSchema } from './errors.js';
-import { instanceSchema } from './instance.js';
+import { instanceSchema, isoDatetimeSchema } from './instance.js';
 
 export const apiSuccessSchema = <TSchema extends z.ZodTypeAny>(dataSchema: TSchema) => z.object({
   ok: z.literal(true),
@@ -48,6 +48,36 @@ export const createInstanceDataSchema = z.object({
 
 export const createInstanceResponseSchema = apiResponseSchema(createInstanceDataSchema);
 
+export const registerInstanceRequestSchema = z.object({
+  id: z.string().min(1).optional(),
+  projectName: z.string().min(1),
+  projectPath: z.string().min(1),
+  url: z.string().url(),
+  port: z.number().int().positive(),
+  pid: z.number().int().positive(),
+  source: z.string().min(1).default('manual'),
+  startedAt: isoDatetimeSchema.optional(),
+});
+
+export const registerInstanceDataSchema = z.object({
+  instance: instanceSchema,
+});
+
+export const registerInstanceResponseSchema = apiResponseSchema(registerInstanceDataSchema);
+
+export const unregisterInstanceRequestSchema = z.object({
+  id: z.string().min(1).optional(),
+  pid: z.number().int().positive().optional(),
+  port: z.number().int().positive().optional(),
+  projectPath: z.string().min(1).optional(),
+});
+
+export const unregisterInstanceDataSchema = z.object({
+  removed: z.boolean(),
+});
+
+export const unregisterInstanceResponseSchema = apiResponseSchema(unregisterInstanceDataSchema);
+
 export type ApiSuccess<TData> = {
   ok: true;
   data: TData;
@@ -58,3 +88,7 @@ export type HealthResponse = z.infer<typeof healthResponseSchema>;
 export type ListInstancesResponse = z.infer<typeof listInstancesResponseSchema>;
 export type CreateInstanceRequest = z.infer<typeof createInstanceRequestSchema>;
 export type CreateInstanceResponse = z.infer<typeof createInstanceResponseSchema>;
+export type RegisterInstanceRequest = z.infer<typeof registerInstanceRequestSchema>;
+export type RegisterInstanceResponse = z.infer<typeof registerInstanceResponseSchema>;
+export type UnregisterInstanceRequest = z.infer<typeof unregisterInstanceRequestSchema>;
+export type UnregisterInstanceResponse = z.infer<typeof unregisterInstanceResponseSchema>;

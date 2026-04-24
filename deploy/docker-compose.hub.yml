@@ -1,0 +1,64 @@
+# [INPUT]: 依赖 hub-web 与 hub-service 容器镜像构建文件，依赖 Dokploy 的 dokploy-network 与 Traefik，依赖宿主机 Claude/Node 安装目录
+# [OUTPUT]: 对外提供 ccv-hub 的 Web + Service 联合部署清单，可被 Docker Compose 与 Dokploy 直接消费，并挂到固定子域名
+# [POS]: deploy 目录的核心部署清单，负责把前端入口、同域 API、本地端口映射、启动环境与子域名路由收敛到同一份定义
+# [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+services:
+  ccv-hub-web:
+    image: oven/bun:1.3.10
+    working_dir: /home/opc/projects/ccvs/ccv-hub
+    command: >-
+      sh -lc "bun install && bun run --filter hub-web dev --host 0.0.0.0 --port 4173"
+    restart: unless-stopped
+    ports:
+      - "4317:4173"
+    expose:
+      - "4173"
+    depends_on:
+      - ccv-hub-service
+    environment:
+      CCV_HUB_PROXY_TARGET: http://ccv-hub-service:4318
+    volumes:
+      - /home/opc/projects/ccvs:/home/opc/projects/ccvs
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.ccv-hub.rule=Host(`ccv-hub.paas.996667.xyz`)
+      - traefik.http.routers.ccv-hub.entrypoints=web
+      - traefik.http.routers.ccv-hub.service=ccv-hub
+      - traefik.http.routers.ccv-hub-secure.rule=Host(`ccv-hub.paas.996667.xyz`)
+      - traefik.http.routers.ccv-hub-secure.entrypoints=websecure
+      - traefik.http.routers.ccv-hub-secure.tls=true
+      - traefik.http.routers.ccv-hub-secure.service=ccv-hub
+      - traefik.http.services.ccv-hub.loadbalancer.server.port=4173
+    networks:
+      - dokploy-network
+      - default
+
+  ccv-hub-service:
+    image: oven/bun:1.3.10
+    working_dir: /home/opc/projects/ccvs/ccv-hub
+    command: >-
+      sh -lc "bun install && bun run apps/hub-service/src/server.ts"
+    restart: unless-stopped
+    ports:
+      - "4318:4318"
+    expose:
+      - "4318"
+    environment:
+      CCV_HUB_HOST: 0.0.0.0
+      CCV_HUB_PORT: 4318
+      CCV_CLI_PATH: /home/opc/projects/ccvs/cc-viewer/cli.js
+      HOME: /home/opc
+      CLAUDE_CONFIG_DIR: /home/opc/.claude
+      PATH: /home/linuxbrew/.linuxbrew/bin:/home/opc/.local/bin:/home/opc/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    volumes:
+      - /home/opc/projects/ccvs:/home/opc/projects/ccvs
+      - /home/opc/.claude:/home/opc/.claude
+      - /home/opc/.local:/home/opc/.local:ro
+      - /home/linuxbrew/.linuxbrew:/home/linuxbrew/.linuxbrew:ro
+    networks:
+      - default
+
+networks:
+  dokploy-network:
+    external: true

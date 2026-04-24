@@ -1,11 +1,11 @@
 /**
- * [INPUT]: 依赖 node:child_process 启动 ccv CLI，依赖 process-supervisor 绑定退出与停止能力
- * [OUTPUT]: 对外提供 CcvLauncher 类、LaunchResult 类型与 ViewerLauncher 接口
+ * [INPUT]: 依赖 node:child_process 启动 ccv CLI，依赖 node:path 合并启动 PATH，依赖 process-supervisor 绑定退出与停止能力
+ * [OUTPUT]: 对外提供 buildLaunchEnv、parseViewerUrl、resolveViewerUrl、CcvLauncher 类、LaunchResult 类型与 ViewerLauncher 接口
  * [POS]: hub-service 的统一入口启动器，把项目路径转换成可登记的 cc-viewer 实例
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { spawn, type ChildProcess } from 'node:child_process';
-import { basename, dirname, resolve } from 'node:path';
+import { basename, delimiter, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createAppError } from '../domain/error-mapper.js';
 import { bindProcessExit, createStopHandle } from './process-supervisor.js';
@@ -35,8 +35,8 @@ function resolveCcvCliPath(): string {
   return resolve(currentDir, '../cc-viewer/cli.js');
 }
 
-function parseLocalUrl(line: string): string | null {
-  const match = line.match(/➜\s+Local:\s+(https?:\/\/\S+)/u);
+export function parseViewerUrl(line: string): string | null {
+  const match = line.match(/➜\s+(?:Local|Network):\s+(https?:\/\/\S+)/u);
   return match?.[1] ?? null;
 }
 
@@ -45,7 +45,18 @@ function parsePort(url: string): number {
   return Number(port);
 }
 
-function collectOutput(child: ChildProcess, onLocalUrl: (url: string) => void): () => string {
+export async function resolveViewerUrl(localUrl: string): Promise<string> {
+  try {
+    const response = await fetch(new URL('/api/local-url', localUrl));
+    if (!response.ok) return localUrl;
+    const payload = (await response.json()) as { url?: unknown };
+    return typeof payload.url === 'string' && payload.url.length > 0 ? payload.url : localUrl;
+  } catch {
+    return localUrl;
+  }
+}
+
+function collectOutput(child: ChildProcess, onViewerUrl: (url: string) => void): () => string {
   let buffer = '';
   let errorBuffer = '';
 
@@ -54,9 +65,9 @@ function collectOutput(child: ChildProcess, onLocalUrl: (url: string) => void): 
     const lines = buffer.split(/\r?\n/u);
     buffer = lines.pop() ?? '';
     for (const line of lines) {
-      const localUrl = parseLocalUrl(line);
-      if (localUrl) {
-        onLocalUrl(localUrl);
+      const viewerUrl = parseViewerUrl(line);
+      if (viewerUrl) {
+        onViewerUrl(viewerUrl);
       }
     }
   };
@@ -70,19 +81,36 @@ function collectOutput(child: ChildProcess, onLocalUrl: (url: string) => void): 
   return () => `${errorBuffer}\n${buffer}`.trim();
 }
 
+export function buildLaunchEnv(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  const pathEntries = [
+    '/home/linuxbrew/.linuxbrew/bin',
+    '/home/opc/.local/bin',
+    '/home/opc/.bun/bin',
+    env.PATH,
+  ].filter((entry): entry is string => typeof entry === 'string' && entry.length > 0);
+
+  env.PATH = Array.from(new Set(pathEntries)).join(delimiter);
+  env.HOME = env.HOME && env.HOME !== '/root' ? env.HOME : '/home/opc';
+  env.CLAUDE_CONFIG_DIR = env.CLAUDE_CONFIG_DIR ?? '/home/opc/.claude';
+  env.CCV_HUB_PLUGIN_DISABLED = '1';
+
+  return env;
+}
+
 export class CcvLauncher implements ViewerLauncher {
   private readonly ccvCliPath: string;
   private readonly startupTimeoutMs: number;
 
   constructor(options?: { ccvCliPath?: string; startupTimeoutMs?: number }) {
-    this.ccvCliPath = options?.ccvCliPath ?? resolveCcvCliPath();
+    this.ccvCliPath = options?.ccvCliPath ?? process.env.CCV_CLI_PATH ?? resolveCcvCliPath();
     this.startupTimeoutMs = options?.startupTimeoutMs ?? 30000;
   }
 
   async launch(projectPath: string): Promise<LaunchResult> {
     const child = spawn(process.execPath, [this.ccvCliPath, '--no-open'], {
       cwd: projectPath,
-      env: process.env,
+      env: buildLaunchEnv(),
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
@@ -96,13 +124,15 @@ export class CcvLauncher implements ViewerLauncher {
         if (settled) return;
         settled = true;
         clearTimeout(timeoutId);
-        resolveLaunch({
-          projectName: basename(projectPath),
-          url: localUrl,
-          port: parsePort(localUrl),
-          pid: child.pid ?? 0,
-          stop: createStopHandle(child),
-          onExit: (listener) => bindProcessExit(child, listener),
+        void resolveViewerUrl(localUrl).then((viewerUrl) => {
+          resolveLaunch({
+            projectName: basename(projectPath),
+            url: viewerUrl,
+            port: parsePort(localUrl),
+            pid: child.pid ?? 0,
+            stop: createStopHandle(child),
+            onExit: (listener) => bindProcessExit(child, listener),
+          });
         });
       });
 

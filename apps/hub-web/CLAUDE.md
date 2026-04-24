@@ -5,7 +5,9 @@
 src/: React 源码目录，负责总览页、实例卡片、启动弹窗、查询 hooks 与 UI 状态
 index.html: Vite 页面入口，挂载根节点并注入字体资源
 package.json: hub-web 包配置，定义前端依赖、脚本与构建入口
-vite.config.ts: Vite 构建配置，定义 React 集成、开发服务器 API 代理与 jsdom 测试环境
+vite.config.ts: Vite 构建配置，定义 React 集成、可配置 API 代理、受信任访问域名与 jsdom 测试环境
+Dockerfile: hub-web 容器镜像构建文件，负责产出静态站镜像
+nginx.conf: hub-web 边缘入口配置，负责 SPA 静态资源与 /api 反向代理
 tsconfig.json: hub-web TypeScript 配置，约束前端编译上下文
 
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md

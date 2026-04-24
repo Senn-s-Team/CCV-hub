@@ -7,6 +7,7 @@ docs/ - 产品、架构与设计文档（6 子目录: prd, ia, system, api, desi
 prototype/ - 高保真静态原型目录（4 文件: index.html, styles.css, app.js, docker-compose.yml）
 apps/ - 运行时应用目录（2 子目录: hub-web, hub-service）
 packages/ - 共享模块目录（1 子目录: shared-contracts）
+deploy/ - Dokploy 与本地容器部署目录（2 文件: docker-compose.hub.yml, ccv-hub-plugin.mjs）
 </directory>
 
 <config>
@@ -32,6 +33,7 @@ bun.lock - Bun 锁文件，固定 workspace 依赖解析结果
 - `apps/hub-service/` - 本地常驻服务实现，负责健康检查、实例查询、统一入口启动与状态收敛。
 - `apps/hub-web/` - 总览页实现，负责实例展示、项目名筛选、启动弹窗、复制与轮询刷新。
 - `packages/shared-contracts/` - 前后端共享契约实现，负责 Instance schema、响应结构与错误码。
+- `deploy/` - 部署资产目录，负责 Hub 的 Docker Compose 清单、Dokploy 接入入口与 cc-viewer 插件安装源。
 
 ## 设计法则
 

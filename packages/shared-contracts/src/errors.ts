@@ -11,6 +11,7 @@ export const errorCodeSchema = z.enum([
   'START_FAILED',
   'REGISTER_FAILED',
   'LIST_FAILED',
+  'UNREGISTER_FAILED',
   'INTERNAL_ERROR',
 ]);
 
@@ -21,5 +22,6 @@ export const errorMessageMap: Record<ErrorCode, string> = {
   START_FAILED: 'Failed to start cc-viewer',
   REGISTER_FAILED: 'Failed to register instance',
   LIST_FAILED: 'Failed to list instances',
+  UNREGISTER_FAILED: 'Failed to unregister instance',
   INTERNAL_ERROR: 'Internal server error',
 };
