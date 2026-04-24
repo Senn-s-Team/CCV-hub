@@ -305,11 +305,11 @@ ccv-hub/
 - `ccv-hub/prototype/app.js:126` 到 `ccv-hub/prototype/app.js:233`
   - 已展示卡片渲染、状态切换与弹窗反馈方式，可作为 React 组件拆分依据。
 - `ccv-hub/prototype/docker-compose.yml:1`
-  - 已定义原型接入 Dokploy 网络的基本方式，可作为后续公网能力实验样本。
+  - 已定义原型接入 Dokploy 网络的基本方式，可作为当前公网路由部署参考。
 
 ## 12. 与现有 cc-viewer 复用点的关系
 
-以下能力属于后续公网访问增强阶段的复用锚点：
+以下能力是当前公网 viewer 子域名桥接的复用锚点：
 
 - `cc-viewer/server.js:2474` 的 `/api/local-url`
 - `cc-viewer/server.js:2938` 的 `serverStarted` hook 调用点
@@ -318,13 +318,12 @@ ccv-hub/
 - `cc-viewer/lib/plugin-loader.js:14`
 - `cc-viewer/lib/plugin-loader.js:15`
 
-这些点说明未来可以通过插件层把本地实例地址升级为公网最佳地址，但它们不应阻塞 MVP 的本地总览闭环。
+这些点支撑插件层把 raw upstream 上报给 Hub，再由 Hub 生成公网 viewer 子域名地址。
 
 ## 13. 非纳入 MVP 主路径的技术项
 
 以下技术方向保留为增强阶段：
 
-- Dokploy + Traefik + bridge 路径路由
 - SSE 实时推送
 - SQLite 持久化
 - 收藏、最近打开、分组视图、历史实例
@@ -352,11 +351,11 @@ ccv-hub/
 - 2 秒轮询在本地场景下是否足够顺滑
 - 页面后台降频后是否仍保持体验稳定
 
-### 14.4 公网能力 PoC 验证
+### 14.4 公网能力验证
 
-- Dokploy bridge 能否访问宿主机动态端口
-- 路径路由下页面、SSE、WebSocket 是否正常
-- bridge 不可用时本地地址是否可回退
+- Dokploy / Traefik viewer 子域名能否路由到 Hub bridge
+- Hub bridge 能否访问 upstream 动态端口
+- viewer 子域名下页面、SSE、WebSocket 是否正常
 
 ## 15. 分阶段实施建议
 

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 node:net 与 URL 的端口探测能力，依赖 instance-model 的记录构造与公共投影能力
- * [OUTPUT]: 对外提供 InstanceRegistry 类、实例注册/注销、端口存活清理与受控状态流转方法
+ * [OUTPUT]: 对外提供 InstanceRegistry 类、实例注册/注销、bridge 查找、端口存活清理与受控状态流转方法
  * [POS]: hub-service 的运行态真相源，集中收敛实例状态与排序逻辑
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -28,7 +28,7 @@ function canConnectToPort(host: string, port: number): Promise<boolean> {
 
 function resolveHealthHost(record: ManagedInstanceRecord): string {
   try {
-    return new URL(record.instance.url).hostname;
+    return new URL(record.upstreamUrl).hostname;
   } catch {
     return '127.0.0.1';
   }
@@ -121,5 +121,9 @@ export class InstanceRegistry {
 
   get(id: string): ManagedInstanceRecord | undefined {
     return this.records.get(id);
+  }
+
+  getByBridgeId(bridgeId: string): ManagedInstanceRecord | undefined {
+    return [...this.records.values()].find((record) => record.internalStatus === 'running' && record.bridgeId === bridgeId);
   }
 }

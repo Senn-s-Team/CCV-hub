@@ -1,10 +1,11 @@
 /**
- * [INPUT]: 依赖 vitest、node:http、hub-service 服务装配与 launcher 环境构造函数
- * [OUTPUT]: 对外提供 hub-service 路由、启动 URL、外部注册、存活清理与启动环境回归测试
- * [POS]: hub-service 的测试入口，负责验证健康接口、实例列表、创建/注册流程、URL 投影与启动环境收敛
+ * [INPUT]: 依赖 vitest、node:http、node:net、hub-service 服务装配与 launcher 环境构造函数
+ * [OUTPUT]: 对外提供 hub-service 路由、启动 URL、外部注册、viewer bridge、存活清理与启动环境回归测试
+ * [POS]: hub-service 的测试入口，负责验证健康接口、实例列表、创建/注册流程、URL 投影、HTTP/WebSocket 桥接与启动环境收敛
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { createServer } from 'node:http';
+import { createConnection } from 'node:net';
 import { describe, expect, it, vi } from 'vitest';
 import { buildServer } from '../src/server.js';
 import { InstanceRegistry } from '../src/domain/instance-registry.js';
@@ -24,6 +25,25 @@ function close(server: ReturnType<typeof createServer>): Promise<void> {
     server.close((error) => {
       if (error) reject(error);
       else resolve();
+    });
+  });
+}
+
+function readSocketUntil(port: number, request: string, marker: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    const socket = createConnection(port, '127.0.0.1', () => socket.write(request));
+    socket.on('data', (chunk) => {
+      data += chunk.toString('utf8');
+      if (data.includes(marker)) {
+        socket.end();
+        resolve(data);
+      }
+    });
+    socket.on('error', reject);
+    socket.setTimeout(1000, () => {
+      socket.destroy();
+      reject(new Error(`Timed out waiting for ${marker}`));
     });
   });
 }
@@ -194,6 +214,150 @@ describe('hub-service routes', () => {
     }
   });
 
+  it('bridges viewer subdomain requests to the registered upstream with token', async () => {
+    const upstream = createServer((request, response) => {
+      response.setHeader('content-type', 'application/json');
+      response.end(JSON.stringify({ url: request.url, host: request.headers.host }));
+    });
+    const upstreamPort = await listen(upstream);
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+    });
+
+    try {
+      const registerResponse = await app.inject({
+        method: 'POST',
+        url: '/api/instances/register',
+        payload: {
+          id: 'manual-bridge',
+          projectName: 'cc-viewer',
+          projectPath: '/home/opc/projects/ccvs/cc-viewer',
+          url: `http://127.0.0.1:${upstreamPort}?token=abc`,
+          port: upstreamPort,
+          pid: 4321,
+          source: 'manual',
+          startedAt: '2026-04-22T10:00:00.000Z',
+        },
+      });
+      const bridgeHost = new URL(registerResponse.json().data.instance.url).host;
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/events?cursor=1&token=evil',
+        headers: { host: bridgeHost },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({
+        url: '/api/events?cursor=1&token=abc',
+        host: `127.0.0.1:${upstreamPort}`,
+      });
+    } finally {
+      await app.close();
+      await close(upstream);
+    }
+  });
+
+  it('bridges viewer POST bodies to the registered upstream with token', async () => {
+    const upstream = createServer((request, response) => {
+      let body = '';
+      request.on('data', (chunk) => { body += chunk; });
+      request.on('end', () => {
+        response.setHeader('content-type', 'application/json');
+        response.end(JSON.stringify({ url: request.url, body: JSON.parse(body) }));
+      });
+    });
+    const upstreamPort = await listen(upstream);
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+    });
+
+    try {
+      const registerResponse = await app.inject({
+        method: 'POST',
+        url: '/api/instances/register',
+        payload: {
+          id: 'manual-bridge-post',
+          projectName: 'cc-viewer',
+          projectPath: '/home/opc/projects/ccvs/cc-viewer',
+          url: `http://127.0.0.1:${upstreamPort}?token=abc`,
+          port: upstreamPort,
+          pid: 4321,
+          source: 'manual',
+          startedAt: '2026-04-22T10:00:00.000Z',
+        },
+      });
+      const bridgeHost = new URL(registerResponse.json().data.instance.url).host;
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/resume-choice?token=abc&token=abc',
+        headers: { host: bridgeHost },
+        payload: { choice: 'continue' },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({
+        url: '/api/resume-choice?token=abc',
+        body: { choice: 'continue' },
+      });
+    } finally {
+      await app.close();
+      await close(upstream);
+    }
+  });
+
+  it('bridges viewer websocket upgrades to the registered upstream with token', async () => {
+    const upstream = createServer();
+    upstream.on('upgrade', (request, socket) => {
+      socket.write('HTTP/1.1 101 Switching Protocols\r\nupgrade: websocket\r\nconnection: Upgrade\r\n\r\n');
+      socket.end(`upstream:${request.url}`);
+    });
+    const upstreamPort = await listen(upstream);
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+    });
+
+    try {
+      await app.listen({ port: 0, host: '127.0.0.1' });
+      const address = app.server.address();
+      const port = typeof address === 'object' && address ? address.port : 0;
+
+      const registerResponse = await app.inject({
+        method: 'POST',
+        url: '/api/instances/register',
+        payload: {
+          id: 'manual-bridge-ws',
+          projectName: 'cc-viewer',
+          projectPath: '/home/opc/projects/ccvs/cc-viewer',
+          url: `http://127.0.0.1:${upstreamPort}?token=abc`,
+          port: upstreamPort,
+          pid: 4321,
+          source: 'manual',
+          startedAt: '2026-04-22T10:00:00.000Z',
+        },
+      });
+      const bridgeHost = new URL(registerResponse.json().data.instance.url).host;
+
+      const response = await readSocketUntil(port, [
+        'GET /ws/terminal?session=1 HTTP/1.1',
+        `Host: ${bridgeHost}`,
+        'Connection: Upgrade',
+        'Upgrade: websocket',
+        'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==',
+        'Sec-WebSocket-Version: 13',
+        '',
+        '',
+      ].join('\r\n'), 'upstream:/ws/terminal?session=1&token=abc');
+
+      expect(response).toContain('HTTP/1.1 101 Switching Protocols');
+      expect(response).toContain('upstream:/ws/terminal?session=1&token=abc');
+    } finally {
+      await app.close();
+      await close(upstream);
+    }
+  });
+
   it('registers external instances and removes them on unregister', async () => {
     const app = buildServer({
       launcher: { launch: vi.fn() },
@@ -215,11 +379,12 @@ describe('hub-service routes', () => {
     });
 
     expect(registerResponse.statusCode).toBe(200);
-    expect(registerResponse.json().data.instance).toMatchObject({
+    const registeredInstance = registerResponse.json().data.instance;
+    expect(registeredInstance).toMatchObject({
       id: 'manual-7008',
-      url: 'http://10.0.0.212:7008?token=abc',
       source: 'manual',
     });
+    expect(registeredInstance.url).toMatch(/^https:\/\/ccv-[a-f0-9]{32}\.paas\.996667\.xyz\/\?token=abc$/u);
 
     const unregisterResponse = await app.inject({
       method: 'POST',
