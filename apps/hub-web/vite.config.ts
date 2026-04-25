@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Vite React 插件与本地 hub-service 地址，依赖 Vitest 配置类型
- * [OUTPUT]: 对外提供 hub-web 的 Vite 配置，定义 React 集成、开发端口、可配置 Hub 主机名、API 代理、viewer bridge HTTP 代理、受信任访问域名与测试环境
+ * [OUTPUT]: 对外提供 hub-web 的 Vite 配置，定义 React 集成、开发端口、可配置 Hub 主机名、API 代理、32 位 bridge id viewer HTTP 代理、受信任访问域名与测试环境
  * [POS]: hub-web 的前端开发入口配置，生产公网 viewer WebSocket 由 nginx.conf 承担
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -20,13 +20,15 @@ const hubHost = process.env.CCV_HUB_PUBLIC_HOST ?? `ccv-hub.${publicDomain}`;
 const allowedHosts = [hubHost, `.${publicDomain}`];
 const routingConfig = { hubHost, publicDomain, viewerPrefix };
 
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 export const isViewerHostForConfig = (config: HubRoutingConfig, host = '') => {
   const normalizedHost = host.split(':')[0]?.toLowerCase() ?? '';
-  return (
-    normalizedHost !== config.hubHost &&
-    normalizedHost.startsWith(config.viewerPrefix) &&
-    normalizedHost.endsWith(`.${config.publicDomain}`)
+  const viewerHostPattern = new RegExp(
+    `^${escapeRegExp(config.viewerPrefix)}[a-f0-9]{32}\\.${escapeRegExp(config.publicDomain)}$`,
   );
+
+  return viewerHostPattern.test(normalizedHost);
 };
 
 export const shouldProxyToHubServiceForConfig = (config: HubRoutingConfig, host = '', url = '') =>

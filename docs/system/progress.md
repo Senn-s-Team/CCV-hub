@@ -35,3 +35,18 @@
 
 - 初始页面加载期间没有自动建立 WebSocket，终端能力实际使用前可用 Upgrade 握手确认 bridge 支持。
 - viewer 前端生成的部分请求会出现重复 `token` 查询参数，当前请求仍返回 HTTP 200；后续安全与 URL 暴露收口时一起处理。
+
+## 2026-04-25：P0-2 统一 viewer host 匹配规则
+
+状态：已完成。
+
+### 变更结果
+
+1. Vite 开发代理的 viewer host 判定已收敛为 `^ccv-[a-f0-9]{32}\.paas\.996667\.xyz$` 同构语义。
+2. `ccv-manual-7008.paas.996667.xyz`、非十六进制 bridge id 与非目标 public domain 均不再进入 viewer bridge 代理。
+3. nginx 与 Traefik 原有 32 位十六进制 bridge id 规则保持不变，开发态、测试态、生产态共享同一合法 host 格式。
+
+### 自测
+
+- `bun --filter hub-web test -- src/test/vite-config.test.ts` 通过，5 个用例通过。
+- `bun --filter hub-web lint` 通过。
