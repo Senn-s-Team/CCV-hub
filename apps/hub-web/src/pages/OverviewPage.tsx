@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖实例查询与启动 hooks，依赖 InstanceCard、LaunchDialog、Toast 组件与原型样式类名
- * [OUTPUT]: 对外提供 OverviewPage 页面，完成总览、筛选、状态与启动弹窗闭环
+ * [INPUT]: 依赖实例查询与启动 hooks，依赖 InstanceCard、LaunchDialog、Toast 组件、退出动作与原型样式类名
+ * [OUTPUT]: 对外提供 OverviewPage 页面，完成总览、筛选、状态、启动弹窗、退出入口闭环
  * [POS]: hub-web 的唯一主页面，承接 ccv-hub MVP 的所有前端主路径能力
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -13,6 +13,10 @@ import Toast from '../components/Toast.js';
 import { useInstances } from '../hooks/useInstances.js';
 import { useLaunchInstance } from '../hooks/useLaunchInstance.js';
 
+type OverviewPageProps = {
+  onLogout: () => Promise<void>;
+};
+
 function filterInstances(instances: Instance[], query: string): Instance[] {
   const normalized = query.trim().toLowerCase();
   if (!normalized) {
@@ -21,7 +25,7 @@ function filterInstances(instances: Instance[], query: string): Instance[] {
   return instances.filter((instance) => instance.projectName.toLowerCase().includes(normalized));
 }
 
-export default function OverviewPage() {
+export default function OverviewPage({ onLogout }: OverviewPageProps) {
   const [query, setQuery] = useState('');
   const [isModalOpen, setModalOpen] = useState(false);
   const [launchError, setLaunchError] = useState('');
@@ -81,6 +85,9 @@ export default function OverviewPage() {
           </div>
 
           <div className="topbar-actions">
+            <button className="button button-secondary" type="button" onClick={() => void onLogout()}>
+              退出
+            </button>
             <button className="button button-secondary" type="button" onClick={() => void instancesQuery.refetch()}>
               <span className="button-icon">⟳</span>
               刷新列表

@@ -12,6 +12,8 @@ export const errorCodeSchema = z.enum([
   'REGISTER_FAILED',
   'LIST_FAILED',
   'UNREGISTER_FAILED',
+  'UNAUTHORIZED',
+  'AUTH_NOT_CONFIGURED',
   'INTERNAL_ERROR',
 ]);
 
@@ -23,5 +25,7 @@ export const errorMessageMap: Record<ErrorCode, string> = {
   REGISTER_FAILED: 'Failed to register instance',
   LIST_FAILED: 'Failed to list instances',
   UNREGISTER_FAILED: 'Failed to unregister instance',
+  UNAUTHORIZED: 'Authentication required',
+  AUTH_NOT_CONFIGURED: 'Hub authentication is not configured',
   INTERNAL_ERROR: 'Internal server error',
 };

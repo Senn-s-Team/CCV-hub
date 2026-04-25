@@ -8,6 +8,7 @@ import { createServer } from 'node:http';
 import { createConnection } from 'node:net';
 import { describe, expect, it, vi } from 'vitest';
 import { buildServer } from '../src/server.js';
+import type { AuthConfig } from '../src/domain/auth-session.js';
 import { InstanceRegistry } from '../src/domain/instance-registry.js';
 import { buildLaunchEnv, parseViewerUrl, resolveViewerUrl } from '../src/launcher/ccv-launcher.js';
 
@@ -27,6 +28,23 @@ function close(server: ReturnType<typeof createServer>): Promise<void> {
       else resolve();
     });
   });
+}
+
+const authConfig: AuthConfig = {
+  password: 'secret',
+  sessionSecret: 'test-session-secret',
+  cookieName: 'ccv_hub_session',
+  cookieSecure: false,
+  sessionTtlSeconds: 60,
+};
+
+async function authHeaders(app: ReturnType<typeof buildServer>): Promise<{ cookie: string }> {
+  const response = await app.inject({
+    method: 'POST',
+    url: '/api/auth/login',
+    payload: { password: 'secret' },
+  });
+  return { cookie: String(response.headers['set-cookie']).split(';')[0]! };
 }
 
 function readSocketUntil(port: number, request: string, marker: string): Promise<string> {
@@ -52,6 +70,7 @@ describe('hub-service routes', () => {
   it('returns health response', async () => {
     const app = buildServer({
       launcher: { launch: vi.fn() },
+      auth: authConfig,
     });
 
     const response = await app.inject({ method: 'GET', url: '/api/health' });
@@ -61,6 +80,88 @@ describe('hub-service routes', () => {
       ok: true,
       data: { status: 'ok' },
     });
+
+    await app.close();
+  });
+
+  it('requires authentication for panel instance APIs', async () => {
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    const response = await app.inject({ method: 'GET', url: '/api/instances' });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({
+      ok: false,
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Authentication required',
+      },
+    });
+
+    await app.close();
+  });
+
+  it('sets and clears authenticated panel sessions', async () => {
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    const loginResponse = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { password: 'secret' },
+    });
+    const cookie = loginResponse.headers['set-cookie'];
+
+    expect(loginResponse.statusCode).toBe(200);
+    expect(loginResponse.json()).toEqual({ ok: true, data: { authenticated: true, configured: true } });
+    expect(cookie).toContain('ccv_hub_session=');
+
+    const listResponse = await app.inject({
+      method: 'GET',
+      url: '/api/instances',
+      headers: { cookie: String(cookie).split(';')[0]! },
+    });
+    expect(listResponse.statusCode).toBe(200);
+
+    const logoutResponse = await app.inject({
+      method: 'POST',
+      url: '/api/auth/logout',
+      headers: { cookie: String(cookie).split(';')[0]! },
+    });
+    expect(logoutResponse.headers['set-cookie']).toContain('Max-Age=0');
+
+    await app.close();
+  });
+
+  it('keeps local plugin registration open while panel APIs are protected', async () => {
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/instances/register',
+      remoteAddress: '127.0.0.1',
+      payload: {
+        id: 'manual-local',
+        projectName: 'cc-viewer',
+        projectPath: '/home/opc/projects/ccvs/cc-viewer',
+        url: 'http://127.0.0.1:7008?token=abc',
+        port: 7008,
+        pid: 4321,
+        source: 'manual',
+        startedAt: '2026-04-22T10:00:00.000Z',
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().data.instance.id).toBe('manual-local');
 
     await app.close();
   });
@@ -111,10 +212,11 @@ describe('hub-service routes', () => {
     const app = buildServer({
       registry,
       launcher: { launch: vi.fn() },
+      auth: authConfig,
     });
 
     try {
-      const response = await app.inject({ method: 'GET', url: '/api/instances' });
+      const response = await app.inject({ method: 'GET', url: '/api/instances', headers: await authHeaders(app) });
       const json = response.json();
 
       expect(response.statusCode).toBe(200);
@@ -145,9 +247,10 @@ describe('hub-service routes', () => {
     const app = buildServer({
       registry,
       launcher: { launch: vi.fn() },
+      auth: authConfig,
     });
 
-    const response = await app.inject({ method: 'GET', url: '/api/instances' });
+    const response = await app.inject({ method: 'GET', url: '/api/instances', headers: await authHeaders(app) });
 
     expect(response.statusCode).toBe(200);
     expect(response.json().data.instances).toHaveLength(0);
@@ -177,10 +280,11 @@ describe('hub-service routes', () => {
     const app = buildServer({
       registry,
       launcher: { launch: vi.fn() },
+      auth: authConfig,
     });
 
     try {
-      const response = await app.inject({ method: 'GET', url: '/api/instances' });
+      const response = await app.inject({ method: 'GET', url: '/api/instances', headers: await authHeaders(app) });
 
       expect(response.statusCode).toBe(200);
       expect(response.json().data.instances.map((instance: { id: string }) => instance.id)).toEqual(['alive']);
@@ -214,6 +318,30 @@ describe('hub-service routes', () => {
     }
   });
 
+  it('protects hub host api even when hub host starts with the viewer prefix', async () => {
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/instances',
+      headers: { host: 'ccv-hub-dev.paas.996667.xyz' },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({
+      ok: false,
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Authentication required',
+      },
+    });
+
+    await app.close();
+  });
+
   it('bridges viewer subdomain requests to the registered upstream with token', async () => {
     const upstream = createServer((request, response) => {
       response.setHeader('content-type', 'application/json');
@@ -222,6 +350,7 @@ describe('hub-service routes', () => {
     const upstreamPort = await listen(upstream);
     const app = buildServer({
       launcher: { launch: vi.fn() },
+      auth: authConfig,
     });
 
     try {
@@ -270,6 +399,7 @@ describe('hub-service routes', () => {
     const upstreamPort = await listen(upstream);
     const app = buildServer({
       launcher: { launch: vi.fn() },
+      auth: authConfig,
     });
 
     try {
@@ -316,6 +446,7 @@ describe('hub-service routes', () => {
     const upstreamPort = await listen(upstream);
     const app = buildServer({
       launcher: { launch: vi.fn() },
+      auth: authConfig,
     });
 
     try {
@@ -361,6 +492,7 @@ describe('hub-service routes', () => {
   it('registers external instances and removes them on unregister', async () => {
     const app = buildServer({
       launcher: { launch: vi.fn() },
+      auth: authConfig,
     });
 
     const registerResponse = await app.inject({
@@ -395,7 +527,7 @@ describe('hub-service routes', () => {
     expect(unregisterResponse.statusCode).toBe(200);
     expect(unregisterResponse.json()).toEqual({ ok: true, data: { removed: true } });
 
-    const listResponse = await app.inject({ method: 'GET', url: '/api/instances' });
+    const listResponse = await app.inject({ method: 'GET', url: '/api/instances', headers: await authHeaders(app) });
     expect(listResponse.json().data.instances).toHaveLength(0);
 
     await app.close();
@@ -404,11 +536,13 @@ describe('hub-service routes', () => {
   it('rejects relative project paths', async () => {
     const app = buildServer({
       launcher: { launch: vi.fn() },
+      auth: authConfig,
     });
 
     const response = await app.inject({
       method: 'POST',
       url: '/api/instances',
+      headers: await authHeaders(app),
       payload: { projectPath: 'relative/path' },
     });
 
@@ -427,6 +561,7 @@ describe('hub-service routes', () => {
   it('creates instance after successful launch and removes it on exit', async () => {
     const listeners: Array<() => void> = [];
     const app = buildServer({
+      auth: authConfig,
       launcher: {
         launch: vi.fn().mockResolvedValue({
           projectName: 'cc-viewer',
@@ -444,6 +579,7 @@ describe('hub-service routes', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/instances',
+      headers: await authHeaders(app),
       payload: { projectPath: '/tmp' },
     });
 
@@ -454,7 +590,7 @@ describe('hub-service routes', () => {
 
     listeners[0]?.();
 
-    const listResponse = await app.inject({ method: 'GET', url: '/api/instances' });
+    const listResponse = await app.inject({ method: 'GET', url: '/api/instances', headers: await authHeaders(app) });
     const listJson = listResponse.json();
     expect(listJson.data.instances).toHaveLength(0);
 

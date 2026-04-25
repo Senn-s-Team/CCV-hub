@@ -14,7 +14,7 @@ const fetchMock = vi.fn();
 const writeText = vi.fn();
 const openMock = vi.fn();
 
-function renderPage() {
+function renderPage(onLogout = vi.fn()) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -23,7 +23,7 @@ function renderPage() {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <OverviewPage />
+      <OverviewPage onLogout={onLogout} />
     </QueryClientProvider>,
   );
 }
@@ -187,6 +187,22 @@ describe('OverviewPage', () => {
       });
     });
     expect(await screen.findByText('Project path is invalid')).toBeInTheDocument();
+  });
+
+  it('calls logout from the topbar action', async () => {
+    fetchMock.mockResolvedValue({
+      json: async () => ({
+        ok: true,
+        data: { instances: [] },
+      }),
+    });
+    const onLogout = vi.fn();
+
+    renderPage(onLogout);
+
+    fireEvent.click(await screen.findByRole('button', { name: '退出' }));
+
+    expect(onLogout).toHaveBeenCalledOnce();
   });
 
   it('copies instance url through clipboard api', async () => {

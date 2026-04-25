@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 Fastify、本地/外部实例路由、viewer bridge 路由、实例注册表与统一入口启动器
+ * [INPUT]: 依赖 Fastify、鉴权路由、本地/外部实例路由、viewer bridge 路由、实例注册表与统一入口启动器
  * [OUTPUT]: 对外提供 buildServer、startServer 与默认 CLI 启动入口
- * [POS]: hub-service 的装配根，把领域、路由与基础设施收敛为可运行本地服务
+ * [POS]: hub-service 的装配根，把鉴权、领域、路由与基础设施收敛为可运行本地服务
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import Fastify, { type FastifyInstance } from 'fastify';
@@ -9,6 +9,8 @@ import { fileURLToPath } from 'node:url';
 import { createLogger } from './infra/logger.js';
 import { InstanceRegistry } from './domain/instance-registry.js';
 import { CcvLauncher, type ViewerLauncher } from './launcher/ccv-launcher.js';
+import { resolveAuthConfig, type AuthConfig } from './domain/auth-session.js';
+import { registerAuthRoutes, registerPanelAuthGuard } from './routes/auth.js';
 import { registerHealthRoute } from './routes/health.js';
 import { registerListInstancesRoute } from './routes/instances.get.js';
 import { registerCreateInstanceRoute } from './routes/instances.post.js';
@@ -19,6 +21,7 @@ import { registerViewerBridgeRoute } from './routes/viewer-bridge.js';
 export type BuildServerOptions = {
   registry?: InstanceRegistry;
   launcher?: ViewerLauncher;
+  auth?: AuthConfig;
 };
 
 export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
@@ -26,6 +29,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   const app = Fastify({ logger: false });
   const registry = options.registry ?? new InstanceRegistry();
   const launcher = options.launcher ?? new CcvLauncher();
+  const auth = options.auth ?? resolveAuthConfig();
 
   app.setErrorHandler((error, _, reply) => {
     logger.error({ err: error }, 'request failed');
@@ -39,6 +43,8 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   });
 
   registerHealthRoute(app);
+  registerAuthRoutes(app, auth);
+  registerPanelAuthGuard(app, auth);
   registerListInstancesRoute(app, registry);
   registerCreateInstanceRoute(app, registry, launcher);
   registerExternalInstanceRoute(app, registry);

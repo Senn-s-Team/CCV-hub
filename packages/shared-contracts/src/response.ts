@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 zod 泛型组合能力，依赖错误码与实例 schema
- * [OUTPUT]: 对外提供 apiSuccessSchema、apiFailureSchema、apiResponseSchema、实例创建/注册/注销契约与相关类型
+ * [OUTPUT]: 对外提供 apiSuccessSchema、apiFailureSchema、apiResponseSchema、鉴权、实例创建/注册/注销契约与相关类型
  * [POS]: shared-contracts 的响应契约层，统一本地服务全部 JSON 结构
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -31,6 +31,17 @@ export const healthDataSchema = z.object({
 });
 
 export const healthResponseSchema = apiSuccessSchema(healthDataSchema);
+
+export const authLoginRequestSchema = z.object({
+  password: z.string().min(1),
+});
+
+export const authStatusDataSchema = z.object({
+  authenticated: z.boolean(),
+  configured: z.boolean(),
+});
+
+export const authStatusResponseSchema = apiSuccessSchema(authStatusDataSchema);
 
 export const listInstancesDataSchema = z.object({
   instances: z.array(instanceSchema),
@@ -85,6 +96,8 @@ export type ApiSuccess<TData> = {
 
 export type ApiFailure = z.infer<typeof apiFailureSchema>;
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
+export type AuthLoginRequest = z.infer<typeof authLoginRequestSchema>;
+export type AuthStatusResponse = z.infer<typeof authStatusResponseSchema>;
 export type ListInstancesResponse = z.infer<typeof listInstancesResponseSchema>;
 export type CreateInstanceRequest = z.infer<typeof createInstanceRequestSchema>;
 export type CreateInstanceResponse = z.infer<typeof createInstanceResponseSchema>;

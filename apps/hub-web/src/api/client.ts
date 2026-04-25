@@ -1,14 +1,17 @@
 /**
  * [INPUT]: 依赖 shared-contracts 的请求响应 schema，依赖浏览器 fetch
- * [OUTPUT]: 对外提供 getHealth、getInstances、createInstance 与 ApiClientError
+ * [OUTPUT]: 对外提供 getHealth、getAuthStatus、login、logout、getInstances、createInstance 与 ApiClientError
  * [POS]: hub-web 的服务端访问层，负责把接口响应解析成稳定前端数据
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import {
+  authLoginRequestSchema,
+  authStatusResponseSchema,
   createInstanceRequestSchema,
   createInstanceResponseSchema,
   healthResponseSchema,
   listInstancesResponseSchema,
+  type AuthStatusResponse,
   type CreateInstanceResponse,
   type HealthResponse,
   type ListInstancesResponse,
@@ -46,6 +49,22 @@ async function request<T>(path: string, init: RequestInit, parser: (payload: unk
 
 export function getHealth(): Promise<HealthResponse> {
   return request('/api/health', { method: 'GET' }, (payload) => healthResponseSchema.parse(payload));
+}
+
+export function getAuthStatus(): Promise<AuthStatusResponse> {
+  return request('/api/auth/me', { method: 'GET' }, (payload) => authStatusResponseSchema.parse(payload));
+}
+
+export function login(password: string): Promise<AuthStatusResponse> {
+  const body = authLoginRequestSchema.parse({ password });
+  return request('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  }, (payload) => authStatusResponseSchema.parse(payload));
+}
+
+export function logout(): Promise<AuthStatusResponse> {
+  return request('/api/auth/logout', { method: 'POST' }, (payload) => authStatusResponseSchema.parse(payload));
 }
 
 export function getInstances(): Promise<ListInstancesResponse> {

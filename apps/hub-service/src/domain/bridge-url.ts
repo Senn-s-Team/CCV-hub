@@ -52,7 +52,8 @@ export function resolveBridgeIdFromHost(hostHeader: string | undefined, config =
   const prefix = config.subdomainPrefix.toLowerCase();
   const suffix = `.${config.domain.toLowerCase()}`;
   if (!host.startsWith(prefix) || !host.endsWith(suffix)) return null;
-  return host.slice(prefix.length, -suffix.length) || null;
+  const bridgeId = host.slice(prefix.length, -suffix.length);
+  return /^[a-f0-9]{32}$/u.test(bridgeId) ? bridgeId : null;
 }
 
 export function appendUpstreamToken(target: URL, upstreamUrl: string): URL {
