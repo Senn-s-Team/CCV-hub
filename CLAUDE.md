@@ -14,7 +14,8 @@ deploy/ - Dokploy Web 入口与宿主机 service 部署目录（3 文件: docker
 CLAUDE.md - ccv-hub 模块地图、职责边界与文档协议
 package.json - workspace 根配置，定义 Bun 脚本、工作区与根级类型依赖
 tsconfig.json - ccv-hub 根 TypeScript 基线配置
-.gitignore - 本地依赖、锁文件与构建产物忽略规则
+.gitignore - 本地依赖、锁文件、构建产物与本机 .env 忽略规则
+.env.example - 本机服务鉴权环境变量模板，真实 .env 只留在宿主机
 bun.lock - Bun 锁文件，固定 workspace 依赖解析结果
 </config>
 

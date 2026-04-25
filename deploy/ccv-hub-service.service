@@ -1,5 +1,5 @@
-# [INPUT]: 依赖宿主机 /home/opc 项目目录、Node/Bun/Claude Code 用户环境、systemd shell 启动桥、面板鉴权环境变量与 ccv-hub workspace
-# [OUTPUT]: 对外提供运行在宿主机用户环境中的 ccv-hub-service systemd 单元与面板鉴权配置入口
+# [INPUT]: 依赖宿主机 /home/opc 项目目录、Node/Bun/Claude Code 用户环境、systemd shell 启动桥、/etc/ccv-hub 鉴权环境文件与 ccv-hub workspace
+# [OUTPUT]: 对外提供运行在宿主机用户环境中的 ccv-hub-service systemd 单元与 /etc/ccv-hub 环境文件配置入口
 # [POS]: deploy 目录的宿主机服务入口，通过 /bin/bash 进入用户 runtime，让 Hub 启动器拉起 cc-viewer 并保护公网面板 API
 # [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 [Unit]
@@ -17,8 +17,7 @@ Environment=CCV_HUB_PUBLIC_HOST=ccv-hub-dev.paas.996667.xyz
 Environment=CCV_HUB_PUBLIC_DOMAIN=paas.996667.xyz
 Environment=CCV_HUB_VIEWER_SUBDOMAIN_PREFIX=ccv-
 Environment=CCV_HUB_PUBLIC_PROTOCOL=https
-Environment=CCV_HUB_AUTH_PASSWORD=change-me
-Environment=CCV_HUB_SESSION_SECRET=change-me-to-a-long-random-secret
+EnvironmentFile=/etc/ccv-hub/ccv-hub-service.env
 Environment=CCV_CLI_PATH=/home/opc/projects/ccvs/cc-viewer/cli.js
 Environment=HOME=/home/opc
 Environment=PATH=/home/linuxbrew/.linuxbrew/bin:/home/opc/.local/bin:/home/opc/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
