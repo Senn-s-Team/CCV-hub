@@ -50,3 +50,25 @@
 
 - `bun --filter hub-web test -- src/test/vite-config.test.ts` 通过，5 个用例通过。
 - `bun --filter hub-web lint` 通过。
+
+## 2026-04-25：P0-3 清理启动弹窗里的硬编码默认路径
+
+状态：已完成。
+
+### 变更结果
+
+1. 总览页不再向启动弹窗传入 `/home/opc/projects/ccvs/cc-viewer` 机器绑定默认路径。
+2. 启动弹窗采用空值占位策略，placeholder 使用 `/home/opc/projects/your-project` 作为格式示例。
+3. 弹窗文案明确要求输入真实项目的绝对路径，确认按钮只在输入以 `/` 开头时可用。
+4. 提交前会 trim 首尾空白，`POST /api/instances` 继续接收绝对路径字符串，服务端保留目录存在性校验。
+
+### 自测
+
+- `bun --filter hub-web test -- src/test/overview-page.test.tsx` 通过，5 个用例通过。
+- `bun --filter hub-web lint` 通过。
+- `bun --filter hub-web build` 通过。
+- Chromium 实测通过：弹窗打开时输入为空、显示绝对路径 placeholder、相对路径保持禁用、绝对路径启用确认按钮。
+
+### 观察
+
+- `bun --filter hub-web dev` 当前会因 root-owned `apps/hub-web/node_modules/.vite/deps` 缓存目录报 `EACCES`，本项浏览器验证改用 production build + Vite preview 完成。

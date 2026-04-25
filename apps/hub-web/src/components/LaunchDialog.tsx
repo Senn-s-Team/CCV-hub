@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React 状态与父级传入的启动回调、错误消息和开关状态
- * [OUTPUT]: 对外提供 LaunchDialog 组件，处理路径输入、错误保留与提交动作
+ * [OUTPUT]: 对外提供 LaunchDialog 组件，处理绝对路径输入、空值占位、错误保留与提交动作
  * [POS]: hub-web 的聚焦层组件，承接 prototype 启动弹窗的交互闭环
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -9,7 +9,6 @@ import { useEffect, useState } from 'react';
 type LaunchDialogProps = {
   isOpen: boolean;
   isSubmitting: boolean;
-  initialPath: string;
   errorMessage: string;
   onClose: () => void;
   onSubmit: (projectPath: string) => Promise<void>;
@@ -18,18 +17,19 @@ type LaunchDialogProps = {
 export default function LaunchDialog({
   isOpen,
   isSubmitting,
-  initialPath,
   errorMessage,
   onClose,
   onSubmit,
 }: LaunchDialogProps) {
-  const [projectPath, setProjectPath] = useState(initialPath);
+  const [projectPath, setProjectPath] = useState('');
+  const trimmedPath = projectPath.trim();
+  const canSubmit = trimmedPath.startsWith('/');
 
   useEffect(() => {
     if (isOpen) {
-      setProjectPath(initialPath);
+      setProjectPath('');
     }
-  }, [initialPath, isOpen]);
+  }, [isOpen]);
 
   if (!isOpen) {
     return null;
@@ -49,10 +49,15 @@ export default function LaunchDialog({
           </div>
           <button className="icon-button" type="button" aria-label="关闭弹窗" onClick={onClose}>✕</button>
         </div>
-        <p className="modal-copy">输入项目路径后，在当前上下文内完成启动并回到总览页看结果。</p>
+        <p className="modal-copy">输入真实项目的绝对路径后，在当前上下文内完成启动并回到总览页看结果。</p>
         <label className="path-field">
-          <span>项目路径</span>
-          <input value={projectPath} onChange={(event) => setProjectPath(event.target.value)} type="text" />
+          <span>项目绝对路径</span>
+          <input
+            value={projectPath}
+            onChange={(event) => setProjectPath(event.target.value)}
+            type="text"
+            placeholder="/home/opc/projects/your-project"
+          />
         </label>
         {errorMessage ? (
           <div className="inline-error">
@@ -65,8 +70,8 @@ export default function LaunchDialog({
           <button
             className="button button-primary"
             type="button"
-            disabled={isSubmitting}
-            onClick={() => void onSubmit(projectPath)}
+            disabled={isSubmitting || !canSubmit}
+            onClick={() => void onSubmit(trimmedPath)}
           >
             {isSubmitting ? '启动中…' : '确认启动'}
           </button>

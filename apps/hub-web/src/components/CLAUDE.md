@@ -1,0 +1,9 @@
+# components/
+> L2 | 父级: ../CLAUDE.md
+
+成员清单
+InstanceCard.tsx: 实例卡片组件，展示项目名、路径、链接、状态、来源、启动时间与打开/复制动作
+LaunchDialog.tsx: 启动弹窗组件，处理绝对路径输入、占位引导、错误保留与提交动作
+Toast.tsx: 轻量反馈组件，展示复制与启动成功的短消息
+
+[PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md

@@ -13,8 +13,6 @@ import Toast from '../components/Toast.js';
 import { useInstances } from '../hooks/useInstances.js';
 import { useLaunchInstance } from '../hooks/useLaunchInstance.js';
 
-const initialPath = '/home/opc/projects/ccvs/cc-viewer';
-
 function filterInstances(instances: Instance[], query: string): Instance[] {
   const normalized = query.trim().toLowerCase();
   if (!normalized) {
@@ -230,7 +228,6 @@ export default function OverviewPage() {
       <LaunchDialog
         isOpen={isModalOpen}
         isSubmitting={launchMutation.isPending}
-        initialPath={initialPath}
         errorMessage={launchError}
         onClose={() => {
           setModalOpen(false);
