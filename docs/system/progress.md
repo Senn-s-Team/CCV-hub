@@ -72,3 +72,19 @@
 ### 观察
 
 - `bun --filter hub-web dev` 当前会因 root-owned `apps/hub-web/node_modules/.vite/deps` 缓存目录报 `EACCES`，本项浏览器验证改用 production build + Vite preview 完成。
+
+## 2026-04-25：P0-4 补齐总览页状态回归测试
+
+状态：已完成。
+
+### 变更结果
+
+1. `OverviewPage` 增加 loading 状态断言，覆盖 stage label 与 3 个 skeleton card。
+2. `OverviewPage` 增加 discovery-error 状态断言，覆盖错误标题、错误消息、stage label 与“再次刷新”动作。
+3. 现有 list-ready、empty、launch-failed、启动弹窗空值、复制链接用例继续保留。
+
+### 自测
+
+- `bun --filter hub-web test -- src/test/overview-page.test.tsx` 通过，7 个用例通过。
+- `bun --filter hub-web lint` 通过。
+- `bun --filter hub-web build` 通过。
