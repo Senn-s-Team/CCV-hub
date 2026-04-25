@@ -3,7 +3,7 @@
 
 成员清单
 docker-compose.hub.yml: ccv-hub-dev 的 Dokploy Web-only 公网入口清单，定义 nginx Web 容器、host.docker.internal 回连宿主机 Hub service、Dokploy 网络、Hub 域名路由与 viewer 子域名路由；同步到 Dokploy raw compose 时 build context 需改为仓库绝对路径
-ccv-hub-service.service: ccv-hub-service 的宿主机 systemd 单元，负责以 opc 用户真实系统环境运行 Hub 启动器与 bridge 服务，并从 /etc/ccv-hub/ccv-hub-service.env 读取面板鉴权变量
+ccv-hub-service.service: ccv-hub-service 的宿主机 systemd 单元，负责以 opc 用户真实系统环境运行 Hub 启动器与 bridge 服务，并由根 deploy:service 脚本安装到 /etc/systemd/system 后读取 /etc/ccv-hub/ccv-hub-service.env
 ccv-hub-plugin.mjs: cc-viewer 生命周期插件，负责把手动启动/停止事件注册到宿主机 hub-service
 
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md

@@ -14,7 +14,8 @@
     "test": "bun run --workspaces test",
     "lint": "bun run --workspaces lint",
     "dev:web": "bun run --filter hub-web dev",
-    "dev:service": "bun run --filter hub-service dev"
+    "dev:service": "bun run --filter hub-service dev",
+    "deploy:service": "sudo install -m 0644 deploy/ccv-hub-service.service /etc/systemd/system/ccv-hub-service.service && sudo systemctl daemon-reload && sudo systemctl restart ccv-hub-service && systemctl is-active ccv-hub-service"
   },
   "devDependencies": {
     "@types/node": "24.7.2"
