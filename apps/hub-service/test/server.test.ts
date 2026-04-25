@@ -461,13 +461,13 @@ describe('hub-service routes', () => {
     await app.close();
   });
 
-  it('builds launch env with host Claude paths', () => {
+  it('builds launch env from the host process environment', () => {
     const originalPath = process.env.PATH;
     const originalHome = process.env.HOME;
     const originalClaudeConfigDir = process.env.CLAUDE_CONFIG_DIR;
 
-    process.env.PATH = '/usr/bin';
-    process.env.HOME = '/root';
+    process.env.PATH = '/custom/bin:/usr/bin';
+    process.env.HOME = '/home/opc';
     delete process.env.CLAUDE_CONFIG_DIR;
 
     try {
@@ -475,10 +475,7 @@ describe('hub-service routes', () => {
 
       expect(env.HOME).toBe('/home/opc');
       expect(env.CLAUDE_CONFIG_DIR).toBe('/home/opc/.claude');
-      expect(env.PATH).toContain('/home/linuxbrew/.linuxbrew/bin');
-      expect(env.PATH).toContain('/home/opc/.local/bin');
-      expect(env.PATH).toContain('/home/opc/.bun/bin');
-      expect(env.PATH).toContain('/usr/bin');
+      expect(env.PATH).toBe('/custom/bin:/usr/bin');
       expect(env.CCV_HUB_PLUGIN_DISABLED).toBe('1');
     } finally {
       if (originalPath === undefined) delete process.env.PATH;

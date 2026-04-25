@@ -1,11 +1,11 @@
 /**
- * [INPUT]: 依赖 node:child_process 启动 ccv CLI，依赖 node:path 合并启动 PATH，依赖 process-supervisor 绑定退出与停止能力
+ * [INPUT]: 依赖 node:child_process 启动 ccv CLI，依赖宿主机进程环境与 process-supervisor 绑定退出/停止能力
  * [OUTPUT]: 对外提供 buildLaunchEnv、parseViewerUrl、resolveViewerUrl、CcvLauncher 类、LaunchResult 类型与 ViewerLauncher 接口
  * [POS]: hub-service 的统一入口启动器，把项目路径转换成可登记的 cc-viewer 实例
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { spawn, type ChildProcess } from 'node:child_process';
-import { basename, delimiter, dirname, resolve } from 'node:path';
+import { basename, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createAppError } from '../domain/error-mapper.js';
 import { bindProcessExit, createStopHandle } from './process-supervisor.js';
@@ -82,20 +82,11 @@ function collectOutput(child: ChildProcess, onViewerUrl: (url: string) => void):
 }
 
 export function buildLaunchEnv(): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { ...process.env };
-  const pathEntries = [
-    '/home/linuxbrew/.linuxbrew/bin',
-    '/home/opc/.local/bin',
-    '/home/opc/.bun/bin',
-    env.PATH,
-  ].filter((entry): entry is string => typeof entry === 'string' && entry.length > 0);
-
-  env.PATH = Array.from(new Set(pathEntries)).join(delimiter);
-  env.HOME = env.HOME && env.HOME !== '/root' ? env.HOME : '/home/opc';
-  env.CLAUDE_CONFIG_DIR = env.CLAUDE_CONFIG_DIR ?? '/home/opc/.claude';
-  env.CCV_HUB_PLUGIN_DISABLED = '1';
-
-  return env;
+  return {
+    ...process.env,
+    CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR ?? `${process.env.HOME ?? '/home/opc'}/.claude`,
+    CCV_HUB_PLUGIN_DISABLED: '1',
+  };
 }
 
 export class CcvLauncher implements ViewerLauncher {

@@ -188,6 +188,7 @@ Web 总览页
 - 公网地址生成由 `ccv-hub` 服务端根据实例 id 与 upstream token 统一负责
 - `ccv-hub` 对页面只暴露公网 viewer 子域名，对服务端保留内部 upstream 地址
 - Dokploy 作为统一公网入口，不为每个实例单独创建部署对象
+- Hub service 运行在宿主机用户环境中，负责以真实系统环境启动 `cc-viewer`
 - 地址形态固定为 viewer 子域名，例如 `https://ccv-<bridgeId>.paas.996667.xyz/?token=<token>`
 
 ### 10.3 组件职责补充
@@ -198,7 +199,7 @@ Web 总览页
 
 #### 10.3.2 Hub viewer bridge
 
-Hub service 内置 viewer bridge，接入 `dokploy-network`，按 `ccv-*` 子域名 Host 查找实例注册表，并把 HTTP/SSE/WebSocket 转发到对应 `cc-viewer` upstream。
+Hub service 内置 viewer bridge，由宿主机 systemd 以 `opc` 用户运行并监听 `0.0.0.0:4318`，按 `ccv-*` 子域名 Host 查找实例注册表，并把 HTTP/SSE/WebSocket 转发到对应 `cc-viewer` upstream。Dokploy/Web 容器通过 `host.docker.internal:4318` 回连该服务。
 
 #### 10.3.3 `ccv-hub` 本地服务与页面
 
@@ -208,7 +209,9 @@ Hub service 内置 viewer bridge，接入 `dokploy-network`，按 `ccv-*` 子域
 
 #### 10.4.1 公网地址生成流程
 
-用户在任意项目启动 `ccv` → `cc-viewer` 绑定端口并生成访问 token → 插件在 `serverStarted` 阶段把 raw upstream 注册到 Hub → Hub 生成 `https://ccv-<bridgeId>.paas.996667.xyz/?token=<token>` → `ccv-hub` 登记并展示该地址
+用户在 Hub 页面选择项目 → 宿主机 `ccv-hub-service` 以 `opc` 用户环境启动 `ccv` → `cc-viewer` 绑定端口并生成访问 token → Hub 生成 `https://ccv-<bridgeId>.paas.996667.xyz/?token=<token>` → `ccv-hub` 登记并展示该地址
+
+用户在任意项目手动启动 `ccv` → `cc-viewer` 插件在 `serverStarted` 阶段把 raw upstream 注册到 Hub → Hub 生成公网 viewer 子域名 → `ccv-hub` 登记并展示该地址
 
 #### 10.4.2 实例停止流程
 
@@ -224,7 +227,7 @@ Hub service 内置 viewer bridge，接入 `dokploy-network`，按 `ccv-*` 子域
 
 ### 10.6 前提与风险
 
-实现前必须先验证 Dokploy/Traefik 后面的 bridge 服务可以访问宿主机上动态启动的 `cc-viewer` 端口。这是公网暴露能力成立的基础前提。
+实现前必须先验证 Dokploy/Traefik 后面的 Web 入口可以通过 `host.docker.internal:4318` 访问宿主机 Hub service，且 Hub service 可以访问宿主机上动态启动的 `cc-viewer` 端口。这是公网暴露能力成立的基础前提。
 
 ## 11. 关键约束
 
@@ -247,4 +250,5 @@ Hub service 内置 viewer bridge，接入 `dokploy-network`，按 `ccv-*` 子域
 7. 实例退出后，列表在可接受时间内更新。
 8. 配置 Dokploy viewer 子域名后，`GET /api/instances` 返回公网子域名地址。
 9. 通过公网地址访问实例时，页面、SSE 与 WebSocket 行为保持正常。
-10. Dokploy bridge 不可用时，内部 upstream 仍可用于服务端诊断与存活收敛。
+10. Hub 页面启动的 `cc-viewer` 继承宿主机 `opc` 用户环境，命令解析与宿主机 terminal 保持一致。
+11. Dokploy bridge 不可用时，内部 upstream 仍可用于服务端诊断与存活收敛。

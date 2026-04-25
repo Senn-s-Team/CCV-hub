@@ -26,8 +26,9 @@ Accepted — superseded by explicit implementation trigger on 2026-04-24
 
 ### Tradeoffs
 - 首版复制链接默认给出本地地址，跨机器访问收益后置。
-- 当前实现需要验证 Dokploy HostRegexp、OpenResty wildcard 与 WebSocket upgrade 链路。
+- 当前实现需要验证 Dokploy HostRegexp、nginx wildcard、host.docker.internal 回连与 WebSocket upgrade 链路。
 - `url` 的公网优先语义依赖 Hub registry 内部保留 raw upstream。
+- Hub 页面启动 viewer 的路径依赖宿主机 systemd 服务继承 `opc` 用户环境。
 
 ## Rejected alternatives
 ### 直接把 bridge 纳入首版主路径
@@ -36,6 +37,7 @@ Accepted — superseded by explicit implementation trigger on 2026-04-24
 ## Implementation notes
 - 当前 `Instance.url` 使用 `https://ccv-<bridgeId>.paas.996667.xyz/?token=<token>` 形式的公网 viewer 子域名。
 - registry 内部保留 raw upstream URL，用于反代和存活探测。
+- `hub-service` 在宿主机 systemd 中运行，Web/Dokploy 容器只负责入口代理并通过 `host.docker.internal:4318` 回连。
 - `port` 保持真实 viewer 监听端口语义。
 - 与公网桥接相关的复用点保留在文档中：
   - `cc-viewer/server.js:2474`

@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Vite React 插件与本地 hub-service 地址，依赖 Vitest 配置类型
- * [OUTPUT]: 对外提供 hub-web 的 Vite 配置，定义 React 集成、开发端口、可配置 Hub 主机名、API/bridge/WebSocket 代理、受信任访问域名与测试环境
- * [POS]: hub-web 的前端构建入口配置，负责把浏览器开发流量、Hub 主机识别、viewer bridge HTTP/WebSocket 流量与受信任入口主机名收敛到本地服务
+ * [OUTPUT]: 对外提供 hub-web 的 Vite 配置，定义 React 集成、开发端口、可配置 Hub 主机名、API 代理、viewer bridge HTTP 代理、受信任访问域名与测试环境
+ * [POS]: hub-web 的前端开发入口配置，生产公网 viewer WebSocket 由 nginx.conf 承担
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { defineConfig } from 'vitest/config';
@@ -47,7 +47,7 @@ export default defineConfig({
       '^/.*': {
         target: proxyTarget,
         changeOrigin: false,
-        ws: true,
+        ws: false,
         bypass: (request) => {
           if (shouldProxyToHubService(request.headers.host, request.url)) return undefined;
           return request.url;

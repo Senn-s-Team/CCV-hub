@@ -354,7 +354,9 @@ ccv-hub/
 ### 14.4 公网能力验证
 
 - Dokploy / Traefik viewer 子域名能否路由到 Hub bridge
+- Web 容器能否通过 `host.docker.internal:4318` 访问宿主机 Hub service
 - Hub bridge 能否访问 upstream 动态端口
+- Hub 页面启动的 `cc-viewer` 是否继承宿主机命令环境
 - viewer 子域名下页面、SSE、WebSocket 是否正常
 
 ## 15. 分阶段实施建议

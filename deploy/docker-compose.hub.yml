@@ -1,22 +1,21 @@
-# [INPUT]: 依赖 hub-web 与 hub-service 容器镜像构建文件，依赖 Dokploy 的 dokploy-network 与 Traefik，依赖宿主机 Claude/Node 安装目录
-# [OUTPUT]: 对外提供 ccv-hub-dev 的 Web + Service 联合部署清单，可被 Docker Compose 与 Dokploy 直接消费，并挂到 dev 子域名
-# [POS]: deploy 目录的核心部署清单，负责把前端入口、同域 API、本地端口、Node 服务运行时、启动环境、可配置 Hub 路由与直连 service 的 viewer 子域名路由收敛到同一份定义
+# [INPUT]: 依赖 hub-web 容器、宿主机 ccv-hub-service systemd 服务、Dokploy 的 dokploy-network 与 Traefik
+# [OUTPUT]: 对外提供 ccv-hub-dev 的 Web 入口部署清单，可把 Hub/API/viewer 子域名流量转发到宿主机服务
+# [POS]: deploy 目录的公网入口清单，负责把 Dokploy 路由、nginx Web 入口与宿主机 Hub service 桥接到同一网络面
 # [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 services:
   ccv-hub-web:
-    image: oven/bun:1.3.10
-    working_dir: /home/opc/projects/ccvs/ccv-hub
-    command: >-
-      sh -lc "bun install && bun run --filter hub-web dev --host 0.0.0.0 --port 4173"
+    build:
+      context: ..
+      dockerfile: apps/hub-web/Dockerfile
     restart: unless-stopped
     ports:
-      - "4317:4173"
+      - "4317:80"
     expose:
-      - "4173"
-    depends_on:
-      - ccv-hub-service
+      - "80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
-      CCV_HUB_PROXY_TARGET: http://ccv-hub-service:4318
+      CCV_HUB_PROXY_TARGET: http://host.docker.internal:4318
       CCV_HUB_PUBLIC_HOST: ccv-hub-dev.paas.996667.xyz
       CCV_HUB_PUBLIC_DOMAIN: paas.996667.xyz
       CCV_HUB_VIEWER_SUBDOMAIN_PREFIX: ccv-
@@ -35,49 +34,16 @@ services:
       - traefik.http.routers.ccv-hub-dev-secure.priority=100
       - traefik.http.routers.ccv-hub-dev-secure.tls=true
       - traefik.http.routers.ccv-hub-dev-secure.service=ccv-hub-dev
-      - traefik.http.services.ccv-hub-dev.loadbalancer.server.port=4173
-    networks:
-      - dokploy-network
-      - default
-
-  ccv-hub-service:
-    image: oven/bun:1.3.10
-    working_dir: /home/opc/projects/ccvs/ccv-hub
-    command: >-
-      sh -lc "bun install && cd apps/hub-service && /home/linuxbrew/.linuxbrew/bin/node --import tsx src/server.ts"
-    restart: unless-stopped
-    ports:
-      - "4318:4318"
-    expose:
-      - "4318"
-    environment:
-      CCV_HUB_HOST: 0.0.0.0
-      CCV_HUB_PORT: 4318
-      CCV_CLI_PATH: /home/opc/projects/ccvs/cc-viewer/cli.js
-      HOME: /home/opc
-      CLAUDE_CONFIG_DIR: /home/opc/.claude
-      PATH: /home/linuxbrew/.linuxbrew/bin:/home/opc/.local/bin:/home/opc/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-      CCV_HUB_PUBLIC_DOMAIN: paas.996667.xyz
-      CCV_HUB_VIEWER_SUBDOMAIN_PREFIX: ccv-
-      CCV_HUB_PUBLIC_PROTOCOL: https
-    volumes:
-      - /home/opc/projects/ccvs:/home/opc/projects/ccvs
-      - /home/opc/.claude:/home/opc/.claude
-      - /home/opc/.local:/home/opc/.local:ro
-      - /home/linuxbrew/.linuxbrew:/home/linuxbrew/.linuxbrew:ro
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=dokploy-network
-      - traefik.http.routers.ccv-viewer.rule=HostRegexp(`^ccv-[a-z0-9-]+\.paas\.996667\.xyz$$`)
+      - traefik.http.services.ccv-hub-dev.loadbalancer.server.port=80
+      - traefik.http.routers.ccv-viewer.rule=HostRegexp(`^ccv-[a-f0-9]{32}\.paas\.996667\.xyz$$`)
       - traefik.http.routers.ccv-viewer.entrypoints=web
       - traefik.http.routers.ccv-viewer.priority=10
-      - traefik.http.routers.ccv-viewer.service=ccv-viewer
-      - traefik.http.routers.ccv-viewer-secure.rule=HostRegexp(`^ccv-[a-z0-9-]+\.paas\.996667\.xyz$$`)
+      - traefik.http.routers.ccv-viewer.service=ccv-hub-dev
+      - traefik.http.routers.ccv-viewer-secure.rule=HostRegexp(`^ccv-[a-f0-9]{32}\.paas\.996667\.xyz$$`)
       - traefik.http.routers.ccv-viewer-secure.entrypoints=websecure
       - traefik.http.routers.ccv-viewer-secure.priority=10
       - traefik.http.routers.ccv-viewer-secure.tls=true
-      - traefik.http.routers.ccv-viewer-secure.service=ccv-viewer
-      - traefik.http.services.ccv-viewer.loadbalancer.server.port=4318
+      - traefik.http.routers.ccv-viewer-secure.service=ccv-hub-dev
     networks:
       - dokploy-network
       - default

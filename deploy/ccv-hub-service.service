@@ -1,0 +1,29 @@
+# [INPUT]: 依赖宿主机 /home/opc 项目目录、Node/Bun/Claude Code 用户环境与 ccv-hub workspace
+# [OUTPUT]: 对外提供运行在宿主机用户环境中的 ccv-hub-service systemd 单元
+# [POS]: deploy 目录的宿主机服务入口，负责让 Hub 启动器以真实系统环境拉起 cc-viewer
+# [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+[Unit]
+Description=ccv-hub service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=opc
+WorkingDirectory=/home/opc/projects/ccvs/ccv-hub/apps/hub-service
+Environment=CCV_HUB_HOST=0.0.0.0
+Environment=CCV_HUB_PORT=4318
+Environment=CCV_HUB_PUBLIC_HOST=ccv-hub-dev.paas.996667.xyz
+Environment=CCV_HUB_PUBLIC_DOMAIN=paas.996667.xyz
+Environment=CCV_HUB_VIEWER_SUBDOMAIN_PREFIX=ccv-
+Environment=CCV_HUB_PUBLIC_PROTOCOL=https
+Environment=CCV_CLI_PATH=/home/opc/projects/ccvs/cc-viewer/cli.js
+Environment=HOME=/home/opc
+Environment=PATH=/home/linuxbrew/.linuxbrew/bin:/home/opc/.local/bin:/home/opc/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=CLAUDE_CONFIG_DIR=/home/opc/.claude
+ExecStart=/home/linuxbrew/.linuxbrew/bin/node --import tsx src/server.ts
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

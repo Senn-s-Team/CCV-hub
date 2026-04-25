@@ -2,7 +2,8 @@
 > L2 | 父级: ../CLAUDE.md
 
 成员清单
-docker-compose.hub.yml: ccv-hub-dev 的 Web + Service 联合部署清单，定义宿主机代码挂载、Claude/Node 运行时透传、本地端口、Node 服务入口、Dokploy 网络、可配置 Hub 域名路由与直连 service 的 viewer 通配子域名路由
+docker-compose.hub.yml: ccv-hub-dev 的 Web 公网入口清单，定义 nginx Web 容器、host.docker.internal 回连、Dokploy 网络、可配置 Hub 域名路由与 viewer 通配子域名路由
+ccv-hub-service.service: ccv-hub-service 的宿主机 systemd 单元，负责以 opc 用户真实系统环境运行 Hub 启动器与 bridge 服务
 ccv-hub-plugin.mjs: cc-viewer 生命周期插件，负责把手动启动/停止事件注册到 hub-service
 
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
