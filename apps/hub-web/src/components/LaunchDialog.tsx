@@ -56,7 +56,7 @@ export default function LaunchDialog({
             value={projectPath}
             onChange={(event) => setProjectPath(event.target.value)}
             type="text"
-            placeholder="/home/opc/projects/your-project"
+            placeholder="输入项目绝对路径"
           />
         </label>
         {errorMessage ? (

@@ -360,6 +360,7 @@ ccv-hub/
 - Hub 首页与 `/api/instances` 可通过 `ccv-hub-dev.paas.996667.xyz` 访问
 - Dokploy / Traefik viewer 子域名可路由到 Hub bridge
 - Web 容器可通过 `host.docker.internal:4318` 回连宿主机 Hub service
+- Dokploy 只管理 Web 容器公网入口，Hub service 保持宿主机 systemd 运行
 - Hub bridge 可访问 upstream 动态端口
 - Hub 页面启动的 `cc-viewer` 继承宿主机 `opc` 用户环境、`PATH` 与 `CLAUDE_CONFIG_DIR`
 - viewer 子域名下 HTML、静态资源、业务 API、SSE、WebSocket 均正常

@@ -7,7 +7,7 @@ docs/ - 产品、架构与设计文档（6 子目录: prd, ia, system, api, desi
 prototype/ - 高保真静态原型目录（4 文件: index.html, styles.css, app.js, docker-compose.yml）
 apps/ - 运行时应用目录（2 子目录: hub-web, hub-service）
 packages/ - 共享模块目录（1 子目录: shared-contracts）
-deploy/ - Dokploy 与本地容器部署目录（2 文件: docker-compose.hub.yml, ccv-hub-plugin.mjs）
+deploy/ - Dokploy Web 入口与宿主机 service 部署目录（3 文件: docker-compose.hub.yml, ccv-hub-service.service, ccv-hub-plugin.mjs）
 </directory>
 
 <config>
@@ -33,11 +33,12 @@ bun.lock - Bun 锁文件，固定 workspace 依赖解析结果
 - `apps/hub-service/` - 本地常驻服务实现，负责健康检查、实例查询、统一入口启动与状态收敛。
 - `apps/hub-web/` - 总览页实现，负责实例展示、项目名筛选、启动弹窗、复制与轮询刷新。
 - `packages/shared-contracts/` - 前后端共享契约实现，负责 Instance schema、响应结构与错误码。
-- `deploy/` - 部署资产目录，负责 Hub 的 Docker Compose 清单、Dokploy 接入入口与 cc-viewer 插件安装源。
+- `deploy/` - 部署资产目录，负责 Dokploy Web-only 公网入口、宿主机 systemd Hub service 与 cc-viewer 插件安装源。
 
 ## 设计法则
 
 - `cc-viewer/` 继续负责单实例运行与内容展示。
 - `ccv-hub/` 只负责实例发现、实例目录和统一入口。
+- Dokploy 只管理 Web 容器公网入口，`hub-service` 由宿主机 systemd 运行以保留单一宿主机 Claude 环境。
 - 文档优先表达实例模型、发现机制与页面边界。
 - 变更目录结构或新增模块时，立即回写本文件。

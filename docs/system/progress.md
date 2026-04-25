@@ -98,7 +98,7 @@
 1. ADR 0003 已统一为“2026-04-24 进入当前实现，2026-04-25 完成公网 viewer 链路验证”。
 2. `system.md` 的公网暴露章节已从实现前提改为已验证基线与后续观察。
 3. `tech-stack.md` 已把 Phase 4 公网访问增强标记为已并入当前实现，并将后续公网工作收敛到 token、安全、日志、健康信息与路由回归。
-4. 验证清单已与实际部署结构同构：Hub 域名、viewer 子域名、Dokploy / Traefik、nginx、`host.docker.internal:4318`、宿主机 Hub service、upstream viewer、SSE 与 WebSocket。
+4. 验证清单已与实际部署结构同构：Hub 域名、viewer 子域名、Dokploy / Traefik、nginx、Dokploy Web-only 容器、`host.docker.internal:4318`、宿主机 Hub service、upstream viewer、SSE 与 WebSocket。Dokploy raw compose 使用仓库绝对 build context，避免从 `/etc/dokploy/compose/.../code` 错误解析相对路径。
 
 ### 自测
 

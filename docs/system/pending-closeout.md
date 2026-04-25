@@ -11,6 +11,7 @@
 - `docs/system/tech-stack.md` 的“14.4 公网能力验证”仍保留 5 个验证点。
 - `deploy/docker-compose.hub.yml` 已接入 Traefik viewer 子域名规则与 `host.docker.internal:4318`。
 - `apps/hub-web/nginx.conf` 已把 `/api` 与 viewer 子域名流量回连到宿主机 Hub service。
+- `deploy/docker-compose.hub.yml` 是 Dokploy Web-only 入口，刻意不托管 Hub service 容器。
 - `deploy/ccv-hub-service.service` 已把 Hub service 固定为宿主机 `opc` 用户的 systemd 服务。
 - `docs/system/system.md` 已把 viewer 子域名公网地址定义为当前最佳打开地址。
 
@@ -39,13 +40,13 @@
 ### 3. 清理启动弹窗里的硬编码默认路径
 
 **仓库证据**
-- `apps/hub-web/src/pages/OverviewPage.tsx` 当前把 `initialPath` 固定为 `/home/opc/projects/ccvs/cc-viewer`。
+- `apps/hub-web/src/components/LaunchDialog.tsx` 使用空字符串作为输入值，仅保留占位提示。
 
 **风险**
 默认值绑定单一机器目录，启动流程的可移植性与可演示性都被压缩了。
 
 **收口标准**
-1. 默认路径来自配置、后端注入或空值占位中的一种明确策略。
+1. 默认路径采用空值输入策略。
 2. 启动弹窗继续只接受绝对路径，与 `POST /api/instances` 契约一致。
 3. 交互文案能引导用户输入真实项目路径。
 

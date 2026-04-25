@@ -188,6 +188,7 @@ Web 总览页
 - 公网地址生成由 `ccv-hub` 服务端根据实例 id 与 upstream token 统一负责
 - `ccv-hub` 对页面只暴露公网 viewer 子域名，对服务端保留内部 upstream 地址
 - Dokploy 作为统一公网入口，不为每个实例单独创建部署对象
+- Dokploy 只管理 Web 容器，Hub service 由宿主机 systemd 承载
 - Hub service 运行在宿主机用户环境中，负责以真实系统环境启动 `cc-viewer`
 - 地址形态固定为 viewer 子域名，例如 `https://ccv-<bridgeId>.paas.996667.xyz/?token=<token>`
 
@@ -199,7 +200,7 @@ Web 总览页
 
 #### 10.3.2 Hub viewer bridge
 
-Hub service 内置 viewer bridge，由宿主机 systemd 以 `opc` 用户运行并监听 `0.0.0.0:4318`，按 `ccv-*` 子域名 Host 查找实例注册表，并把 HTTP/SSE/WebSocket 转发到对应 `cc-viewer` upstream。Dokploy/Web 容器通过 `host.docker.internal:4318` 回连该服务。
+Hub service 内置 viewer bridge，由宿主机 systemd 以 `opc` 用户运行并监听 `0.0.0.0:4318`，按 `ccv-*` 子域名 Host 查找实例注册表，并把 HTTP/SSE/WebSocket 转发到对应 `cc-viewer` upstream。Dokploy/Web 容器通过 `host.docker.internal:4318` 回连该服务；这个混合边界用于保留唯一宿主机 Claude 环境。
 
 #### 10.3.3 `ccv-hub` 本地服务与页面
 

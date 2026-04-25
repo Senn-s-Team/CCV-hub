@@ -147,7 +147,7 @@ describe('OverviewPage', () => {
     fireEvent.click((await screen.findAllByText('启动新实例'))[0]!);
 
     const dialog = screen.getByRole('dialog', { name: '启动新的 cc-viewer 实例' });
-    const input = within(dialog).getByPlaceholderText('/home/opc/projects/your-project');
+    const input = within(dialog).getByPlaceholderText('输入项目绝对路径');
 
     expect(input).toHaveValue('');
     expect(within(dialog).getByText('确认启动')).toBeDisabled();
@@ -174,7 +174,7 @@ describe('OverviewPage', () => {
     renderPage();
 
     fireEvent.click((await screen.findAllByText('启动新实例'))[0]!);
-    fireEvent.change(screen.getByPlaceholderText('/home/opc/projects/your-project'), {
+    fireEvent.change(screen.getByPlaceholderText('输入项目绝对路径'), {
       target: { value: ' /tmp/cc-viewer ' },
     });
     fireEvent.click(screen.getByText('确认启动'));
