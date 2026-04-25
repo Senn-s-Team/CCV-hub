@@ -88,3 +88,19 @@
 - `bun --filter hub-web test -- src/test/overview-page.test.tsx` 通过，7 个用例通过。
 - `bun --filter hub-web lint` 通过。
 - `bun --filter hub-web build` 通过。
+
+## 2026-04-25：P0-5 统一文档里的阶段表达
+
+状态：已完成。
+
+### 变更结果
+
+1. ADR 0003 已统一为“2026-04-24 进入当前实现，2026-04-25 完成公网 viewer 链路验证”。
+2. `system.md` 的公网暴露章节已从实现前提改为已验证基线与后续观察。
+3. `tech-stack.md` 已把 Phase 4 公网访问增强标记为已并入当前实现，并将后续公网工作收敛到 token、安全、日志、健康信息与路由回归。
+4. 验证清单已与实际部署结构同构：Hub 域名、viewer 子域名、Dokploy / Traefik、nginx、`host.docker.internal:4318`、宿主机 Hub service、upstream viewer、SSE 与 WebSocket。
+
+### 自测
+
+- `grep -R "增强阶段单独做 Dokploy bridge PoC\|公网访问增强$\|实现前必须先验证" docs/adr docs/system/system.md docs/system/tech-stack.md` 无命中。
+- `git diff --check` 通过。

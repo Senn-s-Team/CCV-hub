@@ -65,17 +65,16 @@
 
 ### 5. 统一文档里的阶段表达
 
-**仓库证据**
-- `docs/adr/0003-defer-public-bridge-out-of-mvp.md` 的 Decision 已说明 bridge 在 2026-04-24 进入当前实现。
-- 同一文档的 Implementation notes 仍保留“增强阶段单独做 Dokploy bridge PoC”。
-- `docs/system/tech-stack.md` 仍把公网访问增强放在后续 Phase 4。
+状态：已收口，详见 `progress.md` 的 P0-5 记录。
 
-**风险**
-文档时间轴已经分叉，后续实现和排障会反复回到过时边界。
+**收口结果**
+- `docs/adr/0003-defer-public-bridge-out-of-mvp.md` 已表达 bridge 在 2026-04-24 进入当前实现，并在 2026-04-25 完成公网 viewer 链路验证。
+- `docs/system/system.md` 已把公网暴露章节改为已验证基线与后续观察。
+- `docs/system/tech-stack.md` 已把 Phase 4 公网访问增强标记为已并入当前实现。
 
-**收口标准**
+**稳定基线**
 1. ADR、system、tech-stack 对 bridge 当前状态给出一致表述。
-2. 当前实现、待验证项、后续增强项三层边界拆开表达。
+2. 当前实现、已验证基线、后续增强项三层边界拆开表达。
 3. 文档中的验证清单与实际部署结构保持同构。
 
 ## 本轮之外的事项

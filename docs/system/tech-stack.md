@@ -19,7 +19,7 @@
 
 - 让前后端共享同一份实例契约
 - 让状态流转清晰，减少半状态泄漏
-- 让本地服务保持轻量，同时保留向公网访问增强演进的空间
+- 让本地服务保持轻量，同时承接已进入当前实现的公网 viewer 子域名桥接
 - 让依赖组合尽量采用最新稳定生态，减少后续大版本迁移成本
 
 ## 3. 版本策略
@@ -232,11 +232,11 @@ ccv-hub/
 
 ### 8.4 `docs/adr`
 
-建议在实施阶段补充以下 ADR：
+当前 ADR 已固定以下决策：
 
-- 为什么首版选择轮询而不是 SSE
-- 为什么首版使用内存注册表而不是数据库
-- 为什么公网 bridge 不进入 MVP 主路径
+- 首版选择轮询作为实例同步主路径，SSE 列表同步后置
+- 首版使用内存注册表作为运行态真相源，数据库持久化后置
+- 公网 bridge 经 2026-04-24 明确触发进入当前实现，viewer 子域名链路已完成 2026-04-25 实机验证
 
 ## 9. 状态模型落地建议
 
@@ -320,14 +320,16 @@ ccv-hub/
 
 这些点支撑插件层把 raw upstream 上报给 Hub，再由 Hub 生成公网 viewer 子域名地址。
 
-## 13. 非纳入 MVP 主路径的技术项
+## 13. 后续增强技术项
 
-以下技术方向保留为增强阶段：
+以下技术方向保留为后续批次：
 
-- SSE 实时推送
+- SSE 作为实例列表同步主路径
 - SQLite 持久化
 - 收藏、最近打开、分组视图、历史实例
 - 轻量健康状态细节
+- viewer URL token 暴露面与重复 token 参数收口
+- 公网 bridge 的结构化日志、运维观测与路由变更回归基线
 
 ## 14. 风险与验证
 
@@ -353,11 +355,14 @@ ccv-hub/
 
 ### 14.4 公网能力验证
 
-- Dokploy / Traefik viewer 子域名能否路由到 Hub bridge
-- Web 容器能否通过 `host.docker.internal:4318` 访问宿主机 Hub service
-- Hub bridge 能否访问 upstream 动态端口
-- Hub 页面启动的 `cc-viewer` 是否继承宿主机命令环境
-- viewer 子域名下页面、SSE、WebSocket 是否正常
+2026-04-25 已完成以下公网 viewer 链路实机验证：
+
+- Hub 首页与 `/api/instances` 可通过 `ccv-hub-dev.paas.996667.xyz` 访问
+- Dokploy / Traefik viewer 子域名可路由到 Hub bridge
+- Web 容器可通过 `host.docker.internal:4318` 回连宿主机 Hub service
+- Hub bridge 可访问 upstream 动态端口
+- Hub 页面启动的 `cc-viewer` 继承宿主机 `opc` 用户环境、`PATH` 与 `CLAUDE_CONFIG_DIR`
+- viewer 子域名下 HTML、静态资源、业务 API、SSE、WebSocket 均正常
 
 ## 15. 分阶段实施建议
 
@@ -387,11 +392,15 @@ ccv-hub/
 - SSE 推送
 - 更细的健康信息
 
-### Phase 4：公网访问增强
+### Phase 4：公网访问增强（已并入当前实现）
 
-- Dokploy bridge PoC
-- 接入 `localUrl / serverStarted / serverStopping`
-- 升级 `url` 为公网优先地址
+以下内容已由 2026-04-24 明确触发进入当前实现，并在 2026-04-25 完成实机验证：
+
+- Dokploy / Traefik / nginx / Hub bridge viewer 子域名链路
+- `localUrl / serverStarted / serverStopping` 复用点接入
+- `url` 升级为公网 viewer 子域名优先地址
+
+后续公网相关工作聚焦 token 暴露收口、重复 token 参数处理、结构化日志、健康信息与路由变更回归。
 
 ## 16. 验证基线
 
@@ -400,6 +409,8 @@ ccv-hub/
 - `POST /api/instances` 对合法路径返回完整实例
 - 非法路径返回统一错误结构
 - 页面完整覆盖 loading / list-ready / empty / launch-failed / discovery-error
+- viewer 子域名公网地址可加载页面、静态资源、业务 API、SSE 与 WebSocket
+- Hub 页面启动的新 viewer 继承宿主机 `opc` 用户环境、`PATH` 与 `CLAUDE_CONFIG_DIR`
 - 桌面、平板、手机视口均可读、可点、可理解
 
 ## 17. 结论

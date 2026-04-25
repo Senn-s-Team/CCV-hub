@@ -1,7 +1,7 @@
 # ADR 0003 - 公网路由桥接从增强阶段进入当前实现
 
 ## Status
-Accepted — superseded by explicit implementation trigger on 2026-04-24
+Accepted — implementation entered current scope on 2026-04-24 and completed public viewer link verification on 2026-04-25
 
 ## Context
 `ccv-hub` 当前 MVP 的核心闭环是：统一入口启动 `cc-viewer`、自动登记运行中实例、在总览页中打开实例、复制链接、筛选项目、在实例退出后完成列表收敛。系统设计文档中已经补充了一条未来能力：通过 Dokploy + Traefik + bridge，把实例 URL 升级为公网最佳可打开地址，并复用 `cc-viewer` 的 `localUrl`、`serverStarted`、`serverStopping` hook。
@@ -46,11 +46,12 @@ Accepted — superseded by explicit implementation trigger on 2026-04-24
   - `cc-viewer/lib/plugin-loader.js:13`
   - `cc-viewer/lib/plugin-loader.js:14`
   - `cc-viewer/lib/plugin-loader.js:15`
-- 在增强阶段单独做 Dokploy bridge PoC，验证页面、SSE、WebSocket 与 fallback。
+- Dokploy bridge PoC 已进入当前实现并完成实机验证：Hub 首页、`/api/instances`、viewer HTML/JS/CSS、业务 API、SSE 与 WebSocket 均可通过公网 viewer 子域名访问。
+- 后续增强聚焦安全与运维收口，包括 token 暴露面、重复 token 参数、结构化日志、健康细节与更完整的观测基线。
 
 ## Review trigger
 出现以下任一条件时，重新评估此决策：
 
-- 本地 MVP 已稳定交付
-- Dokploy bridge 已验证能稳定访问动态端口
-- 用户对公网分享地址形成明确且高频的真实需求
+- viewer 子域名的 token 暴露策略需要收口
+- Dokploy / Traefik / nginx 路由结构发生调整
+- Hub bridge 需要支持更多域名、协议或多机部署
