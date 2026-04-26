@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 zod 泛型组合能力，依赖错误码与实例 schema
- * [OUTPUT]: 对外提供 apiSuccessSchema、apiFailureSchema、apiResponseSchema、鉴权、实例创建/注册/注销契约与相关类型
+ * [OUTPUT]: 对外提供 apiSuccessSchema、apiFailureSchema、apiResponseSchema、启动参数、鉴权、实例创建/注册/注销契约与相关类型
  * [POS]: shared-contracts 的响应契约层，统一本地服务全部 JSON 结构
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -49,8 +49,27 @@ export const listInstancesDataSchema = z.object({
 
 export const listInstancesResponseSchema = apiResponseSchema(listInstancesDataSchema);
 
+export const launchModeSchema = z.enum(['default', 'continue', 'resume']);
+
+export const launchOptionsSchema = z.object({
+  mode: launchModeSchema.default('default'),
+  prompt: z.string().default(''),
+  model: z.string().default(''),
+  dangerouslySkipPermissions: z.boolean().default(false),
+  allowDangerouslySkipPermissions: z.boolean().default(false),
+});
+
+export const defaultLaunchOptions = {
+  mode: 'default',
+  prompt: '',
+  model: '',
+  dangerouslySkipPermissions: false,
+  allowDangerouslySkipPermissions: false,
+} as const;
+
 export const createInstanceRequestSchema = z.object({
   projectPath: z.string().min(1),
+  options: launchOptionsSchema.default(defaultLaunchOptions),
 });
 
 export const createInstanceDataSchema = z.object({
@@ -99,6 +118,8 @@ export type HealthResponse = z.infer<typeof healthResponseSchema>;
 export type AuthLoginRequest = z.infer<typeof authLoginRequestSchema>;
 export type AuthStatusResponse = z.infer<typeof authStatusResponseSchema>;
 export type ListInstancesResponse = z.infer<typeof listInstancesResponseSchema>;
+export type LaunchMode = z.infer<typeof launchModeSchema>;
+export type LaunchOptions = z.infer<typeof launchOptionsSchema>;
 export type CreateInstanceRequest = z.infer<typeof createInstanceRequestSchema>;
 export type CreateInstanceResponse = z.infer<typeof createInstanceResponseSchema>;
 export type RegisterInstanceRequest = z.infer<typeof registerInstanceRequestSchema>;

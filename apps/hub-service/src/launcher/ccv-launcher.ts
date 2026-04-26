@@ -1,12 +1,13 @@
 /**
- * [INPUT]: 依赖 node:child_process 启动 ccv CLI，依赖宿主机进程环境与 process-supervisor 绑定退出/停止能力
- * [OUTPUT]: 对外提供 buildLaunchEnv、parseViewerUrl、resolveViewerUrl、CcvLauncher 类、LaunchResult 类型与 ViewerLauncher 接口
- * [POS]: hub-service 的统一入口启动器，把项目路径转换成可登记的 cc-viewer 实例
+ * [INPUT]: 依赖 node:child_process 启动 ccv CLI，依赖 shared-contracts 启动参数契约、宿主机进程环境与 process-supervisor 绑定退出/停止能力
+ * [OUTPUT]: 对外提供 buildLaunchArgs、buildLaunchEnv、parseViewerUrl、resolveViewerUrl、CcvLauncher 类、LaunchResult 类型与 ViewerLauncher 接口
+ * [POS]: hub-service 的统一入口启动器，把项目路径与 cc-viewer 参数转换成可登记的实例
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { spawn, type ChildProcess } from 'node:child_process';
 import { basename, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { LaunchOptions } from '@ccv-hub/shared-contracts';
 import { createAppError } from '../domain/error-mapper.js';
 import { bindProcessExit, createStopHandle } from './process-supervisor.js';
 
@@ -20,7 +21,7 @@ export type LaunchResult = {
 };
 
 export interface ViewerLauncher {
-  launch(projectPath: string): Promise<LaunchResult>;
+  launch(projectPath: string, options?: LaunchOptions): Promise<LaunchResult>;
 }
 
 function resolveCcvCliPath(): string {
@@ -89,6 +90,19 @@ export function buildLaunchEnv(): NodeJS.ProcessEnv {
   };
 }
 
+export function buildLaunchArgs(ccvCliPath: string, options: LaunchOptions): string[] {
+  const args = [ccvCliPath, '--no-open'];
+
+  if (options.mode === 'continue') args.push('-c');
+  if (options.mode === 'resume') args.push('-r');
+  if (options.prompt) args.push('-p', options.prompt);
+  if (options.model) args.push('--model', options.model);
+  if (options.dangerouslySkipPermissions) args.push('--d');
+  if (options.allowDangerouslySkipPermissions) args.push('--ad');
+
+  return args;
+}
+
 export class CcvLauncher implements ViewerLauncher {
   private readonly ccvCliPath: string;
   private readonly startupTimeoutMs: number;
@@ -98,8 +112,8 @@ export class CcvLauncher implements ViewerLauncher {
     this.startupTimeoutMs = options?.startupTimeoutMs ?? 30000;
   }
 
-  async launch(projectPath: string): Promise<LaunchResult> {
-    const child = spawn(process.execPath, [this.ccvCliPath, '--no-open'], {
+  async launch(projectPath: string, options: LaunchOptions): Promise<LaunchResult> {
+    const child = spawn(process.execPath, buildLaunchArgs(this.ccvCliPath, options), {
       cwd: projectPath,
       env: buildLaunchEnv(),
       stdio: ['ignore', 'pipe', 'pipe'],

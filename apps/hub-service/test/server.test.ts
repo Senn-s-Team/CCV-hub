@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 vitest、node:http、node:net、hub-service 服务装配与 launcher 环境构造函数
- * [OUTPUT]: 对外提供 hub-service 路由、启动 URL、外部注册、viewer bridge、存活清理与启动环境回归测试
+ * [INPUT]: 依赖 vitest、node:http、node:net、hub-service 服务装配与 launcher 参数/环境构造函数
+ * [OUTPUT]: 对外提供 hub-service 路由、启动 URL、外部注册、viewer bridge、存活清理与启动参数/环境回归测试
  * [POS]: hub-service 的测试入口，负责验证健康接口、实例列表、创建/注册流程、URL 投影、HTTP/WebSocket 桥接与启动环境收敛
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { buildServer } from '../src/server.js';
 import type { AuthConfig } from '../src/domain/auth-session.js';
 import { InstanceRegistry } from '../src/domain/instance-registry.js';
-import { buildLaunchEnv, parseViewerUrl, resolveViewerUrl } from '../src/launcher/ccv-launcher.js';
+import { buildLaunchArgs, buildLaunchEnv, parseViewerUrl, resolveViewerUrl } from '../src/launcher/ccv-launcher.js';
 
 function listen(server: ReturnType<typeof createServer>): Promise<number> {
   return new Promise((resolve) => {
@@ -558,6 +558,48 @@ describe('hub-service routes', () => {
     await app.close();
   });
 
+  it('passes launch options to the launcher', async () => {
+    const launch = vi.fn().mockResolvedValue({
+      projectName: 'cc-viewer',
+      url: 'http://127.0.0.1:4321',
+      port: 4321,
+      pid: 321,
+      stop: vi.fn(),
+      onExit: vi.fn(),
+    });
+    const app = buildServer({
+      auth: authConfig,
+      launcher: { launch },
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/instances',
+      headers: await authHeaders(app),
+      payload: {
+        projectPath: '/tmp',
+        options: {
+          mode: 'continue',
+          prompt: 'hello',
+          model: 'claude-sonnet-4-6',
+          dangerouslySkipPermissions: true,
+          allowDangerouslySkipPermissions: true,
+        },
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(launch).toHaveBeenCalledWith('/tmp', {
+      mode: 'continue',
+      prompt: 'hello',
+      model: 'claude-sonnet-4-6',
+      dangerouslySkipPermissions: true,
+      allowDangerouslySkipPermissions: true,
+    });
+
+    await app.close();
+  });
+
   it('creates instance after successful launch and removes it on exit', async () => {
     const listeners: Array<() => void> = [];
     const app = buildServer({
@@ -595,6 +637,26 @@ describe('hub-service routes', () => {
     expect(listJson.data.instances).toHaveLength(0);
 
     await app.close();
+  });
+
+  it('builds launch argv from cc-viewer options', () => {
+    expect(buildLaunchArgs('/opt/ccv/cli.js', {
+      mode: 'resume',
+      prompt: 'inspect this project',
+      model: 'claude-opus-4-7',
+      dangerouslySkipPermissions: true,
+      allowDangerouslySkipPermissions: true,
+    })).toEqual([
+      '/opt/ccv/cli.js',
+      '--no-open',
+      '-r',
+      '-p',
+      'inspect this project',
+      '--model',
+      'claude-opus-4-7',
+      '--d',
+      '--ad',
+    ]);
   });
 
   it('builds launch env from the host process environment', () => {

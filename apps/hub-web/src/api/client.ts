@@ -12,6 +12,7 @@ import {
   healthResponseSchema,
   listInstancesResponseSchema,
   type AuthStatusResponse,
+  type CreateInstanceRequest,
   type CreateInstanceResponse,
   type HealthResponse,
   type ListInstancesResponse,
@@ -28,6 +29,15 @@ export class ApiClientError extends Error {
   }
 }
 
+function readFailure(payload: unknown): { code: string; message: string } | undefined {
+  if (!payload || typeof payload !== 'object') return undefined;
+  const envelope = payload as { ok?: unknown; error?: unknown };
+  if (envelope.ok !== false || !envelope.error || typeof envelope.error !== 'object') return undefined;
+  const error = envelope.error as { code?: unknown; message?: unknown };
+  if (typeof error.code !== 'string' || typeof error.message !== 'string' || error.message.length === 0) return undefined;
+  return { code: error.code, message: error.message };
+}
+
 async function request<T>(path: string, init: RequestInit, parser: (payload: unknown) => T): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, {
     headers: {
@@ -37,14 +47,13 @@ async function request<T>(path: string, init: RequestInit, parser: (payload: unk
     ...init,
   });
 
-  const payload = parser(await response.json());
-
-  if ('ok' in (payload as object) && !(payload as { ok: boolean }).ok) {
-    const failure = payload as { error: { code: string; message: string } };
-    throw new ApiClientError(failure.error.code, failure.error.message);
+  const payload = await response.json();
+  const failure = readFailure(payload);
+  if (failure) {
+    throw new ApiClientError(failure.code, failure.message);
   }
 
-  return payload;
+  return parser(payload);
 }
 
 export function getHealth(): Promise<HealthResponse> {
@@ -71,8 +80,8 @@ export function getInstances(): Promise<ListInstancesResponse> {
   return request('/api/instances', { method: 'GET' }, (payload) => listInstancesResponseSchema.parse(payload));
 }
 
-export function createInstance(projectPath: string): Promise<CreateInstanceResponse> {
-  const body = createInstanceRequestSchema.parse({ projectPath });
+export function createInstance(input: CreateInstanceRequest): Promise<CreateInstanceResponse> {
+  const body = createInstanceRequestSchema.parse(input);
   return request('/api/instances', {
     method: 'POST',
     body: JSON.stringify(body),

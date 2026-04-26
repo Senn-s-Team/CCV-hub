@@ -5,7 +5,7 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { useMemo, useState } from 'react';
-import type { Instance } from '@ccv-hub/shared-contracts';
+import type { CreateInstanceRequest, Instance } from '@ccv-hub/shared-contracts';
 import { ApiClientError } from '../api/client.js';
 import InstanceCard from '../components/InstanceCard.js';
 import LaunchDialog from '../components/LaunchDialog.js';
@@ -44,9 +44,9 @@ export default function OverviewPage({ onLogout }: OverviewPageProps) {
     return 'list-ready';
   })();
 
-  async function handleLaunch(projectPath: string) {
+  async function handleLaunch(request: CreateInstanceRequest) {
     try {
-      await launchMutation.mutateAsync(projectPath);
+      await launchMutation.mutateAsync(request);
       setLaunchError('');
       setModalOpen(false);
       setToastMessage('实例已加入总览台');

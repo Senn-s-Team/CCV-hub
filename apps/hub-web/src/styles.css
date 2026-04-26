@@ -58,7 +58,9 @@ body {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
 }
 
@@ -69,10 +71,16 @@ button {
   touch-action: manipulation;
 }
 
-input {
+input,
+select,
+textarea {
   border: 0;
   background: transparent;
   color: inherit;
+}
+
+textarea {
+  resize: vertical;
 }
 
 h1,
@@ -381,16 +389,59 @@ h1 {
 }
 
 .search-field input,
-.path-field input {
-  height: 54px;
+.path-field input,
+.path-field select,
+.path-field textarea {
+  min-height: 54px;
   padding: 0 16px;
   border-radius: var(--radius-sm);
   background: rgba(255, 252, 248, 0.98);
   box-shadow: inset 0 0 0 1px var(--line-soft);
 }
 
+.path-field textarea {
+  padding-top: 14px;
+  line-height: 1.45;
+}
+
+.launch-options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.launch-prompt-field,
+.launch-toggle-stack {
+  margin-top: 14px;
+}
+
+.launch-toggle-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.launch-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 252, 248, 0.74);
+  box-shadow: inset 0 0 0 1px var(--line-soft);
+}
+
+.launch-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
 .search-field input:focus-visible,
 .path-field input:focus-visible,
+.path-field select:focus-visible,
+.path-field textarea:focus-visible,
+.launch-toggle input:focus-visible,
 .button:focus-visible,
 .chip:focus-visible,
 .device-chip:focus-visible,
@@ -902,6 +953,10 @@ h1 {
   .modal-actions,
   .action-row {
     width: 100%;
+  }
+
+  .launch-options-grid {
+    grid-template-columns: 1fr;
   }
 
   .topbar-actions .button,

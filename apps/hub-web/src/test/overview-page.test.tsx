@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Vitest、Testing Library、React Query 与 OverviewPage
- * [OUTPUT]: 对外提供总览页列表、空态、加载态、发现失败态、启动弹窗和复制动作回归测试
+ * [OUTPUT]: 对外提供总览页列表、空态、加载态、发现失败态、启动弹窗、启动参数提交和复制动作回归测试
  * [POS]: hub-web 测试集的主页面状态守卫，覆盖 ccv-hub MVP 的总览页关键交互
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -73,6 +73,22 @@ describe('OverviewPage', () => {
     expect(screen.getByText('Instance discovery failed')).toBeInTheDocument();
     expect(screen.getByText('discovery-error')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '再次刷新' })).toBeInTheDocument();
+  });
+
+  it('shows server failure messages before endpoint schema parsing', async () => {
+    fetchMock.mockResolvedValue({
+      json: async () => ({
+        ok: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'Authentication required',
+        },
+      }),
+    });
+
+    renderPage();
+
+    expect(await screen.findByText('Authentication required')).toBeInTheDocument();
   });
 
   it('renders list-ready state and filters instances by project name', async () => {
@@ -150,7 +166,79 @@ describe('OverviewPage', () => {
     const input = within(dialog).getByPlaceholderText('输入项目绝对路径');
 
     expect(input).toHaveValue('');
+    expect(within(dialog).getByDisplayValue('普通启动')).toBeInTheDocument();
+    expect(within(dialog).getByPlaceholderText('例如 claude-sonnet-4-6')).toHaveValue('');
+    expect(within(dialog).getByPlaceholderText('可选，启动后直接发送给 Claude')).toHaveValue('');
     expect(within(dialog).getByText('确认启动')).toBeDisabled();
+  });
+
+  it('submits launch options with the project path', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        json: async () => ({
+          ok: true,
+          data: { instances: [] },
+        }),
+      })
+      .mockResolvedValueOnce({
+        json: async () => ({
+          ok: true,
+          data: {
+            instance: {
+              id: 'created',
+              projectName: 'cc-viewer',
+              projectPath: '/tmp/cc-viewer',
+              url: 'http://127.0.0.1:4321',
+              port: 4321,
+              pid: 101,
+              status: 'running',
+              source: 'launcher',
+              startedAt: '2026-04-22T10:00:00.000Z',
+              lastSeen: '2026-04-22T10:00:05.000Z',
+            },
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        json: async () => ({
+          ok: true,
+          data: { instances: [] },
+        }),
+      });
+
+    renderPage();
+
+    fireEvent.click((await screen.findAllByText('启动新实例'))[0]!);
+    fireEvent.change(screen.getByPlaceholderText('输入项目绝对路径'), {
+      target: { value: ' /tmp/cc-viewer ' },
+    });
+    fireEvent.change(screen.getByDisplayValue('普通启动'), { target: { value: 'continue' } });
+    fireEvent.change(screen.getByPlaceholderText('例如 claude-sonnet-4-6'), {
+      target: { value: ' claude-sonnet-4-6 ' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('可选，启动后直接发送给 Claude'), {
+      target: { value: ' inspect this project ' },
+    });
+    fireEvent.click(screen.getByLabelText('跳过权限确认 (--d)'));
+    fireEvent.click(screen.getByLabelText('允许跳过权限确认 (--ad)'));
+    fireEvent.click(screen.getByText('确认启动'));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/instances', {
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        body: JSON.stringify({
+          projectPath: '/tmp/cc-viewer',
+          options: {
+            mode: 'continue',
+            prompt: 'inspect this project',
+            model: 'claude-sonnet-4-6',
+            dangerouslySkipPermissions: true,
+            allowDangerouslySkipPermissions: true,
+          },
+        }),
+      });
+    });
   });
 
   it('keeps launch error inside modal after failed launch', async () => {
@@ -183,7 +271,16 @@ describe('OverviewPage', () => {
       expect(fetchMock).toHaveBeenLastCalledWith('/api/instances', {
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
-        body: JSON.stringify({ projectPath: '/tmp/cc-viewer' }),
+        body: JSON.stringify({
+          projectPath: '/tmp/cc-viewer',
+          options: {
+            mode: 'default',
+            prompt: '',
+            model: '',
+            dangerouslySkipPermissions: false,
+            allowDangerouslySkipPermissions: false,
+          },
+        }),
       });
     });
     expect(await screen.findByText('Project path is invalid')).toBeInTheDocument();

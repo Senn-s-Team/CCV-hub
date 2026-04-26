@@ -5,7 +5,7 @@
 server.ts: Fastify 服务装配入口，挂载健康检查、鉴权、实例列表、创建、外部注册、外部注销与 viewer bridge 路由
 domain/: 领域模型目录，负责面板会话、实例记录、bridge URL、状态流转、路径校验与错误归一
 infra/: 基础设施目录，负责服务日志能力
-launcher/: cc-viewer 启动器目录，负责在宿主机服务环境中启动 CLI 进程、URL 解析、环境继承与退出监督
+launcher/: cc-viewer 启动器目录，负责在宿主机服务环境中启动 CLI 进程、启动参数映射、URL 解析、环境继承与退出监督
 routes/: HTTP 路由目录，负责把实例列表、创建、外部注册、外部注销、viewer bridge 与健康检查暴露给前端、插件和公网子域名
 
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
