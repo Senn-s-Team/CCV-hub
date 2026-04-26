@@ -1,7 +1,7 @@
 /*
- * [INPUT]: 依赖 index.html 的页面骨架，依赖 app.js 注入的状态类名与交互节点
- * [OUTPUT]: 对外提供暖感工业工作台的色彩、层级、动效与响应式样式
- * [POS]: prototype 的视觉系统文件，定义总览台、卡片、弹窗与状态面板的统一外观
+ * [INPUT]: 依赖 index.html 的页面骨架，依赖 React 组件注入的状态类名与交互节点
+ * [OUTPUT]: 对外提供 hub-web 总览页的色彩、层级、动效与响应式样式
+ * [POS]: hub-web 的全局视觉系统文件，定义总览台、卡片、弹窗与状态面板的统一外观
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 :root {
@@ -939,12 +939,15 @@ h1 {
   place-items: center;
   padding: 20px;
   background: rgba(54, 43, 30, 0.24);
+  overflow-y: auto;
   overscroll-behavior: contain;
 }
 
 .modal {
   width: min(100%, 560px);
+  max-height: calc(100dvh - 40px);
   padding: 24px;
+  overflow-y: auto;
 }
 
 .modal-header {
@@ -1040,6 +1043,15 @@ h1 {
     padding: 18px;
   }
 
+  .modal-backdrop {
+    align-items: start;
+    padding: 12px;
+  }
+
+  .modal {
+    max-height: calc(100dvh - 24px);
+  }
+
   h1 {
     font-size: 2.2rem;
   }
@@ -1069,6 +1081,29 @@ h1 {
   .auth-submit {
     flex: 1;
     width: 100%;
+  }
+
+  .host-path-browser,
+  .host-path-current,
+  .host-path-list,
+  .host-path-entry {
+    min-width: 0;
+  }
+
+  .host-path-current .mono-inline,
+  .host-path-entry .mono-inline,
+  .recent-path-chip button:first-child {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .host-path-current .mono-inline {
+    flex: 1 1 100%;
   }
 
   .empty-state-card {
