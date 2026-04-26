@@ -9,6 +9,7 @@
 ### 2.1 范围内
 
 - 运行中实例列表读取
+- 宿主机路径浏览
 - 启动新实例
 - 外部实例注册与注销
 - 健康检查
@@ -93,6 +94,7 @@
 - `REGISTER_FAILED`: 实例登记失败
 - `LIST_FAILED`: 实例列表读取失败
 - `UNREGISTER_FAILED`: 实例注销失败
+- `HOST_PATH_FAILED`: 宿主机路径读取失败
 - `INTERNAL_ERROR`: 未归类内部错误
 
 ## 6. 接口清单
@@ -146,7 +148,63 @@
 - 第一版不接受筛选参数，由前端本地做项目名筛选
 - `url` 优先返回 viewer 子域名公网 bridge 地址
 
-### 6.3 `POST /api/instances`
+### 6.3 `GET /api/host-paths/roots`
+
+返回允许页面浏览的宿主机项目根目录。
+
+成功响应：
+
+```json
+{
+  "ok": true,
+  "data": {
+    "roots": [
+      {
+        "name": "projects",
+        "path": "/home/opc/projects",
+        "readable": true
+      }
+    ]
+  }
+}
+```
+
+约束：
+- 根目录来自服务端 allowlist，默认由 `CCV_HUB_PATH_ROOTS` 配置
+- 返回路径是宿主机真实路径
+- 接口受面板鉴权保护
+
+### 6.4 `GET /api/host-paths/list?path=/home/opc/projects`
+
+返回 allowlist 内某个宿主机目录的直接子目录。
+
+成功响应：
+
+```json
+{
+  "ok": true,
+  "data": {
+    "currentPath": "/home/opc/projects",
+    "parentPath": null,
+    "entries": [
+      {
+        "name": "ccvs",
+        "path": "/home/opc/projects/ccvs",
+        "readable": true
+      }
+    ]
+  }
+}
+```
+
+约束：
+- `path` 必须是 allowlist 内的绝对目录
+- 服务端使用 `realpath` 校验符号链接逃逸
+- 只返回目录，不返回文件
+- 过滤 `.ssh`、`.gnupg`、`.claude`、`.config`、`.git`、`node_modules`
+- 单次最多返回 200 个目录
+
+### 6.5 `POST /api/instances`
 
 用于通过路径启动新实例。
 
@@ -198,7 +256,7 @@
 - 半状态实例不得返回给页面
 - 返回的 `instance.url` 应与当前可打开地址保持一致，优先使用 viewer 子域名公网 bridge 地址
 
-### 6.4 `POST /api/instances/register`
+### 6.6 `POST /api/instances/register`
 
 用于接收 `cc-viewer` 插件上报的手动启动实例。
 
@@ -224,7 +282,7 @@
 - `url` 由上报方提供 raw upstream 地址，Hub 对页面返回 viewer 子域名公网 bridge 地址
 - `source` 默认值为 `manual`
 
-### 6.5 `POST /api/instances/unregister`
+### 6.7 `POST /api/instances/unregister`
 
 用于接收 `cc-viewer` 插件上报的手动停止事件。
 

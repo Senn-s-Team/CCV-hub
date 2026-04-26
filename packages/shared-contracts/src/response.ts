@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 zod 泛型组合能力，依赖错误码与实例 schema
- * [OUTPUT]: 对外提供 apiSuccessSchema、apiFailureSchema、apiResponseSchema、启动参数、鉴权、实例创建/注册/注销契约与相关类型
+ * [OUTPUT]: 对外提供 apiSuccessSchema、apiFailureSchema、apiResponseSchema、启动参数、宿主机路径浏览、鉴权、实例创建/注册/注销契约与相关类型
  * [POS]: shared-contracts 的响应契约层，统一本地服务全部 JSON 结构
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -48,6 +48,26 @@ export const listInstancesDataSchema = z.object({
 });
 
 export const listInstancesResponseSchema = apiResponseSchema(listInstancesDataSchema);
+
+export const hostPathEntrySchema = z.object({
+  name: z.string().min(1),
+  path: z.string().min(1),
+  readable: z.boolean(),
+});
+
+export const hostPathRootsDataSchema = z.object({
+  roots: z.array(hostPathEntrySchema),
+});
+
+export const hostPathRootsResponseSchema = apiResponseSchema(hostPathRootsDataSchema);
+
+export const hostPathListDataSchema = z.object({
+  currentPath: z.string().min(1),
+  parentPath: z.string().min(1).nullable(),
+  entries: z.array(hostPathEntrySchema),
+});
+
+export const hostPathListResponseSchema = apiResponseSchema(hostPathListDataSchema);
 
 export const launchModeSchema = z.enum(['default', 'continue', 'resume']);
 
@@ -118,6 +138,9 @@ export type HealthResponse = z.infer<typeof healthResponseSchema>;
 export type AuthLoginRequest = z.infer<typeof authLoginRequestSchema>;
 export type AuthStatusResponse = z.infer<typeof authStatusResponseSchema>;
 export type ListInstancesResponse = z.infer<typeof listInstancesResponseSchema>;
+export type HostPathEntry = z.infer<typeof hostPathEntrySchema>;
+export type HostPathRootsResponse = z.infer<typeof hostPathRootsResponseSchema>;
+export type HostPathListResponse = z.infer<typeof hostPathListResponseSchema>;
 export type LaunchMode = z.infer<typeof launchModeSchema>;
 export type LaunchOptions = z.infer<typeof launchOptionsSchema>;
 export type CreateInstanceRequest = z.infer<typeof createInstanceRequestSchema>;

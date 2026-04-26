@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Vitest、Testing Library、React Query 与 OverviewPage
- * [OUTPUT]: 对外提供总览页列表、空态、加载态、发现失败态、启动弹窗、启动参数提交和复制动作回归测试
+ * [OUTPUT]: 对外提供总览页列表、空态、加载态、发现失败态、启动弹窗、最近路径、目录搜索、启动参数提交和复制动作回归测试
  * [POS]: hub-web 测试集的主页面状态守卫，覆盖 ccv-hub MVP 的总览页关键交互
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -13,6 +13,14 @@ import OverviewPage from '../pages/OverviewPage.js';
 const fetchMock = vi.fn();
 const writeText = vi.fn();
 const openMock = vi.fn();
+let storage = new Map<string, string>();
+
+const localStorageMock = {
+  getItem: vi.fn((key: string) => storage.get(key) ?? null),
+  setItem: vi.fn((key: string, value: string) => { storage.set(key, value); }),
+  removeItem: vi.fn((key: string) => { storage.delete(key); }),
+  clear: vi.fn(() => { storage.clear(); }),
+};
 
 function renderPage(onLogout = vi.fn()) {
   const queryClient = new QueryClient({
@@ -32,6 +40,8 @@ describe('OverviewPage', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', fetchMock);
     vi.stubGlobal('open', openMock);
+    storage = new Map<string, string>();
+    vi.stubGlobal('localStorage', localStorageMock);
     vi.stubGlobal('navigator', {
       clipboard: {
         writeText,
@@ -41,6 +51,7 @@ describe('OverviewPage', () => {
 
   afterEach(() => {
     cleanup();
+    storage.clear();
     vi.unstubAllGlobals();
     fetchMock.mockReset();
     writeText.mockReset();
@@ -170,6 +181,187 @@ describe('OverviewPage', () => {
     expect(within(dialog).getByPlaceholderText('例如 claude-sonnet-4-6')).toHaveValue('');
     expect(within(dialog).getByPlaceholderText('可选，启动后直接发送给 Claude')).toHaveValue('');
     expect(within(dialog).getByText('确认启动')).toBeDisabled();
+  });
+
+  it('selects a host directory into the launch path input', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        json: async () => ({
+          ok: true,
+          data: { instances: [] },
+        }),
+      })
+      .mockResolvedValueOnce({
+        json: async () => ({
+          ok: true,
+          data: {
+            roots: [{ name: 'projects', path: '/home/opc/projects', readable: true }],
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        json: async () => ({
+          ok: true,
+          data: {
+            currentPath: '/home/opc/projects',
+            parentPath: null,
+            entries: [{ name: 'ccvs', path: '/home/opc/projects/ccvs', readable: true }],
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        json: async () => ({
+          ok: true,
+          data: {
+            currentPath: '/home/opc/projects/ccvs',
+            parentPath: '/home/opc/projects',
+            entries: [],
+          },
+        }),
+      });
+
+    renderPage();
+
+    fireEvent.click((await screen.findAllByText('启动新实例'))[0]!);
+    fireEvent.click(screen.getByText('选择宿主机路径'));
+    fireEvent.click(await screen.findByText('ccvs'));
+    await waitFor(() => expect(screen.getByText('/home/opc/projects/ccvs')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('使用此目录'));
+
+    expect(screen.getByPlaceholderText('输入项目绝对路径')).toHaveValue('/home/opc/projects/ccvs');
+    expect(fetchMock).toHaveBeenCalledWith('/api/host-paths/roots', {
+      headers: { 'Content-Type': 'application/json' },
+      method: 'GET',
+    });
+    expect(fetchMock).toHaveBeenCalledWith('/api/host-paths/list?path=%2Fhome%2Fopc%2Fprojects', {
+      headers: { 'Content-Type': 'application/json' },
+      method: 'GET',
+    });
+  });
+
+  it('filters the current host directory list by path search', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        json: async () => ({
+          ok: true,
+          data: { instances: [] },
+        }),
+      })
+      .mockResolvedValueOnce({
+        json: async () => ({
+          ok: true,
+          data: {
+            roots: [{ name: 'projects', path: '/home/opc/projects', readable: true }],
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        json: async () => ({
+          ok: true,
+          data: {
+            currentPath: '/home/opc/projects',
+            parentPath: null,
+            entries: [
+              { name: 'ccvs', path: '/home/opc/projects/ccvs', readable: true },
+              { name: 'sdk-lab', path: '/home/opc/projects/sdk-lab', readable: true },
+            ],
+          },
+        }),
+      });
+
+    renderPage();
+
+    fireEvent.click((await screen.findAllByText('启动新实例'))[0]!);
+    fireEvent.click(screen.getByText('选择宿主机路径'));
+    await screen.findByText('ccvs');
+    fireEvent.change(screen.getByPlaceholderText('输入目录名或路径'), { target: { value: 'sdk' } });
+
+    expect(screen.queryByText('ccvs')).not.toBeInTheDocument();
+    expect(screen.getByText('sdk-lab')).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('输入目录名或路径'), { target: { value: 'missing' } });
+    expect(screen.getByText('当前目录没有匹配项')).toBeInTheDocument();
+  });
+
+  it('writes successful launch paths into recent path history', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        json: async () => ({
+          ok: true,
+          data: { instances: [] },
+        }),
+      })
+      .mockResolvedValueOnce({
+        json: async () => ({
+          ok: true,
+          data: {
+            instance: {
+              id: 'created',
+              projectName: 'cc-viewer',
+              projectPath: '/tmp/cc-viewer',
+              url: 'http://127.0.0.1:4321',
+              port: 4321,
+              pid: 101,
+              status: 'running',
+              source: 'launcher',
+              startedAt: '2026-04-22T10:00:00.000Z',
+              lastSeen: '2026-04-22T10:00:05.000Z',
+            },
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        json: async () => ({
+          ok: true,
+          data: { instances: [] },
+        }),
+      });
+
+    renderPage();
+
+    fireEvent.click((await screen.findAllByText('启动新实例'))[0]!);
+    fireEvent.change(screen.getByPlaceholderText('输入项目绝对路径'), {
+      target: { value: ' /tmp/cc-viewer ' },
+    });
+    fireEvent.click(screen.getByText('确认启动'));
+
+    await waitFor(() => {
+      expect(storage.get('ccv-hub.recent-project-paths')).toBe(JSON.stringify(['/tmp/cc-viewer']));
+    });
+    fireEvent.click((await screen.findAllByText('启动新实例'))[0]!);
+    fireEvent.click(screen.getByText('/tmp/cc-viewer'));
+    expect(screen.getByPlaceholderText('输入项目绝对路径')).toHaveValue('/tmp/cc-viewer');
+    fireEvent.click(screen.getByLabelText('移除最近路径 /tmp/cc-viewer'));
+    expect(screen.queryByText('/tmp/cc-viewer')).not.toBeInTheDocument();
+  });
+
+  it('keeps failed launch paths out of recent path history', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        json: async () => ({
+          ok: true,
+          data: { instances: [] },
+        }),
+      })
+      .mockResolvedValueOnce({
+        json: async () => ({
+          ok: false,
+          error: {
+            code: 'INVALID_PATH',
+            message: 'Project path is invalid',
+          },
+        }),
+      });
+
+    renderPage();
+
+    fireEvent.click((await screen.findAllByText('启动新实例'))[0]!);
+    fireEvent.change(screen.getByPlaceholderText('输入项目绝对路径'), {
+      target: { value: ' /tmp/cc-viewer ' },
+    });
+    fireEvent.click(screen.getByText('确认启动'));
+
+    expect(await screen.findByText('Project path is invalid')).toBeInTheDocument();
+    expect(storage.get('ccv-hub.recent-project-paths')).toBeUndefined();
   });
 
   it('submits launch options with the project path', async () => {

@@ -5,6 +5,8 @@ import {
   createInstanceResponseSchema,
   errorCodeSchema,
   healthResponseSchema,
+  hostPathListResponseSchema,
+  hostPathRootsResponseSchema,
   instanceSchema,
   listInstancesResponseSchema,
 } from '../src/index.js';
@@ -62,6 +64,30 @@ describe('shared contracts', () => {
     }
 
     expect(response.data.instances).toHaveLength(1);
+  });
+
+  it('parses host path browser responses', () => {
+    const roots = hostPathRootsResponseSchema.parse({
+      ok: true,
+      data: {
+        roots: [{ name: 'projects', path: '/home/opc/projects', readable: true }],
+      },
+    });
+    const list = hostPathListResponseSchema.parse({
+      ok: true,
+      data: {
+        currentPath: '/home/opc/projects',
+        parentPath: null,
+        entries: [{ name: 'ccvs', path: '/home/opc/projects/ccvs', readable: true }],
+      },
+    });
+
+    if (!roots.ok || !list.ok) {
+      throw new Error('expected success response');
+    }
+
+    expect(roots.data.roots[0]?.path).toBe('/home/opc/projects');
+    expect(list.data.entries[0]?.name).toBe('ccvs');
   });
 
   it('parses create instance request and response', () => {

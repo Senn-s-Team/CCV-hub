@@ -1,11 +1,15 @@
 /**
- * [INPUT]: 依赖 React 状态、shared-contracts 启动请求类型与父级传入的启动回调、错误消息和开关状态
- * [OUTPUT]: 对外提供 LaunchDialog 组件，处理绝对路径、cc-viewer 启动参数、错误保留与提交动作
+ * [INPUT]: 依赖 React 状态、Hub API 客户端、shared-contracts 启动请求与宿主机路径类型、父级传入的启动回调、错误消息和开关状态
+ * [OUTPUT]: 对外提供 LaunchDialog 组件，处理宿主机路径选择、绝对路径、cc-viewer 启动参数、错误保留与提交动作
  * [POS]: hub-web 的聚焦层组件，承接 prototype 启动弹窗的交互闭环
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { useEffect, useState } from 'react';
-import type { CreateInstanceRequest, LaunchMode } from '@ccv-hub/shared-contracts';
+import type { CreateInstanceRequest, HostPathEntry, LaunchMode } from '@ccv-hub/shared-contracts';
+import { getHostPathList, getHostPathRoots } from '../api/client.js';
+
+const recentPathsStorageKey = 'ccv-hub.recent-project-paths';
+const maxRecentPaths = 8;
 
 type LaunchDialogProps = {
   isOpen: boolean;
@@ -14,6 +18,27 @@ type LaunchDialogProps = {
   onClose: () => void;
   onSubmit: (request: CreateInstanceRequest) => Promise<void>;
 };
+
+function readRecentPaths(): string[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(recentPathsStorageKey) ?? '[]');
+    return Array.isArray(parsed) ? parsed.filter((path): path is string => typeof path === 'string' && path.startsWith('/')).slice(0, maxRecentPaths) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistRecentPaths(paths: string[]): void {
+  try {
+    localStorage.setItem(recentPathsStorageKey, JSON.stringify(paths));
+  } catch {
+    return;
+  }
+}
+
+function promoteRecentPath(paths: string[], pathname: string): string[] {
+  return [pathname, ...paths.filter((path) => path !== pathname)].slice(0, maxRecentPaths);
+}
 
 export default function LaunchDialog({
   isOpen,
@@ -28,9 +53,22 @@ export default function LaunchDialog({
   const [model, setModel] = useState('');
   const [dangerouslySkipPermissions, setDangerouslySkipPermissions] = useState(false);
   const [allowDangerouslySkipPermissions, setAllowDangerouslySkipPermissions] = useState(false);
+  const [browserOpen, setBrowserOpen] = useState(false);
+  const [roots, setRoots] = useState<HostPathEntry[]>([]);
+  const [entries, setEntries] = useState<HostPathEntry[]>([]);
+  const [currentPath, setCurrentPath] = useState('');
+  const [parentPath, setParentPath] = useState<string | null>(null);
+  const [pathBrowserError, setPathBrowserError] = useState('');
+  const [isBrowsingPaths, setIsBrowsingPaths] = useState(false);
+  const [pathSearch, setPathSearch] = useState('');
+  const [recentPaths, setRecentPaths] = useState<string[]>([]);
   const trimmedPath = projectPath.trim();
   const trimmedPrompt = prompt.trim();
   const trimmedModel = model.trim();
+  const normalizedPathSearch = pathSearch.trim().toLowerCase();
+  const filteredEntries = normalizedPathSearch
+    ? entries.filter((entry) => `${entry.name} ${entry.path}`.toLowerCase().includes(normalizedPathSearch))
+    : entries;
   const canSubmit = trimmedPath.startsWith('/');
 
   useEffect(() => {
@@ -41,8 +79,87 @@ export default function LaunchDialog({
       setModel('');
       setDangerouslySkipPermissions(false);
       setAllowDangerouslySkipPermissions(false);
+      setBrowserOpen(false);
+      setRoots([]);
+      setEntries([]);
+      setCurrentPath('');
+      setParentPath(null);
+      setPathBrowserError('');
+      setIsBrowsingPaths(false);
+      setPathSearch('');
+      setRecentPaths(readRecentPaths());
     }
   }, [isOpen]);
+
+  function rememberPath(pathname: string) {
+    const nextPaths = promoteRecentPath(recentPaths, pathname);
+    setRecentPaths(nextPaths);
+    persistRecentPaths(nextPaths);
+  }
+
+  function removeRecentPath(pathname: string) {
+    const nextPaths = recentPaths.filter((path) => path !== pathname);
+    setRecentPaths(nextPaths);
+    persistRecentPaths(nextPaths);
+  }
+
+  async function openPathBrowser() {
+    setBrowserOpen(true);
+    setPathBrowserError('');
+    setIsBrowsingPaths(true);
+    try {
+      const rootsResponse = await getHostPathRoots();
+      if (!rootsResponse.ok) return;
+      setRoots(rootsResponse.data.roots);
+      const firstRoot = rootsResponse.data.roots[0]?.path;
+      if (firstRoot) {
+        await loadPath(firstRoot);
+      } else {
+        setEntries([]);
+        setCurrentPath('');
+        setParentPath(null);
+      }
+    } catch (error) {
+      setPathBrowserError(error instanceof Error ? error.message : '宿主机路径读取失败');
+    } finally {
+      setIsBrowsingPaths(false);
+    }
+  }
+
+  async function loadPath(pathname: string) {
+    setPathBrowserError('');
+    setPathSearch('');
+    setIsBrowsingPaths(true);
+    try {
+      const response = await getHostPathList(pathname);
+      if (!response.ok) return;
+      setCurrentPath(response.data.currentPath);
+      setParentPath(response.data.parentPath);
+      setEntries(response.data.entries);
+    } catch (error) {
+      setPathBrowserError(error instanceof Error ? error.message : '宿主机路径读取失败');
+    } finally {
+      setIsBrowsingPaths(false);
+    }
+  }
+
+  async function submitLaunchRequest() {
+    try {
+      await onSubmit({
+        projectPath: trimmedPath,
+        options: {
+          mode,
+          prompt: trimmedPrompt,
+          model: trimmedModel,
+          dangerouslySkipPermissions,
+          allowDangerouslySkipPermissions,
+        },
+      });
+      rememberPath(trimmedPath);
+    } catch {
+      return;
+    }
+  }
 
   if (!isOpen) {
     return null;
@@ -72,6 +189,92 @@ export default function LaunchDialog({
             placeholder="输入项目绝对路径"
           />
         </label>
+        {recentPaths.length > 0 ? (
+          <div className="recent-paths" aria-label="最近使用路径">
+            <span className="input-hint">最近使用</span>
+            <div className="recent-path-list">
+              {recentPaths.map((path) => (
+                <span className="recent-path-chip" key={path}>
+                  <button type="button" onClick={() => setProjectPath(path)}>{path}</button>
+                  <button type="button" aria-label={`移除最近路径 ${path}`} onClick={() => removeRecentPath(path)}>×</button>
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        <div className="host-path-picker">
+          <div className="host-path-picker-actions">
+            <button className="button button-secondary" type="button" onClick={() => void openPathBrowser()}>
+              选择宿主机路径
+            </button>
+            <span className="input-hint">仅显示服务端允许的项目根目录。</span>
+          </div>
+          {browserOpen ? (
+            <div className="host-path-browser">
+              <div className="host-path-roots" aria-label="常用根目录">
+                {roots.map((root) => (
+                  <button
+                    className={`chip${root.path === currentPath ? ' active' : ''}`}
+                    type="button"
+                    key={root.path}
+                    onClick={() => void loadPath(root.path)}
+                  >
+                    {root.path}
+                  </button>
+                ))}
+              </div>
+              <div className="host-path-current">
+                <span className="mono-inline">{currentPath || '读取宿主机目录中…'}</span>
+                <button
+                  className="button button-secondary"
+                  type="button"
+                  disabled={!parentPath || isBrowsingPaths}
+                  onClick={() => parentPath ? void loadPath(parentPath) : undefined}
+                >
+                  返回上级
+                </button>
+                <button
+                  className="button button-primary"
+                  type="button"
+                  disabled={!currentPath}
+                  onClick={() => {
+                    setProjectPath(currentPath);
+                    rememberPath(currentPath);
+                  }}
+                >
+                  使用此目录
+                </button>
+              </div>
+              <label className="path-field host-path-search">
+                <span>搜索当前目录</span>
+                <input
+                  value={pathSearch}
+                  onChange={(event) => setPathSearch(event.target.value)}
+                  type="text"
+                  placeholder="输入目录名或路径"
+                />
+              </label>
+              {pathBrowserError ? <p className="input-hint danger-text">{pathBrowserError}</p> : null}
+              <div className="host-path-list" aria-label="宿主机目录列表">
+                {filteredEntries.map((entry) => (
+                  <button
+                    className="host-path-entry"
+                    type="button"
+                    key={entry.path}
+                    disabled={!entry.readable || isBrowsingPaths}
+                    onClick={() => void loadPath(entry.path)}
+                  >
+                    <span>{entry.name}</span>
+                    <span className="mono-inline">{entry.path}</span>
+                  </button>
+                ))}
+                {entries.length > 0 && filteredEntries.length === 0 ? (
+                  <p className="input-hint host-path-empty">当前目录没有匹配项</p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+        </div>
         <div className="launch-options-grid">
           <label className="path-field">
             <span>启动模式</span>
@@ -130,16 +333,7 @@ export default function LaunchDialog({
             className="button button-primary"
             type="button"
             disabled={isSubmitting || !canSubmit}
-            onClick={() => void onSubmit({
-              projectPath: trimmedPath,
-              options: {
-                mode,
-                prompt: trimmedPrompt,
-                model: trimmedModel,
-                dangerouslySkipPermissions,
-                allowDangerouslySkipPermissions,
-              },
-            })}
+            onClick={() => void submitLaunchRequest()}
           >
             {isSubmitting ? '启动中…' : '确认启动'}
           </button>

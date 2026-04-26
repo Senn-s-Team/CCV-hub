@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shared-contracts 的请求响应 schema，依赖浏览器 fetch
- * [OUTPUT]: 对外提供 getHealth、getAuthStatus、login、logout、getInstances、createInstance 与 ApiClientError
+ * [OUTPUT]: 对外提供 getHealth、getAuthStatus、login、logout、getInstances、getHostPathRoots、getHostPathList、createInstance 与 ApiClientError
  * [POS]: hub-web 的服务端访问层，负责把接口响应解析成稳定前端数据
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -10,11 +10,15 @@ import {
   createInstanceRequestSchema,
   createInstanceResponseSchema,
   healthResponseSchema,
+  hostPathListResponseSchema,
+  hostPathRootsResponseSchema,
   listInstancesResponseSchema,
   type AuthStatusResponse,
   type CreateInstanceRequest,
   type CreateInstanceResponse,
   type HealthResponse,
+  type HostPathListResponse,
+  type HostPathRootsResponse,
   type ListInstancesResponse,
 } from '@ccv-hub/shared-contracts';
 
@@ -78,6 +82,14 @@ export function logout(): Promise<AuthStatusResponse> {
 
 export function getInstances(): Promise<ListInstancesResponse> {
   return request('/api/instances', { method: 'GET' }, (payload) => listInstancesResponseSchema.parse(payload));
+}
+
+export function getHostPathRoots(): Promise<HostPathRootsResponse> {
+  return request('/api/host-paths/roots', { method: 'GET' }, (payload) => hostPathRootsResponseSchema.parse(payload));
+}
+
+export function getHostPathList(path: string): Promise<HostPathListResponse> {
+  return request(`/api/host-paths/list?path=${encodeURIComponent(path)}`, { method: 'GET' }, (payload) => hostPathListResponseSchema.parse(payload));
 }
 
 export function createInstance(input: CreateInstanceRequest): Promise<CreateInstanceResponse> {

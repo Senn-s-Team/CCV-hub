@@ -53,6 +53,7 @@ export default function OverviewPage({ onLogout }: OverviewPageProps) {
     } catch (error) {
       const message = error instanceof ApiClientError ? error.message : error instanceof Error ? error.message : '启动失败';
       setLaunchError(message);
+      throw error;
     }
   }
 

@@ -4,11 +4,15 @@
  * [POS]: hub-service 的测试入口，负责验证健康接口、实例列表、创建/注册流程、URL 投影、HTTP/WebSocket 桥接与启动环境收敛
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
+import { mkdtemp, mkdir, symlink, rm } from 'node:fs/promises';
 import { createServer } from 'node:http';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createConnection } from 'node:net';
 import { describe, expect, it, vi } from 'vitest';
 import { buildServer } from '../src/server.js';
 import type { AuthConfig } from '../src/domain/auth-session.js';
+import { HostPathBrowser } from '../src/domain/host-path-browser.js';
 import { InstanceRegistry } from '../src/domain/instance-registry.js';
 import { buildLaunchArgs, buildLaunchEnv, parseViewerUrl, resolveViewerUrl } from '../src/launcher/ccv-launcher.js';
 
@@ -531,6 +535,56 @@ describe('hub-service routes', () => {
     expect(listResponse.json().data.instances).toHaveLength(0);
 
     await app.close();
+  });
+
+  it('lists allowed host directories and filters hidden entries', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'ccv-hub-paths-'));
+    await mkdir(join(root, 'visible-project'));
+    await mkdir(join(root, '.ssh'));
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+      pathBrowser: new HostPathBrowser([root]),
+    });
+
+    try {
+      const headers = await authHeaders(app);
+      const rootsResponse = await app.inject({ method: 'GET', url: '/api/host-paths/roots', headers });
+      const listResponse = await app.inject({ method: 'GET', url: `/api/host-paths/list?path=${encodeURIComponent(root)}`, headers });
+
+      expect(rootsResponse.statusCode).toBe(200);
+      expect(rootsResponse.json().data.roots).toEqual([{ name: root.split('/').at(-1), path: root, readable: true }]);
+      expect(listResponse.statusCode).toBe(200);
+      expect(listResponse.json().data.entries.map((entry: { name: string }) => entry.name)).toEqual(['visible-project']);
+    } finally {
+      await app.close();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects host path browsing outside allowed roots', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'ccv-hub-paths-'));
+    const outside = await mkdtemp(join(tmpdir(), 'ccv-hub-outside-'));
+    await symlink(outside, join(root, 'outside-link'));
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+      pathBrowser: new HostPathBrowser([root]),
+    });
+
+    try {
+      const headers = await authHeaders(app);
+      const outsideResponse = await app.inject({ method: 'GET', url: `/api/host-paths/list?path=${encodeURIComponent(outside)}`, headers });
+      const rootResponse = await app.inject({ method: 'GET', url: `/api/host-paths/list?path=${encodeURIComponent(root)}`, headers });
+
+      expect(outsideResponse.statusCode).toBe(400);
+      expect(outsideResponse.json().error.code).toBe('INVALID_PATH');
+      expect(rootResponse.json().data.entries).toHaveLength(0);
+    } finally {
+      await app.close();
+      await rm(root, { recursive: true, force: true });
+      await rm(outside, { recursive: true, force: true });
+    }
   });
 
   it('rejects relative project paths', async () => {
