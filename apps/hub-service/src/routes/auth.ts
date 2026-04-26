@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 Fastify hook/route 能力、共享鉴权契约与 auth-session 会话核心
+ * [INPUT]: 依赖 Fastify hook/route 能力、共享鉴权契约、auth-session 会话核心与 bridge Host 解析
  * [OUTPUT]: 对外提供 registerAuthRoutes 与 registerPanelAuthGuard，用于登录、登出、登录态查询和面板 API 保护
- * [POS]: hub-service 的面板鉴权边界，允许本机插件注册流量，保护公网面板读写 API
+ * [POS]: hub-service 的面板鉴权边界，允许本机插件注册流量，把 viewer bridge 与控制面 API 分离
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -18,6 +18,7 @@ import { resolveBridgeIdFromHost } from '../domain/bridge-url.js';
 const localHosts = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 const publicPanelPaths = new Set(['/api/auth/login', '/api/auth/me', '/api/health']);
 const pluginPaths = new Set(['/api/instances/register', '/api/instances/unregister']);
+const bridgeBlockedPathPrefixes = ['/api/auth', '/api/host-paths', '/api/instances'];
 
 function parseCookies(header: string | undefined): Record<string, string> {
   if (!header) return {};
@@ -61,6 +62,14 @@ function isPublicPanelPath(pathname: string): boolean {
   return publicPanelPaths.has(pathname);
 }
 
+function isBridgeBlockedPath(pathname: string): boolean {
+  return bridgeBlockedPathPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+function isBridgeProxyRequest(request: FastifyRequest, pathname: string): boolean {
+  return Boolean(resolveBridgeIdFromHost(request.headers.host)) && !isBridgeBlockedPath(pathname);
+}
+
 function authStatus(request: FastifyRequest, config: AuthConfig): AuthStatusResponse {
   return {
     ok: true,
@@ -94,7 +103,7 @@ export function registerAuthRoutes(app: FastifyInstance, config: AuthConfig): vo
 export function registerPanelAuthGuard(app: FastifyInstance, config: AuthConfig): void {
   app.addHook('preHandler', async (request, reply) => {
     const pathname = new URL(request.url, 'http://localhost').pathname;
-    if (resolveBridgeIdFromHost(request.headers.host)) return;
+    if (isBridgeProxyRequest(request, pathname)) return;
     if (!pathname.startsWith('/api/') || isPublicPanelPath(pathname)) return;
     if (isPluginPath(pathname) && isLocalRequest(request)) return;
     if (isAuthConfigured(config) && verifySessionToken(readSessionToken(request, config), config)) return;

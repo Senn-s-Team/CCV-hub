@@ -94,6 +94,8 @@
 - `REGISTER_FAILED`: 实例登记失败
 - `LIST_FAILED`: 实例列表读取失败
 - `UNREGISTER_FAILED`: 实例注销失败
+- `LIFECYCLE_FAILED`: 实例生命周期控制失败
+- `LIFECYCLE_PENDING`: 实例正在停止中
 - `HOST_PATH_FAILED`: 宿主机路径读取失败
 - `INTERNAL_ERROR`: 未归类内部错误
 
@@ -251,12 +253,47 @@
 ```
 
 约束：
-- 输入路径必须是绝对路径
+- 输入路径必须是绝对路径，服务端以真实绝对路径作为实例唯一键
+- 同一真实绝对路径只允许一个 active 实例；重复启动返回现有实例
 - 启动成功后才返回 `instance`
 - 半状态实例不得返回给页面
 - 返回的 `instance.url` 应与当前可打开地址保持一致，优先使用 viewer 子域名公网 bridge 地址
 
-### 6.6 `POST /api/instances/register`
+### 6.6 `POST /api/instances/:id/actions/:action`
+
+用于控制 hub 启动并持有停止句柄的运行中实例生命周期。当前 `action` 取值为 `stop` 或 `force-stop`。
+
+成功响应：
+
+```json
+{
+  "ok": true,
+  "data": {
+    "action": "stop",
+    "removed": true
+  }
+}
+```
+
+失败响应示例：
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "LIFECYCLE_FAILED",
+    "message": "Instance cannot be stopped by ccv-hub"
+  }
+}
+```
+
+约束：
+- `stop` 向 hub 自身启动的实例发送 `SIGTERM`
+- `force-stop` 向 hub 自身启动的实例发送 `SIGKILL`
+- 手动上报实例只通过 unregister 收敛，不由 lifecycle 接口按 pid 停止
+- 停止请求成功后实例退出运行列表，真实绝对路径 active 占用保留到进程退出事件收敛
+
+### 6.7 `POST /api/instances/register`
 
 用于接收 `cc-viewer` 插件上报的手动启动实例。
 
@@ -279,10 +316,11 @@
 
 约束：
 - 只登记已启动成功的实例
+- `projectPath` 按真实绝对路径归一；同一路径重复上报更新既有实例并保持 bridge 地址稳定
 - `url` 由上报方提供 raw upstream 地址，Hub 对页面返回 viewer 子域名公网 bridge 地址
 - `source` 默认值为 `manual`
 
-### 6.7 `POST /api/instances/unregister`
+### 6.8 `POST /api/instances/unregister`
 
 用于接收 `cc-viewer` 插件上报的手动停止事件。
 
@@ -334,6 +372,7 @@
 
 - 校验路径
 - 启动实例
+- 停止 hub 自身启动并持有停止句柄的实例
 - 登记实例
 - 接收外部实例注册与注销事件
 - 过滤非运行中实例

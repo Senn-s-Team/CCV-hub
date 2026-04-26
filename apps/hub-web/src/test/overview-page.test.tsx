@@ -119,6 +119,7 @@ describe('OverviewPage', () => {
               source: 'launcher',
               startedAt: '2026-04-22T10:00:00.000Z',
               lastSeen: '2026-04-22T10:00:05.000Z',
+              canStop: true,
             },
             {
               id: 'two',
@@ -131,6 +132,7 @@ describe('OverviewPage', () => {
               source: 'launcher',
               startedAt: '2026-04-22T11:00:00.000Z',
               lastSeen: '2026-04-22T11:00:05.000Z',
+              canStop: true,
             },
           ],
         },
@@ -305,6 +307,7 @@ describe('OverviewPage', () => {
               source: 'launcher',
               startedAt: '2026-04-22T10:00:00.000Z',
               lastSeen: '2026-04-22T10:00:05.000Z',
+              canStop: true,
             },
           },
         }),
@@ -387,6 +390,7 @@ describe('OverviewPage', () => {
               source: 'launcher',
               startedAt: '2026-04-22T10:00:00.000Z',
               lastSeen: '2026-04-22T10:00:05.000Z',
+              canStop: true,
             },
           },
         }),
@@ -494,6 +498,130 @@ describe('OverviewPage', () => {
     expect(onLogout).toHaveBeenCalledOnce();
   });
 
+  it('stops an instance from the card action', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        json: async () => ({
+          ok: true,
+          data: {
+            instances: [
+              {
+                id: 'one',
+                projectName: 'cc-viewer',
+                projectPath: '/tmp/cc-viewer',
+                url: 'http://127.0.0.1:4321',
+                port: 4321,
+                pid: 101,
+                status: 'running',
+                source: 'launcher',
+                startedAt: '2026-04-22T10:00:00.000Z',
+                lastSeen: '2026-04-22T10:00:05.000Z',
+              canStop: true,
+              },
+            ],
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        json: async () => ({
+          ok: true,
+          data: {
+            action: 'stop',
+            removed: true,
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        json: async () => ({
+          ok: true,
+          data: { instances: [] },
+        }),
+      });
+
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: '停止' }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/instances/one/actions/stop', {
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      });
+    });
+    expect(await screen.findByText('实例已停止')).toBeInTheDocument();
+  });
+
+  it('shows lifecycle failures in toast', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        json: async () => ({
+          ok: true,
+          data: {
+            instances: [
+              {
+                id: 'one',
+                projectName: 'cc-viewer',
+                projectPath: '/tmp/cc-viewer',
+                url: 'http://127.0.0.1:4321',
+                port: 4321,
+                pid: 101,
+                status: 'running',
+                source: 'launcher',
+                startedAt: '2026-04-22T10:00:00.000Z',
+                lastSeen: '2026-04-22T10:00:05.000Z',
+              canStop: true,
+              },
+            ],
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        json: async () => ({
+          ok: false,
+          error: {
+            code: 'LIFECYCLE_FAILED',
+            message: 'Instance is not running',
+          },
+        }),
+      });
+
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: '停止' }));
+
+    expect(await screen.findByText('Instance is not running')).toBeInTheDocument();
+  });
+
+  it('hides stop action for instances without a trusted stop handle', async () => {
+    fetchMock.mockResolvedValue({
+      json: async () => ({
+        ok: true,
+        data: {
+          instances: [
+            {
+              id: 'manual-one',
+              projectName: 'manual-viewer',
+              projectPath: '/tmp/manual-viewer',
+              url: 'http://127.0.0.1:4321',
+              port: 4321,
+              pid: 101,
+              status: 'running',
+              source: 'manual',
+              startedAt: '2026-04-22T10:00:00.000Z',
+              lastSeen: '2026-04-22T10:00:05.000Z',
+              canStop: false,
+            },
+          ],
+        },
+      }),
+    });
+
+    renderPage();
+
+    expect(await screen.findByText('manual-viewer')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '停止' })).not.toBeInTheDocument();
+  });
+
   it('copies instance url through clipboard api', async () => {
     fetchMock.mockResolvedValue({
       json: async () => ({
@@ -511,6 +639,7 @@ describe('OverviewPage', () => {
               source: 'launcher',
               startedAt: '2026-04-22T10:00:00.000Z',
               lastSeen: '2026-04-22T10:00:05.000Z',
+              canStop: true,
             },
           ],
         },

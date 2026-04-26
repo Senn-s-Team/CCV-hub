@@ -8,6 +8,7 @@ import {
   hostPathListResponseSchema,
   hostPathRootsResponseSchema,
   instanceSchema,
+  lifecycleInstanceResponseSchema,
   listInstancesResponseSchema,
 } from '../src/index.js';
 
@@ -24,6 +25,7 @@ describe('shared contracts', () => {
       source: 'launcher',
       startedAt: '2026-04-22T10:00:00.000Z',
       lastSeen: '2026-04-22T10:00:05.000Z',
+      canStop: true,
     });
 
     expect(instance.projectName).toBe('my-project');
@@ -54,6 +56,7 @@ describe('shared contracts', () => {
             source: 'launcher',
             startedAt: '2026-04-22T10:00:00.000Z',
             lastSeen: '2026-04-22T10:00:05.000Z',
+            canStop: true,
           },
         ],
       },
@@ -111,6 +114,7 @@ describe('shared contracts', () => {
           source: 'launcher',
           startedAt: '2026-04-22T10:00:00.000Z',
           lastSeen: '2026-04-22T10:00:05.000Z',
+      canStop: true,
         },
       },
     });
@@ -120,6 +124,22 @@ describe('shared contracts', () => {
     }
 
     expect(response.data.instance.pid).toBe(12345);
+  });
+
+  it('parses lifecycle response', () => {
+    const response = lifecycleInstanceResponseSchema.parse({
+      ok: true,
+      data: {
+        action: 'stop',
+        removed: true,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('expected success response');
+    }
+
+    expect(response.data.action).toBe('stop');
   });
 
   it('parses failure response', () => {
@@ -132,6 +152,7 @@ describe('shared contracts', () => {
     });
 
     expect(failure.error.code).toBe('INVALID_PATH');
-    expect(errorCodeSchema.options).toContain('REGISTER_FAILED');
+    expect(errorCodeSchema.options).toContain('LIFECYCLE_FAILED');
+    expect(errorCodeSchema.options).toContain('LIFECYCLE_PENDING');
   });
 });

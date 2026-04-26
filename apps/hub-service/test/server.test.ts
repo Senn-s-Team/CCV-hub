@@ -493,6 +493,242 @@ describe('hub-service routes', () => {
     }
   });
 
+  it('stops launcher instances through lifecycle action', async () => {
+    const stop = vi.fn();
+    const registry = new InstanceRegistry();
+    registry.createRunning({
+      id: 'launcher-stop',
+      projectName: 'alpha',
+      projectPath: '/tmp/alpha',
+      url: 'http://127.0.0.1:4321',
+      port: 4321,
+      pid: 1001,
+      source: 'launcher',
+      startedAt: '2026-04-22T10:00:00.000Z',
+      lastSeen: '2026-04-22T10:00:01.000Z',
+      stop,
+    });
+    const app = buildServer({
+      registry,
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/instances/launcher-stop/actions/stop',
+      headers: await authHeaders(app),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ ok: true, data: { action: 'stop', removed: true } });
+    expect(stop).toHaveBeenCalledWith('SIGTERM');
+    expect(registry.listRunning()).toHaveLength(0);
+    expect(registry.get('launcher-stop')?.internalStatus).toBe('stopping');
+
+    await app.close();
+  });
+
+  it('force stops instances with SIGKILL', async () => {
+    const stop = vi.fn();
+    const registry = new InstanceRegistry();
+    registry.createRunning({
+      id: 'force-stop',
+      projectName: 'alpha',
+      projectPath: '/tmp/alpha',
+      url: 'http://127.0.0.1:4321',
+      port: 4321,
+      pid: 1001,
+      source: 'launcher',
+      startedAt: '2026-04-22T10:00:00.000Z',
+      lastSeen: '2026-04-22T10:00:01.000Z',
+      stop,
+    });
+    const app = buildServer({
+      registry,
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/instances/force-stop/actions/force-stop',
+      headers: await authHeaders(app),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(stop).toHaveBeenCalledWith('SIGKILL');
+
+    await app.close();
+  });
+
+  it('rejects lifecycle stop for instances without a trusted stop handle', async () => {
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    try {
+      await app.inject({
+        method: 'POST',
+        url: '/api/instances/register',
+        payload: {
+          id: 'manual-stop',
+          projectName: 'cc-viewer',
+          projectPath: '/tmp',
+          url: 'http://127.0.0.1:7008?token=abc',
+          port: 7008,
+          pid: 4321,
+          source: 'manual',
+          startedAt: '2026-04-22T10:00:00.000Z',
+        },
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/instances/manual-stop/actions/stop',
+        headers: await authHeaders(app),
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().error).toEqual({
+        code: 'LIFECYCLE_FAILED',
+        message: 'Instance cannot be stopped by ccv-hub',
+      });
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('requires panel auth for hub control APIs on viewer bridge hosts', async () => {
+    const registry = new InstanceRegistry();
+    registry.createRunning({
+      id: 'bridge-owned',
+      projectName: 'alpha',
+      projectPath: '/tmp/alpha',
+      url: 'https://ccv-1234567890abcdef1234567890abcdef.paas.996667.xyz/?token=abc',
+      upstreamUrl: 'http://127.0.0.1:4321?token=abc',
+      bridgeId: '1234567890abcdef1234567890abcdef',
+      port: 4321,
+      pid: 1001,
+      source: 'launcher',
+      startedAt: '2026-04-22T10:00:00.000Z',
+      lastSeen: '2026-04-22T10:00:01.000Z',
+      stop: vi.fn(),
+    });
+    const app = buildServer({
+      registry,
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/instances/bridge-owned/actions/stop',
+      headers: { host: 'ccv-1234567890abcdef1234567890abcdef.paas.996667.xyz' },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json().error.code).toBe('UNAUTHORIZED');
+    expect(registry.get('bridge-owned')?.internalStatus).toBe('running');
+
+    await app.close();
+  });
+
+  it('keeps launcher records isolated from manual register and unregister flows', async () => {
+    const project = await mkdtemp(join(tmpdir(), 'ccv-hub-launcher-owned-'));
+    const stop = vi.fn();
+    const registry = new InstanceRegistry();
+    registry.createRunning({
+      id: 'launcher-owned',
+      projectName: 'alpha',
+      projectPath: project,
+      url: 'http://127.0.0.1:4321',
+      port: 4321,
+      pid: 1001,
+      source: 'launcher',
+      startedAt: '2026-04-22T10:00:00.000Z',
+      lastSeen: '2026-04-22T10:00:01.000Z',
+      stop,
+    });
+    const app = buildServer({
+      registry,
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    try {
+      const registerResponse = await app.inject({
+        method: 'POST',
+        url: '/api/instances/register',
+        payload: {
+          id: 'manual-shadow',
+          projectName: 'alpha',
+          projectPath: project,
+          url: 'http://127.0.0.1:7008?token=abc',
+          port: 7008,
+          pid: 4321,
+          source: 'manual',
+          startedAt: '2026-04-22T11:00:00.000Z',
+        },
+      });
+      const unregisterResponse = await app.inject({
+        method: 'POST',
+        url: '/api/instances/unregister',
+        payload: { projectPath: project, port: 4321 },
+      });
+
+      expect(registerResponse.statusCode).toBe(200);
+      expect(registerResponse.json().data.instance.id).toBe('launcher-owned');
+      expect(registerResponse.json().data.instance.port).toBe(4321);
+      expect(registry.get('launcher-owned')?.instance.source).toBe('launcher');
+      expect(registry.get('launcher-owned')?.stop).toBe(stop);
+      expect(unregisterResponse.statusCode).toBe(200);
+      expect(unregisterResponse.json()).toEqual({ ok: true, data: { removed: false } });
+      expect(registry.get('launcher-owned')?.internalStatus).toBe('running');
+    } finally {
+      await app.close();
+      await rm(project, { recursive: true, force: true });
+    }
+  });
+
+  it('blocks same-path launches while the previous process is stopping', async () => {
+    const stop = vi.fn();
+    const registry = new InstanceRegistry();
+    registry.createRunning({
+      id: 'stopping-one',
+      projectName: 'tmp',
+      projectPath: '/tmp',
+      url: 'http://127.0.0.1:4321',
+      port: 4321,
+      pid: 1001,
+      source: 'launcher',
+      startedAt: '2026-04-22T10:00:00.000Z',
+      lastSeen: '2026-04-22T10:00:01.000Z',
+      stop,
+    });
+    registry.stop('stopping-one', 'stop');
+    const launch = vi.fn();
+    const app = buildServer({
+      registry,
+      launcher: { launch },
+      auth: authConfig,
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/instances',
+      headers: await authHeaders(app),
+      payload: { projectPath: '/tmp' },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.code).toBe('LIFECYCLE_PENDING');
+    expect(launch).not.toHaveBeenCalled();
+
+    await app.close();
+  });
+
   it('registers external instances and removes them on unregister', async () => {
     const app = buildServer({
       launcher: { launch: vi.fn() },
@@ -610,6 +846,147 @@ describe('hub-service routes', () => {
     });
 
     await app.close();
+  });
+
+  it('returns the existing instance when the same project path is launched twice', async () => {
+    const launch = vi.fn().mockResolvedValue({
+      projectName: 'tmp',
+      url: 'http://127.0.0.1:4321',
+      port: 4321,
+      pid: 321,
+      stop: vi.fn(),
+      onExit: vi.fn(),
+    });
+    const app = buildServer({
+      auth: authConfig,
+      launcher: { launch },
+    });
+
+    const headers = await authHeaders(app);
+    const firstResponse = await app.inject({
+      method: 'POST',
+      url: '/api/instances',
+      headers,
+      payload: { projectPath: '/tmp' },
+    });
+    const secondResponse = await app.inject({
+      method: 'POST',
+      url: '/api/instances',
+      headers,
+      payload: { projectPath: '/tmp' },
+    });
+
+    expect(firstResponse.statusCode).toBe(200);
+    expect(secondResponse.statusCode).toBe(200);
+    expect(launch).toHaveBeenCalledTimes(1);
+    expect(secondResponse.json().data.instance.id).toBe(firstResponse.json().data.instance.id);
+
+    await app.close();
+  });
+
+  it('reserves the project path while a launch is starting', async () => {
+    let resolveLaunch: (value: {
+      projectName: string;
+      url: string;
+      port: number;
+      pid: number;
+      stop: () => void;
+      onExit: (listener: () => void) => void;
+    }) => void;
+    const launch = vi.fn().mockImplementation(() => new Promise((resolve) => {
+      resolveLaunch = resolve;
+    }));
+    const app = buildServer({
+      auth: authConfig,
+      launcher: { launch },
+    });
+
+    const headers = await authHeaders(app);
+    const first = app.inject({
+      method: 'POST',
+      url: '/api/instances',
+      headers,
+      payload: { projectPath: '/tmp' },
+    });
+    const second = app.inject({
+      method: 'POST',
+      url: '/api/instances',
+      headers,
+      payload: { projectPath: '/tmp' },
+    });
+
+    await vi.waitFor(() => expect(launch).toHaveBeenCalledTimes(1));
+
+    resolveLaunch!({
+      projectName: 'tmp',
+      url: 'http://127.0.0.1:4321',
+      port: 4321,
+      pid: 321,
+      stop: vi.fn(),
+      onExit: vi.fn(),
+    });
+    const [firstResponse, secondResponse] = await Promise.all([first, second]);
+
+    expect(firstResponse.statusCode).toBe(200);
+    expect(secondResponse.statusCode).toBe(200);
+    expect(secondResponse.json().data.instance.id).toBe(firstResponse.json().data.instance.id);
+    await app.close();
+  });
+
+  it('keeps one registered instance per real project path and preserves bridge id', async () => {
+    const project = await mkdtemp(join(tmpdir(), 'ccv-hub-project-'));
+    const link = `${project}-link`;
+    const upstream = createServer((_, response) => response.end('ok'));
+    const firstPort = await listen(upstream);
+    await symlink(project, link);
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    try {
+      const firstResponse = await app.inject({
+        method: 'POST',
+        url: '/api/instances/register',
+        payload: {
+          id: 'manual-first',
+          projectName: 'project',
+          projectPath: project,
+          url: `http://127.0.0.1:${firstPort}?token=abc`,
+          port: firstPort,
+          pid: 4321,
+          source: 'manual',
+          startedAt: '2026-04-22T10:00:00.000Z',
+        },
+      });
+      const secondResponse = await app.inject({
+        method: 'POST',
+        url: '/api/instances/register',
+        payload: {
+          id: 'manual-second',
+          projectName: 'project',
+          projectPath: link,
+          url: `http://127.0.0.1:${firstPort}?token=def`,
+          port: firstPort,
+          pid: 4322,
+          source: 'manual',
+          startedAt: '2026-04-22T11:00:00.000Z',
+        },
+      });
+      const listResponse = await app.inject({ method: 'GET', url: '/api/instances', headers: await authHeaders(app) });
+
+      expect(firstResponse.statusCode).toBe(200);
+      expect(secondResponse.statusCode).toBe(200);
+      expect(secondResponse.json().data.instance.id).toBe('manual-first');
+      expect(new URL(secondResponse.json().data.instance.url).host).toBe(new URL(firstResponse.json().data.instance.url).host);
+      expect(secondResponse.json().data.instance.port).toBe(firstPort);
+      expect(listResponse.json().data.instances).toHaveLength(1);
+    } finally {
+      await app.close();
+      await close(upstream);
+      await rm(link, { force: true });
+      await rm(project, { recursive: true, force: true });
+    }
   });
 
   it('passes launch options to the launcher', async () => {

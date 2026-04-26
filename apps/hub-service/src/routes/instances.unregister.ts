@@ -6,6 +6,7 @@
  */
 import type { FastifyInstance } from 'fastify';
 import { unregisterInstanceRequestSchema, type UnregisterInstanceRequest, type UnregisterInstanceResponse } from '@ccv-hub/shared-contracts';
+import { assertProjectPath } from '../domain/path-validator.js';
 import { toFailureResponse } from '../domain/error-mapper.js';
 import type { InstanceRegistry } from '../domain/instance-registry.js';
 
@@ -13,10 +14,11 @@ export function registerUnregisterInstanceRoute(app: FastifyInstance, registry: 
   app.post<{ Body: UnregisterInstanceRequest }>('/api/instances/unregister', async (request, reply): Promise<UnregisterInstanceResponse> => {
     try {
       const payload = unregisterInstanceRequestSchema.parse(request.body);
+      const projectPath = payload.projectPath ? assertProjectPath(payload.projectPath) : undefined;
       return {
         ok: true,
         data: {
-          removed: registry.removeMatching(payload),
+          removed: registry.removeMatching({ ...payload, projectPath, source: 'manual' }),
         },
       };
     } catch (error) {

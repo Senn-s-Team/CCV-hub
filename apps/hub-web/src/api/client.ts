@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shared-contracts 的请求响应 schema，依赖浏览器 fetch
- * [OUTPUT]: 对外提供 getHealth、getAuthStatus、login、logout、getInstances、getHostPathRoots、getHostPathList、createInstance 与 ApiClientError
+ * [OUTPUT]: 对外提供 getHealth、getAuthStatus、login、logout、getInstances、getHostPathRoots、getHostPathList、createInstance、controlInstanceLifecycle 与 ApiClientError
  * [POS]: hub-web 的服务端访问层，负责把接口响应解析成稳定前端数据
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -10,6 +10,7 @@ import {
   createInstanceRequestSchema,
   createInstanceResponseSchema,
   healthResponseSchema,
+  lifecycleInstanceResponseSchema,
   hostPathListResponseSchema,
   hostPathRootsResponseSchema,
   listInstancesResponseSchema,
@@ -19,6 +20,8 @@ import {
   type HealthResponse,
   type HostPathListResponse,
   type HostPathRootsResponse,
+  type LifecycleAction,
+  type LifecycleInstanceResponse,
   type ListInstancesResponse,
 } from '@ccv-hub/shared-contracts';
 
@@ -98,4 +101,10 @@ export function createInstance(input: CreateInstanceRequest): Promise<CreateInst
     method: 'POST',
     body: JSON.stringify(body),
   }, (payload) => createInstanceResponseSchema.parse(payload));
+}
+
+export function controlInstanceLifecycle(id: string, action: LifecycleAction): Promise<LifecycleInstanceResponse> {
+  return request(`/api/instances/${encodeURIComponent(id)}/actions/${action}`, {
+    method: 'POST',
+  }, (payload) => lifecycleInstanceResponseSchema.parse(payload));
 }

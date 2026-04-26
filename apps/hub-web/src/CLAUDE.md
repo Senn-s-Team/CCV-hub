@@ -2,9 +2,9 @@
 > L2 | 父级: ../CLAUDE.md
 
 成员清单
-api/: Hub API 客户端目录，负责实例列表读取与启动请求封装
+api/: Hub API 客户端目录，负责实例列表读取、启动请求与生命周期控制封装
 components/: React 组件目录，负责登录守门、实例卡片、启动弹窗与 Toast 展示
-hooks/: React Query hooks 目录，负责实例轮询与启动 mutation
+hooks/: React Query hooks 目录，负责实例轮询、启动 mutation 与生命周期 mutation
 pages/: 页面目录，负责总览页状态编排与用户动作入口
 test/: Vitest 测试目录，负责总览页交互与 Vite 代理分流回归测试
 App.tsx: hub-web 根组件，负责挂载鉴权守门层与页面入口

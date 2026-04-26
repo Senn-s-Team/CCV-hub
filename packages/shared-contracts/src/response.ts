@@ -128,6 +128,15 @@ export const unregisterInstanceDataSchema = z.object({
 
 export const unregisterInstanceResponseSchema = apiResponseSchema(unregisterInstanceDataSchema);
 
+export const lifecycleActionSchema = z.enum(['stop', 'force-stop']);
+
+export const lifecycleInstanceDataSchema = z.object({
+  action: lifecycleActionSchema,
+  removed: z.boolean(),
+});
+
+export const lifecycleInstanceResponseSchema = apiResponseSchema(lifecycleInstanceDataSchema);
+
 export type ApiSuccess<TData> = {
   ok: true;
   data: TData;
@@ -149,3 +158,5 @@ export type RegisterInstanceRequest = z.infer<typeof registerInstanceRequestSche
 export type RegisterInstanceResponse = z.infer<typeof registerInstanceResponseSchema>;
 export type UnregisterInstanceRequest = z.infer<typeof unregisterInstanceRequestSchema>;
 export type UnregisterInstanceResponse = z.infer<typeof unregisterInstanceResponseSchema>;
+export type LifecycleAction = z.infer<typeof lifecycleActionSchema>;
+export type LifecycleInstanceResponse = z.infer<typeof lifecycleInstanceResponseSchema>;

@@ -11,6 +11,7 @@ import InstanceCard from '../components/InstanceCard.js';
 import LaunchDialog from '../components/LaunchDialog.js';
 import Toast from '../components/Toast.js';
 import { useInstances } from '../hooks/useInstances.js';
+import { useInstanceLifecycle } from '../hooks/useInstanceLifecycle.js';
 import { useLaunchInstance } from '../hooks/useLaunchInstance.js';
 
 type OverviewPageProps = {
@@ -32,6 +33,7 @@ export default function OverviewPage({ onLogout }: OverviewPageProps) {
   const [toastMessage, setToastMessage] = useState('');
   const instancesQuery = useInstances();
   const launchMutation = useLaunchInstance();
+  const lifecycleMutation = useInstanceLifecycle();
 
   const instances = instancesQuery.data?.instances ?? [];
   const filteredInstances = useMemo(() => filterInstances(instances, query), [instances, query]);
@@ -64,6 +66,16 @@ export default function OverviewPage({ onLogout }: OverviewPageProps) {
   async function handleCopy(url: string) {
     await navigator.clipboard.writeText(url);
     setToastMessage(`已复制 ${url}`);
+  }
+
+  async function handleStop(id: string) {
+    try {
+      await lifecycleMutation.mutateAsync({ id, action: 'stop' });
+      setToastMessage('实例已停止');
+    } catch (error) {
+      const message = error instanceof ApiClientError ? error.message : error instanceof Error ? error.message : '停止失败';
+      setToastMessage(message);
+    }
   }
 
   return (
@@ -192,6 +204,8 @@ export default function OverviewPage({ onLogout }: OverviewPageProps) {
                               instance={instance}
                               onOpen={handleOpen}
                               onCopy={(url) => void handleCopy(url)}
+                              onStop={(id) => void handleStop(id)}
+                              isStopping={lifecycleMutation.isPending && lifecycleMutation.variables?.id === instance.id}
                             />
                           ))}
                         </div>
@@ -221,6 +235,8 @@ export default function OverviewPage({ onLogout }: OverviewPageProps) {
                             instance={instance}
                             onOpen={handleOpen}
                             onCopy={(url) => void handleCopy(url)}
+                            onStop={(id) => void handleStop(id)}
+                            isStopping={lifecycleMutation.isPending && lifecycleMutation.variables?.id === instance.id}
                           />
                         ))}
                       </div>

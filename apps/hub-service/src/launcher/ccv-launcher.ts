@@ -16,7 +16,7 @@ export type LaunchResult = {
   url: string;
   port: number;
   pid: number;
-  stop: () => void;
+  stop: (signal?: NodeJS.Signals) => void;
   onExit: (listener: () => void) => void;
 };
 

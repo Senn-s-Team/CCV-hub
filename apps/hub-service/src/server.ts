@@ -16,6 +16,7 @@ import { registerHealthRoute } from './routes/health.js';
 import { registerHostPathRoutes } from './routes/host-paths.js';
 import { registerListInstancesRoute } from './routes/instances.get.js';
 import { registerCreateInstanceRoute } from './routes/instances.post.js';
+import { registerInstanceLifecycleRoute } from './routes/instances.lifecycle.js';
 import { registerExternalInstanceRoute } from './routes/instances.register.js';
 import { registerUnregisterInstanceRoute } from './routes/instances.unregister.js';
 import { registerViewerBridgeRoute } from './routes/viewer-bridge.js';
@@ -52,6 +53,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   registerHostPathRoutes(app, pathBrowser);
   registerListInstancesRoute(app, registry);
   registerCreateInstanceRoute(app, registry, launcher);
+  registerInstanceLifecycleRoute(app, registry);
   registerExternalInstanceRoute(app, registry);
   registerUnregisterInstanceRoute(app, registry);
   registerViewerBridgeRoute(app, registry);

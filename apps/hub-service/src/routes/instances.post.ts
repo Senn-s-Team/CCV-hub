@@ -14,57 +14,90 @@ import type { InstanceRegistry } from '../domain/instance-registry.js';
 import type { ViewerLauncher } from '../launcher/ccv-launcher.js';
 
 export function registerCreateInstanceRoute(app: FastifyInstance, registry: InstanceRegistry, launcher: ViewerLauncher): void {
-  app.post<{ Body: CreateInstanceRequest }>('/api/instances', async (request, reply): Promise<CreateInstanceResponse> => {
-    let instanceId: string | undefined;
+  const pendingLaunches = new Map<string, Promise<CreateInstanceResponse>>();
 
+  app.post<{ Body: CreateInstanceRequest }>('/api/instances', async (request, reply): Promise<CreateInstanceResponse> => {
     try {
       const body = createInstanceRequestSchema.parse(request.body);
       const projectPath = assertProjectPath(body.projectPath);
-      const launchResult = await launcher.launch(projectPath, body.options);
-      const now = new Date().toISOString();
-      instanceId = randomUUID();
-
-      const bridgeIdentity = createBridgeIdentity();
-      registry.createStarting({
-        id: instanceId,
-        projectName: launchResult.projectName,
-        projectPath,
-        url: buildBridgeUrl(bridgeIdentity.id, launchResult.url),
-        upstreamUrl: launchResult.url,
-        bridgeId: bridgeIdentity.id,
-        port: launchResult.port,
-        pid: launchResult.pid,
-        source: 'launcher',
-        startedAt: now,
-        lastSeen: now,
-        stop: launchResult.stop,
-      });
-      registry.markRunning(instanceId, now);
-
-      launchResult.onExit(() => {
-        registry.markExited(instanceId!, new Date().toISOString());
-        registry.markRemoved(instanceId!);
-      });
-
-      const record = registry.get(instanceId);
-      if (!record) {
-        throw createAppError('REGISTER_FAILED');
+      const existing = registry.findActiveByProjectPath(projectPath);
+      if (existing?.internalStatus === 'running') {
+        return {
+          ok: true,
+          data: {
+            instance: existing.instance,
+          },
+        };
+      }
+      if (existing?.internalStatus === 'stopping') {
+        throw createAppError('LIFECYCLE_PENDING');
       }
 
-      return {
-        ok: true,
-        data: {
-          instance: record.instance,
-        },
-      };
+      const pendingLaunch = pendingLaunches.get(projectPath);
+      if (pendingLaunch) {
+        return await pendingLaunch;
+      }
+
+      const launchPromise = createInstance(projectPath, body.options);
+      pendingLaunches.set(projectPath, launchPromise);
+      return await launchPromise.finally(() => pendingLaunches.delete(projectPath));
     } catch (error) {
-      if (instanceId) {
-        registry.discard(instanceId);
-      }
       const failure = toFailureResponse(error, 'START_FAILED');
-      const statusCode = failure.error.code === 'INVALID_PATH' ? 400 : 500;
+      const statusCode = failure.error.code === 'INVALID_PATH' || failure.error.code === 'LIFECYCLE_PENDING' ? 400 : 500;
       reply.code(statusCode);
       return failure;
     }
   });
+
+  async function createInstance(projectPath: string, options: CreateInstanceRequest['options']): Promise<CreateInstanceResponse> {
+    const launchResult = await launcher.launch(projectPath, options);
+    const existing = registry.findActiveByProjectPath(projectPath);
+    if (existing) {
+      launchResult.stop();
+      if (existing.internalStatus === 'stopping') {
+        throw createAppError('LIFECYCLE_PENDING');
+      }
+      return {
+        ok: true,
+        data: {
+          instance: existing.instance,
+        },
+      };
+    }
+
+    const now = new Date().toISOString();
+    const instanceId = randomUUID();
+    const bridgeIdentity = createBridgeIdentity();
+    const record = registry.createRunning({
+      id: instanceId,
+      projectName: launchResult.projectName,
+      projectPath,
+      url: buildBridgeUrl(bridgeIdentity.id, launchResult.url),
+      upstreamUrl: launchResult.url,
+      bridgeId: bridgeIdentity.id,
+      port: launchResult.port,
+      pid: launchResult.pid,
+      source: 'launcher',
+      startedAt: now,
+      lastSeen: now,
+      stop: launchResult.stop,
+    });
+
+    launchResult.onExit(() => {
+      registry.markExited(instanceId, new Date().toISOString());
+      registry.markRemoved(instanceId);
+    });
+
+    const registered = registry.get(instanceId);
+    if (!registered) {
+      throw createAppError('REGISTER_FAILED');
+    }
+
+    return {
+      ok: true,
+      data: {
+        instance: record.instance,
+      },
+    };
+  }
 }
