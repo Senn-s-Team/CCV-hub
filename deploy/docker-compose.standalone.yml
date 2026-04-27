@@ -1,0 +1,20 @@
+# [INPUT]: 依赖已发布的 ccv-hub-web image 与宿主机 ccv-hub-agent systemd 服务
+# [OUTPUT]: 对外提供无平台绑定的 image-only Docker Compose Web 入口
+# [POS]: deploy 目录的通用 Compose 模板，负责把 Web 容器通过 host.docker.internal 桥接到宿主机 Agent
+# [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+services:
+  ccv-hub-web:
+    image: ${CCV_HUB_WEB_IMAGE:-ccv-hub-web:v0.0.0-dev}
+    restart: unless-stopped
+    ports:
+      - "${CCV_HUB_WEB_PORT:-4317}:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      CCV_HUB_AGENT_UPSTREAM: ${CCV_HUB_AGENT_UPSTREAM:-http://host.docker.internal:4318}
+      CCV_HUB_PROXY_TARGET: ${CCV_HUB_AGENT_UPSTREAM:-http://host.docker.internal:4318}
+      CCV_HUB_PUBLIC_HOST: ${CCV_HUB_PUBLIC_HOST:-hub.example.com}
+      CCV_HUB_PUBLIC_DOMAIN: ${CCV_HUB_PUBLIC_DOMAIN:-example.com}
+      CCV_HUB_PUBLIC_DOMAIN_REGEX: ${CCV_HUB_PUBLIC_DOMAIN_REGEX:-example\.com}
+      CCV_HUB_VIEWER_SUBDOMAIN_PREFIX: ${CCV_HUB_VIEWER_SUBDOMAIN_PREFIX:-ccv-}
+      CCV_HUB_PUBLIC_PROTOCOL: ${CCV_HUB_PUBLIC_PROTOCOL:-https}

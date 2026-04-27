@@ -19,7 +19,7 @@
 | Phase 2 | 配置模板化 | completed | release compose、nginx template、agent env template | Task A 已模板化并通过变量链复核 |
 | Phase 3 | Agent release 化 | completed | build artifact runtime、release systemd unit、current symlink 安装结构、Agent tarball 打包脚本、安装脚本 | `node dist/server.js`、release tarball health check、Docker build、systemd verify 均通过 |
 | Phase 4 | Web release 化 | completed | image-only compose、Web 静态 tarball、无源码挂载 Web 容器 | `bun run release:web -- v0.0.0-test`、tarball 内容检查、Docker build、compose config、容器 smoke 均通过 |
-| Phase 5 | 平台适配补齐 | pending | Docker Compose、Dokploy、Caddy、Nginx、Kubernetes 文档与模板 | 每个平台有 smoke path |
+| Phase 5 | 平台适配补齐 | completed | Compose/Dokploy/Caddy/Nginx/Kubernetes 文档、standalone compose、Caddy/Nginx/Kubernetes 模板 | 每个平台有 smoke path；compose config 已纳入验证路径 |
 | Phase 6 | 发布验证自动化 | pending | smoke test、release checklist、rollback checklist、troubleshooting | release 前后可重复验证 |
 
 ## 4. 已完成记录
@@ -37,6 +37,8 @@
 - 完成 Task B Agent release 打包：新增 `deploy/ccv-hub-agent.service`、`deploy/agent.env.example`、`scripts/package-agent-release.mjs`、`scripts/install-agent-release.sh`，`bun run release:agent -- v0.0.0-test` 可产出 tarball。
 - 完成 Task B 端到端验证：tarball 内容检查、解包后 `bun install --production`、携带宿主机 `CCV_CLI_PATH` 启动 `dist/server.js`、`/api/health`、Docker build、systemd verify、workspace test/build 均通过。
 - 完成 Task C Web release 化：`deploy/docker-compose.hub.yml` 改为 image-only 部署，移除 Web 容器源码挂载，新增 `scripts/package-web-release.mjs` 与 `release:web`，Web tarball 固定包含 `dist/` 与 nginx 模板；`bun run --filter hub-web build`、`bun run release:web -- v0.0.0-test`、tarball 内容检查、`docker build`、`docker compose config`、容器首页/API/mounts smoke 均通过。
+- 完成 Task D 平台适配补齐：新增 `compose.md`、`dokploy.md`、`caddy.md`、`nginx.md`、`kubernetes.md` 五个平台文档，新增 `docker-compose.standalone.yml`、`Caddyfile.example`、`nginx.hub.conf.example`、`kubernetes-web.yaml` 四个部署模板；Compose/Dokploy/Caddy/Nginx/Kubernetes 均给出宿主机 Agent 主路径和 smoke path。
+- 完成 Task D 模板验证：`docker compose -f deploy/docker-compose.hub.yml config` 与 `docker compose --env-file .env.example -f deploy/docker-compose.standalone.yml config` 通过；当前环境未安装 `caddy`、`nginx`、`kubectl`，对应模板保留文档化验证命令。
 
 ## 5. 下一步任务拆分
 
@@ -101,19 +103,27 @@
 
 ### Task D：平台适配文档与模板
 
-目标：补齐通用开源部署入口。
+目标：补齐通用开源部署入口。已完成五个平台文档与四个部署模板，默认保持 Docker Compose/Web 容器 + 宿主机 systemd Agent。
 
 文件范围：
 
 - `docs/deploy/modes.md`
-- 新增 Compose、Dokploy、Caddy、Nginx 模板文档
-- `deploy/` 模板文件
+- `docs/deploy/compose.md`
+- `docs/deploy/dokploy.md`
+- `docs/deploy/caddy.md`
+- `docs/deploy/nginx.md`
+- `docs/deploy/kubernetes.md`
+- `deploy/docker-compose.standalone.yml`
+- `deploy/Caddyfile.example`
+- `deploy/nginx.hub.conf.example`
+- `deploy/kubernetes-web.yaml`
 
 验收：
 
 - 用户可以按 Docker Compose + systemd Agent 完成部署。
 - Dokploy 文档只描述平台差异。
 - Caddy/Nginx 给出可复制反代样例。
+- Kubernetes 文档固定 Web 控制面边界，Agent 保持节点 systemd。
 
 ### Task E：验证与回滚
 
@@ -132,7 +142,7 @@
 
 ## 6. 当前阻塞项
 
-暂无。
+暂无。Phase 6 进入验证与回滚自动化。
 
 ## 7. 风险记录
 

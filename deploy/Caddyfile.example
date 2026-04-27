@@ -1,0 +1,35 @@
+# [INPUT]: 依赖 Caddy、hub-web 静态产物目录与宿主机 ccv-hub-agent API/bridge 服务
+# [OUTPUT]: 对外提供 Hub 主域名、/api 代理与 viewer wildcard 反向代理样例
+# [POS]: deploy 目录的 Caddy 平台适配模板，负责用自动 HTTPS 承载 Web 静态入口与 Agent bridge
+# [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+{
+  servers {
+    protocols h1 h2
+  }
+}
+
+hub.example.com {
+  encode zstd gzip
+  root * /var/www/ccv-hub/current
+
+  handle /api/* {
+    reverse_proxy 127.0.0.1:4318
+  }
+
+  handle {
+    try_files {path} {path}/ /index.html
+    file_server
+  }
+}
+
+*.example.com {
+  @viewer host_regexp viewer ^ccv-[a-f0-9]{32}\.example\.com$
+
+  handle @viewer {
+    reverse_proxy 127.0.0.1:4318 {
+      transport http {
+        read_timeout 1h
+      }
+    }
+  }
+}

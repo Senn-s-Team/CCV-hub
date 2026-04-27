@@ -1,0 +1,82 @@
+# [INPUT]: 依赖已发布的 ccv-hub-web image、集群 Ingress 控制器与节点可达的宿主机 ccv-hub-agent
+# [OUTPUT]: 对外提供仅承载 Web 控制面的 Kubernetes Deployment、Service 与 Ingress 示例
+# [POS]: deploy 目录的 Kubernetes Web 模板，负责声明控制面容器边界并把 Agent endpoint 保留在节点侧
+# [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ccv-hub-web
+  labels:
+    app: ccv-hub-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ccv-hub-web
+  template:
+    metadata:
+      labels:
+        app: ccv-hub-web
+    spec:
+      containers:
+        - name: ccv-hub-web
+          image: ccv-hub-web:v0.0.0-dev
+          ports:
+            - containerPort: 80
+          env:
+            - name: CCV_HUB_AGENT_UPSTREAM
+              value: http://node-agent.example.internal:4318
+            - name: CCV_HUB_PROXY_TARGET
+              value: http://node-agent.example.internal:4318
+            - name: CCV_HUB_PUBLIC_PROTOCOL
+              value: https
+            - name: CCV_HUB_PUBLIC_HOST
+              value: hub.example.com
+            - name: CCV_HUB_PUBLIC_DOMAIN
+              value: example.com
+            - name: CCV_HUB_PUBLIC_DOMAIN_REGEX
+              value: example\\.com
+            - name: CCV_HUB_VIEWER_SUBDOMAIN_PREFIX
+              value: ccv-
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ccv-hub-web
+spec:
+  selector:
+    app: ccv-hub-web
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ccv-hub-web
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  rules:
+    - host: hub.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ccv-hub-web
+                port:
+                  number: 80
+    - host: "*.example.com"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ccv-hub-web
+                port:
+                  number: 80

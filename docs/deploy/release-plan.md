@@ -31,10 +31,10 @@ checksums.txt
 
 产物职责：
 
-- Web image：给 Dokploy、Docker Compose、Kubernetes 使用。
+- Web image：给 Docker Compose、Dokploy、Kubernetes 使用。
 - Web tarball：给 Nginx/Caddy 静态部署使用。
 - Agent tarball：给宿主机 systemd 安装使用。
-- deploy templates：提供 compose、systemd、Caddy、Nginx、Dokploy 样例。
+- deploy templates：提供 `docker-compose.hub.yml`、`docker-compose.standalone.yml`、`Caddyfile.example`、`nginx.hub.conf.example`、`kubernetes-web.yaml` 和 systemd/env 样例。
 - checksums：用于下载校验。
 
 ## 3. 版本规则
@@ -138,7 +138,7 @@ docker save ccv-hub-web:vX.Y.Z | gzip > build/ccv-hub-web-vX.Y.Z.image.tar.gz
 ```text
 apps/hub-web/dist + apps/hub-web/nginx.conf -> ccv-hub-web-vX.Y.Z.tar.gz
 apps/hub-service/dist + package metadata + deploy/ccv-hub-agent.service + deploy/agent.env.example + scripts/install-agent-release.sh -> ccv-hub-agent-vX.Y.Z.tar.gz
-deploy templates -> deploy-templates-vX.Y.Z.zip
+deploy/docker-compose.hub.yml + deploy/docker-compose.standalone.yml + deploy/Caddyfile.example + deploy/nginx.hub.conf.example + deploy/kubernetes-web.yaml + systemd/env templates -> deploy-templates-vX.Y.Z.zip
 ```
 
 Web tarball 内容固定为 `dist/` 静态资源与 `nginx/default.conf.template`，由 Nginx/Caddy 静态部署层接入 `/api` 与 viewer wildcard 反向代理。
@@ -163,6 +163,14 @@ Release 必跑 smoke test：
 7. viewer API、SSE、WebSocket 可用。
 8. 停止实例后列表收敛。
 9. Agent 日志中出现结构化注册、停止、bridge 记录。
+
+平台模板验证：
+
+- Compose：`docker compose -f deploy/docker-compose.standalone.yml config`。
+- Dokploy：`docker compose -f deploy/docker-compose.hub.yml config`，并复核 Traefik Hub/router 与 viewer/router HostRegexp。
+- Caddy：`caddy adapt --config deploy/Caddyfile.example`。
+- Nginx：`nginx -t` 使用 `deploy/nginx.hub.conf.example` 生成的站点配置。
+- Kubernetes：`kubectl apply --dry-run=client -f deploy/kubernetes-web.yaml`。
 
 ## 8. 升级流程
 
@@ -231,11 +239,11 @@ Web 回滚：
 
 ### Phase 5：平台适配补齐
 
-- Docker Compose 官方样例。
-- Dokploy 官方样例。
-- Caddy 官方样例。
-- Nginx 官方样例。
-- Kubernetes 边界说明。
+- Docker Compose 官方样例：`docs/deploy/compose.md`、`deploy/docker-compose.standalone.yml`。
+- Dokploy 官方样例：`docs/deploy/dokploy.md`、`deploy/docker-compose.hub.yml`。
+- Caddy 官方样例：`docs/deploy/caddy.md`、`deploy/Caddyfile.example`。
+- Nginx 官方样例：`docs/deploy/nginx.md`、`deploy/nginx.hub.conf.example`。
+- Kubernetes Web 边界说明：`docs/deploy/kubernetes.md`、`deploy/kubernetes-web.yaml`。
 
 ### Phase 6：发布验证自动化
 
