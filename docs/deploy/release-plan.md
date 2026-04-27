@@ -152,17 +152,23 @@ Web tarball 内容固定为 `dist/` 静态资源与 `nginx/default.conf.template
 
 ### 7.4 验证
 
-Release 必跑 smoke test：
+Release 必跑 smoke test 通过 `bun run smoke:release` 执行，完整流程见 `docs/deploy/release-checklist.md`。
 
-1. Hub 首页可访问。
-2. `GET /api/health` 返回版本、环境、uptime、bridge 状态。
-3. `GET /api/instances` 返回统一结构。
-4. 合法路径可以启动 `cc-viewer`。
-5. 非法路径返回明确错误。
-6. viewer 子域名可加载 HTML、JS、CSS。
-7. viewer API、SSE、WebSocket 可用。
-8. 停止实例后列表收敛。
-9. Agent 日志中出现结构化注册、停止、bridge 记录。
+基础 smoke 覆盖：
+
+1. Hub 首页可访问，可通过 `CCV_HUB_SMOKE_CHECK_HOME=1` 启用。
+2. `GET /api/health` 返回服务存活结构。
+3. `GET /api/auth/me` 返回鉴权配置状态。
+4. `GET /api/instances` 返回统一运行中实例结构。
+5. 非法路径返回 `INVALID_PATH`，可通过 `CCV_HUB_SMOKE_CHECK_INVALID_PATH=1` 启用。
+
+深度 smoke 通过 `CCV_HUB_SMOKE_PROJECT_PATH` 或 `CCV_HUB_SMOKE_VIEWER_URL` 启用：
+
+1. 合法路径可以启动 `cc-viewer`。
+2. viewer 子域名可加载 HTML、JS、CSS。
+3. viewer API、SSE、WebSocket 可用。
+4. 停止实例后列表收敛。
+5. Agent 日志中出现结构化注册、停止、bridge 记录。
 
 平台模板验证：
 
@@ -247,10 +253,10 @@ Web 回滚：
 
 ### Phase 6：发布验证自动化
 
-- 增加 smoke test 脚本。
-- 增加 release checklist。
-- 增加 troubleshooting 文档。
-- 增加回滚演练记录。
+- 增加 `scripts/smoke-release.mjs` 与 `bun run smoke:release`。
+- 增加 `docs/deploy/release-checklist.md`。
+- 增加 `docs/deploy/troubleshooting.md`。
+- 增加 Agent/Web 回滚演练步骤。
 
 ## 11. 首批实施建议
 

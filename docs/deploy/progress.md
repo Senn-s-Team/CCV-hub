@@ -20,7 +20,7 @@
 | Phase 3 | Agent release 化 | completed | build artifact runtime、release systemd unit、current symlink 安装结构、Agent tarball 打包脚本、安装脚本 | `node dist/server.js`、release tarball health check、Docker build、systemd verify 均通过 |
 | Phase 4 | Web release 化 | completed | image-only compose、Web 静态 tarball、无源码挂载 Web 容器 | `bun run release:web -- v0.0.0-test`、tarball 内容检查、Docker build、compose config、容器 smoke 均通过 |
 | Phase 5 | 平台适配补齐 | completed | Compose/Dokploy/Caddy/Nginx/Kubernetes 文档、standalone compose、Caddy/Nginx/Kubernetes 模板 | 每个平台有 smoke path；compose config 已纳入验证路径 |
-| Phase 6 | 发布验证自动化 | pending | smoke test、release checklist、rollback checklist、troubleshooting | release 前后可重复验证 |
+| Phase 6 | 发布验证自动化 | completed | `scripts/smoke-release.mjs`、`smoke:release`、release checklist、rollback checklist、troubleshooting | `node --check scripts/smoke-release.mjs`、`bun run lint`、`bun run test`、临时 Agent 鉴权 smoke 均通过 |
 
 ## 4. 已完成记录
 
@@ -39,6 +39,13 @@
 - 完成 Task C Web release 化：`deploy/docker-compose.hub.yml` 改为 image-only 部署，移除 Web 容器源码挂载，新增 `scripts/package-web-release.mjs` 与 `release:web`，Web tarball 固定包含 `dist/` 与 nginx 模板；`bun run --filter hub-web build`、`bun run release:web -- v0.0.0-test`、tarball 内容检查、`docker build`、`docker compose config`、容器首页/API/mounts smoke 均通过。
 - 完成 Task D 平台适配补齐：新增 `compose.md`、`dokploy.md`、`caddy.md`、`nginx.md`、`kubernetes.md` 五个平台文档，新增 `docker-compose.standalone.yml`、`Caddyfile.example`、`nginx.hub.conf.example`、`kubernetes-web.yaml` 四个部署模板；Compose/Dokploy/Caddy/Nginx/Kubernetes 均给出宿主机 Agent 主路径和 smoke path。
 - 完成 Task D 模板验证：`docker compose -f deploy/docker-compose.hub.yml config` 与 `docker compose --env-file .env.example -f deploy/docker-compose.standalone.yml config` 通过；当前环境未安装 `caddy`、`nginx`、`kubectl`，对应模板保留文档化验证命令。
+
+### 2026-04-28
+
+- 完成 Task E 发布验证自动化：新增 `scripts/smoke-release.mjs` 与根脚本 `smoke:release`，基础 smoke 覆盖 `/api/health`、`/api/auth/me`、`/api/instances`，可选启用 Hub 首页、非法路径、launch、viewer HTTP/SSE/WebSocket 与 stop 收敛。
+- 完成 release 验证文档：新增 `docs/deploy/release-checklist.md`，固化构建、打包、模板验证、Agent/Web 验证、smoke test、手工深度验证、Agent/Web/Kubernetes 回滚演练与发布判定。
+- 完成故障排查文档：新增 `docs/deploy/troubleshooting.md`，覆盖 Agent 启动、health、鉴权、API 代理、启动实例、viewer 子域名、SSE、WebSocket、停止收敛与回滚异常。
+- 完成 Task E 验证：`node --check scripts/smoke-release.mjs`、`bun run lint`、`bun run test`、临时 Agent 鉴权 smoke 均通过；未提供真实 viewer 环境，深度 viewer 与 stop 检查保留为部署环境 smoke path。
 
 ## 5. 下一步任务拆分
 
@@ -127,22 +134,27 @@
 
 ### Task E：验证与回滚
 
-目标：形成 release 前后可重复执行的验证流程。
+目标：形成 release 前后可重复执行的验证流程。已完成 smoke 脚本、release checklist、rollback checklist 与 troubleshooting 文档。
 
 文件范围：
 
 - `docs/deploy/release-plan.md`
-- smoke test 脚本或 checklist
-- troubleshooting 文档
+- `docs/deploy/release-checklist.md`
+- `docs/deploy/troubleshooting.md`
+- `scripts/smoke-release.mjs`
+- `package.json`
+- `scripts/CLAUDE.md`
+- `docs/deploy/CLAUDE.md`
 
 验收：
 
-- Hub health、instances、launch、viewer HTML/API/SSE/WebSocket、stop 收敛均有验证步骤。
-- Agent 和 Web 均有回滚步骤。
+- Hub health、auth、instances、非法路径、launch、viewer HTML/API/SSE/WebSocket、stop 收敛均有验证步骤。
+- Agent、Web 和 Kubernetes 均有回滚步骤。
+- `bun run smoke:release` 可在部署前后复用。
 
 ## 6. 当前阻塞项
 
-暂无。Phase 6 进入验证与回滚自动化。
+暂无。Phase 6 已完成，下一阶段进入首个版本发布前的真实环境 release rehearsal。
 
 ## 7. 风险记录
 

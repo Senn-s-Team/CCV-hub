@@ -3,17 +3,17 @@
 > L1 | 父级: ../CLAUDE.md
 
 <directory>
-docs/ - 产品、架构、设计与部署文档（7 子目录: prd, ia, system, api, design, adr, deploy）
+docs/ - 产品、架构、设计与部署文档（7 子目录: prd, ia, system, api, design, adr, deploy；deploy 含 release 验证与故障排查）
 prototype/ - 高保真静态原型目录（4 文件: index.html, styles.css, app.js, docker-compose.yml）
 apps/ - 运行时应用目录（2 子目录: hub-web, hub-service）
 packages/ - 共享模块目录（1 子目录: shared-contracts）
-scripts/ - release 与安装脚本目录（4 文件: CLAUDE.md, package-agent-release.mjs, package-web-release.mjs, install-agent-release.sh）
+scripts/ - release、安装与验证脚本目录（5 文件: CLAUDE.md, package-agent-release.mjs, package-web-release.mjs, install-agent-release.sh, smoke-release.mjs）
 deploy/ - Web 入口与宿主机 Agent release 部署目录（9 文件: docker-compose.hub.yml, docker-compose.standalone.yml, Caddyfile.example, nginx.hub.conf.example, kubernetes-web.yaml, ccv-hub-agent.service, ccv-hub-service.service, agent.env.example, ccv-hub-plugin.mjs）
 </directory>
 
 <config>
 CLAUDE.md - ccv-hub 模块地图、职责边界与文档协议
-package.json - workspace 根配置，定义 Bun 脚本、工作区、根级类型依赖、Agent/Web release 打包命令与宿主机 Agent 部署命令
+package.json - workspace 根配置，定义 Bun 脚本、工作区、根级类型依赖、Agent/Web release 打包命令、release smoke 验证命令与宿主机 Agent 部署命令
 tsconfig.json - ccv-hub 根 TypeScript 基线配置
 .gitignore - 本地依赖、锁文件、构建产物、release 打包产物与本机 .env 忽略规则
 .env.example - 本机服务鉴权、Web image tag、Agent upstream 与宿主机路径 allowlist 环境变量模板，真实 .env 只留在宿主机
@@ -32,7 +32,7 @@ bun.lock - Bun 锁文件，固定 workspace 依赖解析结果
 - `docs/api/` - 存放接口契约文档，定义本地服务接口、请求响应结构与实例对象格式。
 - `docs/design/` - 存放 UI/UX 设计文档，定义视觉语言、页面原型规则、状态表达与跨端体验基线。
 - `docs/adr/` - 存放架构决策记录，固定关键技术取舍、阶段边界与实现原则。
-- `docs/deploy/` - 存放开源部署文档，定义 Web 控制面、宿主机 Agent、平台适配文档、release 产物与开发进度。
+- `docs/deploy/` - 存放开源部署文档，定义 Web 控制面、宿主机 Agent、平台适配文档、release 产物、验证清单、故障排查与开发进度。
 - `apps/hub-service/` - 本地常驻服务实现，负责健康检查、实例查询、统一入口启动与状态收敛。
 - `apps/hub-web/` - 总览页实现，负责实例展示、项目名筛选、启动弹窗、复制与轮询刷新。
 - `packages/shared-contracts/` - 前后端共享契约实现，负责 Instance schema、响应结构与错误码。
