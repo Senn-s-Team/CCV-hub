@@ -21,6 +21,7 @@
 | Phase 4 | Web release 化 | completed | image-only compose、Web 静态 tarball、无源码挂载 Web 容器 | `bun run release:web -- v0.0.0-test`、tarball 内容检查、Docker build、compose config、容器 smoke 均通过 |
 | Phase 5 | 平台适配补齐 | completed | Compose/Dokploy/Caddy/Nginx/Kubernetes 文档、standalone compose、Caddy/Nginx/Kubernetes 模板 | 每个平台有 smoke path；compose config 已纳入验证路径 |
 | Phase 6 | 发布验证自动化 | completed | `scripts/smoke-release.mjs`、`smoke:release`、release checklist、rollback checklist、troubleshooting | `node --check scripts/smoke-release.mjs`、`bun run lint`、`bun run test`、临时 Agent 鉴权 smoke 均通过 |
+| Phase 7 | 真实环境 release rehearsal | in_progress | `scripts/rehearse-release.mjs`、`release:rehearsal`、checksums 与 rehearsal evidence report | 待执行首个真实部署环境 rehearsal |
 
 ## 4. 已完成记录
 
@@ -46,6 +47,7 @@
 - 完成 release 验证文档：新增 `docs/deploy/release-checklist.md`，固化构建、打包、模板验证、Agent/Web 验证、smoke test、手工深度验证、Agent/Web/Kubernetes 回滚演练与发布判定。
 - 完成故障排查文档：新增 `docs/deploy/troubleshooting.md`，覆盖 Agent 启动、health、鉴权、API 代理、启动实例、viewer 子域名、SSE、WebSocket、停止收敛与回滚异常。
 - 完成 Task E 验证：`node --check scripts/smoke-release.mjs`、`bun run lint`、`bun run test`、临时 Agent 鉴权 smoke 均通过；未提供真实 viewer 环境，深度 viewer 与 stop 检查保留为部署环境 smoke path。
+- 启动 Task F 真实环境 release rehearsal：新增 `scripts/rehearse-release.mjs` 与根脚本 `release:rehearsal`，串联现有 lint/test/build、Web/Agent 打包、Compose 模板验证、release smoke、checksums 与 evidence report。
 
 ## 5. 下一步任务拆分
 
@@ -152,9 +154,30 @@
 - Agent、Web 和 Kubernetes 均有回滚步骤。
 - `bun run smoke:release` 可在部署前后复用。
 
+### Task F：真实环境 release rehearsal
+
+目标：把首个版本发布前的真实环境验证收敛为一个可重复入口。当前已新增 rehearsal 编排器，下一步在部署环境执行并回填证据。
+
+文件范围：
+
+- `scripts/rehearse-release.mjs`
+- `package.json`
+- `docs/deploy/release-plan.md`
+- `docs/deploy/release-checklist.md`
+- `docs/deploy/progress.md`
+- `scripts/CLAUDE.md`
+- `docs/deploy/CLAUDE.md`
+- `CLAUDE.md`
+
+验收：
+
+- `bun run release:rehearsal -- vX.Y.Z` 可串联构建、测试、打包、模板验证与 smoke。
+- `build/checksums-vX.Y.Z.txt` 记录版本产物校验值。
+- `build/release-rehearsal-vX.Y.Z.json` 记录命令状态、耗时、产物与 smoke 环境键。
+- 真实部署环境完成 Hub 首页、鉴权、实例列表、launch、viewer bridge、stop 与回滚验证。
 ## 6. 当前阻塞项
 
-暂无。Phase 6 已完成，下一阶段进入首个版本发布前的真实环境 release rehearsal。
+暂无。Phase 7 已进入真实环境 release rehearsal，等待部署环境执行 `bun run release:rehearsal -- vX.Y.Z` 并回填 evidence report 结果。
 
 ## 7. 风险记录
 

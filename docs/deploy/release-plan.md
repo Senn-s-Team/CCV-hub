@@ -154,6 +154,30 @@ Web tarball 内容固定为 `dist/` 静态资源与 `nginx/default.conf.template
 
 Release 必跑 smoke test 通过 `bun run smoke:release` 执行，完整流程见 `docs/deploy/release-checklist.md`。
 
+### 7.5 Release rehearsal
+
+首个版本发布前执行真实环境 rehearsal：
+
+```bash
+CCV_HUB_SMOKE_BASE_URL=https://hub.example.com \
+CCV_HUB_SMOKE_PASSWORD='change-me' \
+CCV_HUB_SMOKE_CHECK_HOME=1 \
+CCV_HUB_SMOKE_CHECK_INVALID_PATH=1 \
+CCV_HUB_SMOKE_PROJECT_PATH=/home/user/projects/my-project \
+CCV_HUB_SMOKE_STOP_AFTER_LAUNCH=1 \
+bun run release:rehearsal -- vX.Y.Z
+```
+
+`release:rehearsal` 只编排既有验证入口：lint、test、build、Web/Agent 打包、Compose 模板验证与 `smoke:release`。执行后会生成：
+
+```text
+build/checksums-vX.Y.Z.txt
+build/release-rehearsal-vX.Y.Z.json
+```
+
+`CCV_HUB_REHEARSAL_DOCKER_IMAGE=1` 可把 Web image build 纳入 rehearsal。
+
+
 基础 smoke 覆盖：
 
 1. Hub 首页可访问，可通过 `CCV_HUB_SMOKE_CHECK_HOME=1` 启用。

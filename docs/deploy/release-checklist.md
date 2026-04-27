@@ -56,7 +56,30 @@ Nginx/Caddy 静态部署：
 3. reload 反向代理。
 4. 打开 Hub 首页。
 
-## 6. Smoke test
+## 6. Release rehearsal
+
+真实环境 rehearsal 使用同一个入口完成构建、打包、模板验证、smoke 与证据记录：
+
+```bash
+CCV_HUB_SMOKE_BASE_URL=https://hub.example.com \
+CCV_HUB_SMOKE_PASSWORD='change-me' \
+CCV_HUB_SMOKE_CHECK_HOME=1 \
+CCV_HUB_SMOKE_CHECK_INVALID_PATH=1 \
+CCV_HUB_SMOKE_PROJECT_PATH=/home/user/projects/my-project \
+CCV_HUB_SMOKE_STOP_AFTER_LAUNCH=1 \
+bun run release:rehearsal -- vX.Y.Z
+```
+
+输出证据：
+
+```text
+build/checksums-vX.Y.Z.txt
+build/release-rehearsal-vX.Y.Z.json
+```
+
+`release-rehearsal` report 需要记录所有命令为 `passed`，`smokeEnvironment` 中的目标部署变量为 `set`。Web image 构建可通过 `CCV_HUB_REHEARSAL_DOCKER_IMAGE=1` 纳入同一次 rehearsal。
+
+## 7. Smoke test
 
 基础检查：
 
@@ -95,7 +118,7 @@ bun run smoke:release
 
 脚本输出 `[ok]` 代表对应阶段通过，`[skip]` 代表缺少可选环境变量或 HTTPS WebSocket 需要浏览器/wscat 验证。`CCV_HUB_SMOKE_CHECK_HOME=1` 会检查 Hub 首页，`CCV_HUB_SMOKE_CHECK_INVALID_PATH=1` 会检查非法启动路径错误结构。
 
-## 7. 手工深度验证
+## 8. 手工深度验证
 
 1. 打开 Hub 首页。
 2. 登录面板。
@@ -109,7 +132,7 @@ bun run smoke:release
 10. 停止实例后轮询列表，确认实例消失。
 11. 查看 Agent journal，确认注册、bridge、停止记录。
 
-## 8. 回滚演练
+## 9. 回滚演练
 
 Agent：
 
@@ -143,7 +166,7 @@ kubectl rollout status deployment/ccv-hub-web
 bun run smoke:release
 ```
 
-## 9. 发布判定
+## 10. 发布判定
 
 Release 通过条件：
 
