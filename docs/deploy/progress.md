@@ -21,7 +21,7 @@
 | Phase 4 | Web release 化 | completed | image-only compose、Web 静态 tarball、无源码挂载 Web 容器 | `bun run release:web -- v0.0.0-test`、tarball 内容检查、Docker build、compose config、容器 smoke 均通过 |
 | Phase 5 | 平台适配补齐 | completed | Compose/Dokploy/Caddy/Nginx/Kubernetes 文档、standalone compose、Caddy/Nginx/Kubernetes 模板 | 每个平台有 smoke path；compose config 已纳入验证路径 |
 | Phase 6 | 发布验证自动化 | completed | `scripts/smoke-release.mjs`、`smoke:release`、release checklist、rollback checklist、troubleshooting | `node --check scripts/smoke-release.mjs`、`bun run lint`、`bun run test`、临时 Agent 鉴权 smoke 均通过 |
-| Phase 7 | 真实环境 release rehearsal | in_progress | `scripts/rehearse-release.mjs`、`release:rehearsal`、checksums 与 rehearsal evidence report | 待执行首个真实部署环境 rehearsal |
+| Phase 7 | 真实环境 release rehearsal | in_progress | `scripts/rehearse-release.mjs`、`release:rehearsal`、checksums 与 rehearsal evidence report | 本机 Agent rehearsal passed；真实项目 deep smoke passed；公网首页与回滚演练待部署环境确认 |
 
 ## 4. 已完成记录
 
@@ -48,6 +48,8 @@
 - 完成故障排查文档：新增 `docs/deploy/troubleshooting.md`，覆盖 Agent 启动、health、鉴权、API 代理、启动实例、viewer 子域名、SSE、WebSocket、停止收敛与回滚异常。
 - 完成 Task E 验证：`node --check scripts/smoke-release.mjs`、`bun run lint`、`bun run test`、临时 Agent 鉴权 smoke 均通过；未提供真实 viewer 环境，深度 viewer 与 stop 检查保留为部署环境 smoke path。
 - 启动 Task F 真实环境 release rehearsal：新增 `scripts/rehearse-release.mjs` 与根脚本 `release:rehearsal`，串联现有 lint/test/build、Web/Agent 打包、Compose 模板验证、release smoke、checksums 与 evidence report。
+- 完成 Task F 本机 Agent rehearsal：`CCV_HUB_SMOKE_BASE_URL=http://127.0.0.1:4318`、本机 `.env` 鉴权口令与 `CCV_HUB_SMOKE_CHECK_INVALID_PATH=1` 下执行 `bun run release:rehearsal -- v0.0.0-rehearsal` 通过，生成 `build/checksums-v0.0.0-rehearsal.txt` 与 `build/release-rehearsal-v0.0.0-rehearsal.json`。
+- 完成 Task F 真实项目 deep smoke：以 `/home/opc/projects/ccvs/cc-viewer` 为 `CCV_HUB_SMOKE_PROJECT_PATH` 执行 `bun run smoke:release`，health、auth、instances、invalid-path、launch、viewer HTTP、viewer SSE 与 stop 均通过；HTTPS WebSocket 原始 socket 检查按脚本文档保留为浏览器/wscat 验证。
 
 ## 5. 下一步任务拆分
 
@@ -156,7 +158,7 @@
 
 ### Task F：真实环境 release rehearsal
 
-目标：把首个版本发布前的真实环境验证收敛为一个可重复入口。当前已新增 rehearsal 编排器，下一步在部署环境执行并回填证据。
+目标：把首个版本发布前的真实环境验证收敛为一个可重复入口。当前已完成本机 Agent rehearsal 与真实项目 deep smoke，下一步在公网 Web 入口和回滚演练中复核同一套 evidence。
 
 文件范围：
 
@@ -171,13 +173,15 @@
 
 验收：
 
-- `bun run release:rehearsal -- vX.Y.Z` 可串联构建、测试、打包、模板验证与 smoke。
-- `build/checksums-vX.Y.Z.txt` 记录版本产物校验值。
-- `build/release-rehearsal-vX.Y.Z.json` 记录命令状态、耗时、产物与 smoke 环境键。
-- 真实部署环境完成 Hub 首页、鉴权、实例列表、launch、viewer bridge、stop 与回滚验证。
+- `bun run release:rehearsal -- vX.Y.Z` 可串联构建、测试、打包、模板验证与 smoke，当前 `v0.0.0-rehearsal` 已通过。
+- `build/checksums-vX.Y.Z.txt` 记录版本产物校验值，当前 `build/checksums-v0.0.0-rehearsal.txt` 已生成。
+- `build/release-rehearsal-vX.Y.Z.json` 记录命令状态、耗时、产物与 smoke 环境键，当前 `build/release-rehearsal-v0.0.0-rehearsal.json` 为 `passed`。
+- 本机 Agent 完成 Hub health、鉴权、实例列表、非法路径、launch、viewer HTTP、viewer SSE 与 stop 验证。
+- 公网 Web 首页、HTTPS WebSocket 浏览器/wscat 验证与回滚演练仍需在部署环境执行。
+
 ## 6. 当前阻塞项
 
-暂无。Phase 7 已进入真实环境 release rehearsal，等待部署环境执行 `bun run release:rehearsal -- vX.Y.Z` 并回填 evidence report 结果。
+暂无。Phase 7 已完成本机 Agent rehearsal 与真实项目 deep smoke，公网 Web 首页、HTTPS WebSocket 浏览器/wscat 验证和回滚演练等待部署环境执行。
 
 ## 7. 风险记录
 
