@@ -7,16 +7,16 @@ docs/ - 产品、架构、设计与部署文档（7 子目录: prd, ia, system, 
 prototype/ - 高保真静态原型目录（4 文件: index.html, styles.css, app.js, docker-compose.yml）
 apps/ - 运行时应用目录（2 子目录: hub-web, hub-service）
 packages/ - 共享模块目录（1 子目录: shared-contracts）
-scripts/ - release 与安装脚本目录（3 文件: CLAUDE.md, package-agent-release.mjs, install-agent-release.sh）
+scripts/ - release 与安装脚本目录（4 文件: CLAUDE.md, package-agent-release.mjs, package-web-release.mjs, install-agent-release.sh）
 deploy/ - Web 入口与宿主机 Agent release 部署目录（5 文件: docker-compose.hub.yml, ccv-hub-agent.service, ccv-hub-service.service, agent.env.example, ccv-hub-plugin.mjs）
 </directory>
 
 <config>
 CLAUDE.md - ccv-hub 模块地图、职责边界与文档协议
-package.json - workspace 根配置，定义 Bun 脚本、工作区、根级类型依赖、Agent release 打包命令与宿主机 Agent 部署命令
+package.json - workspace 根配置，定义 Bun 脚本、工作区、根级类型依赖、Agent/Web release 打包命令与宿主机 Agent 部署命令
 tsconfig.json - ccv-hub 根 TypeScript 基线配置
 .gitignore - 本地依赖、锁文件、构建产物、release 打包产物与本机 .env 忽略规则
-.env.example - 本机服务鉴权与宿主机路径 allowlist 环境变量模板，真实 .env 只留在宿主机
+.env.example - 本机服务鉴权、Web image tag、Agent upstream 与宿主机路径 allowlist 环境变量模板，真实 .env 只留在宿主机
 bun.lock - Bun 锁文件，固定 workspace 依赖解析结果
 </config>
 
@@ -36,8 +36,8 @@ bun.lock - Bun 锁文件，固定 workspace 依赖解析结果
 - `apps/hub-service/` - 本地常驻服务实现，负责健康检查、实例查询、统一入口启动与状态收敛。
 - `apps/hub-web/` - 总览页实现，负责实例展示、项目名筛选、启动弹窗、复制与轮询刷新。
 - `packages/shared-contracts/` - 前后端共享契约实现，负责 Instance schema、响应结构与错误码。
-- `deploy/` - 部署资产目录，负责 Web-only 公网入口、宿主机 `ccv-hub-agent` release systemd 单元、agent.env 模板与 cc-viewer 插件安装源。
-- `scripts/` - 存放 release 打包与安装脚本，负责 Agent tarball 产物和宿主机安装流程。
+- `deploy/` - 部署资产目录，负责 Web image-only 公网入口、宿主机 `ccv-hub-agent` release systemd 单元、agent.env 模板与 cc-viewer 插件安装源。
+- `scripts/` - 存放 release 打包与安装脚本，负责 Web/Agent tarball 产物和宿主机安装流程。
 
 ## 设计法则
 

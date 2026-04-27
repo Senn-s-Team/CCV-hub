@@ -128,11 +128,20 @@ bun run build
 
 ### 7.2 打包
 
+```bash
+bun run release:web -- vX.Y.Z
+bun run release:agent -- vX.Y.Z
+docker build -f apps/hub-web/Dockerfile -t ccv-hub-web:vX.Y.Z .
+docker save ccv-hub-web:vX.Y.Z | gzip > build/ccv-hub-web-vX.Y.Z.image.tar.gz
+```
+
 ```text
-apps/hub-web/dist -> ccv-hub-web-vX.Y.Z.tar.gz
+apps/hub-web/dist + apps/hub-web/nginx.conf -> ccv-hub-web-vX.Y.Z.tar.gz
 apps/hub-service/dist + package metadata + deploy/ccv-hub-agent.service + deploy/agent.env.example + scripts/install-agent-release.sh -> ccv-hub-agent-vX.Y.Z.tar.gz
 deploy templates -> deploy-templates-vX.Y.Z.zip
 ```
+
+Web tarball 内容固定为 `dist/` 静态资源与 `nginx/default.conf.template`，由 Nginx/Caddy 静态部署层接入 `/api` 与 viewer wildcard 反向代理。
 
 ### 7.3 发布
 

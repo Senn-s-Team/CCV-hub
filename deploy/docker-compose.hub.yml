@@ -1,12 +1,10 @@
-# [INPUT]: 依赖 hub-web 容器、宿主机 ccv-hub-agent systemd 服务、可配置 Docker 网络与 Traefik 路由变量
-# [OUTPUT]: 对外提供 ccv-hub-web Web 入口部署清单，可把 Hub/API/viewer 子域名流量转发到宿主机 Agent
-# [POS]: deploy 目录的公网入口清单，负责把平台路由、nginx Web 入口与宿主机 Agent 桥接到同一网络面
+# [INPUT]: 依赖已发布的 ccv-hub-web image、宿主机 ccv-hub-agent systemd 服务、可配置 Docker 网络与 Traefik 路由变量
+# [OUTPUT]: 对外提供 image-only ccv-hub-web Web 入口部署清单，可把 Hub/API/viewer 子域名流量转发到宿主机 Agent
+# [POS]: deploy 目录的 release 公网入口清单，负责把平台路由、nginx Web 入口与宿主机 Agent 桥接到同一网络面
 # [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 services:
   ccv-hub-web:
-    build:
-      context: ..
-      dockerfile: apps/hub-web/Dockerfile
+    image: ${CCV_HUB_WEB_IMAGE:-ccv-hub-web:v0.0.0-dev}
     restart: unless-stopped
     ports:
       - "${CCV_HUB_WEB_PORT:-4317}:80"
@@ -22,8 +20,6 @@ services:
       CCV_HUB_PUBLIC_DOMAIN_REGEX: ${CCV_HUB_PUBLIC_DOMAIN_REGEX:-paas\.996667\.xyz}
       CCV_HUB_VIEWER_SUBDOMAIN_PREFIX: ${CCV_HUB_VIEWER_SUBDOMAIN_PREFIX:-ccv-}
       CCV_HUB_PUBLIC_PROTOCOL: ${CCV_HUB_PUBLIC_PROTOCOL:-https}
-    volumes:
-      - ${CCV_HUB_HOST_PROJECTS_ROOT:-/home/opc/projects/ccvs}:${CCV_HUB_CONTAINER_PROJECTS_ROOT:-/home/opc/projects/ccvs}:ro
     labels:
       - traefik.enable=true
       - traefik.docker.network=${CCV_HUB_DOCKER_NETWORK:-dokploy-network}

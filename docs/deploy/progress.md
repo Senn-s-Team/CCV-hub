@@ -18,7 +18,7 @@
 | Phase 1 | 文档与边界冻结 | completed | `docs/deploy/overview.md`, `modes.md`, `release-plan.md`, `progress.md` | 文档已创建并同步 L1/L2 |
 | Phase 2 | 配置模板化 | completed | release compose、nginx template、agent env template | Task A 已模板化并通过变量链复核 |
 | Phase 3 | Agent release 化 | completed | build artifact runtime、release systemd unit、current symlink 安装结构、Agent tarball 打包脚本、安装脚本 | `node dist/server.js`、release tarball health check、Docker build、systemd verify 均通过 |
-| Phase 4 | Web release 化 | pending | tagged image、静态 tarball、无源码挂载 Web 容器 | Web image 可独立部署 |
+| Phase 4 | Web release 化 | completed | image-only compose、Web 静态 tarball、无源码挂载 Web 容器 | `bun run release:web -- v0.0.0-test`、tarball 内容检查、Docker build、compose config、容器 smoke 均通过 |
 | Phase 5 | 平台适配补齐 | pending | Docker Compose、Dokploy、Caddy、Nginx、Kubernetes 文档与模板 | 每个平台有 smoke path |
 | Phase 6 | 发布验证自动化 | pending | smoke test、release checklist、rollback checklist、troubleshooting | release 前后可重复验证 |
 
@@ -36,6 +36,7 @@
 - systemd 单元已指向 `/opt/ccv-hub-agent/current/apps/hub-service` 与 `/etc/ccv-hub/agent.env`，Docker Agent 镜像已改为构建后运行 `dist/server.js`。
 - 完成 Task B Agent release 打包：新增 `deploy/ccv-hub-agent.service`、`deploy/agent.env.example`、`scripts/package-agent-release.mjs`、`scripts/install-agent-release.sh`，`bun run release:agent -- v0.0.0-test` 可产出 tarball。
 - 完成 Task B 端到端验证：tarball 内容检查、解包后 `bun install --production`、携带宿主机 `CCV_CLI_PATH` 启动 `dist/server.js`、`/api/health`、Docker build、systemd verify、workspace test/build 均通过。
+- 完成 Task C Web release 化：`deploy/docker-compose.hub.yml` 改为 image-only 部署，移除 Web 容器源码挂载，新增 `scripts/package-web-release.mjs` 与 `release:web`，Web tarball 固定包含 `dist/` 与 nginx 模板；`bun run --filter hub-web build`、`bun run release:web -- v0.0.0-test`、tarball 内容检查、`docker build`、`docker compose config`、容器首页/API/mounts smoke 均通过。
 
 ## 5. 下一步任务拆分
 
@@ -81,13 +82,16 @@
 
 ### Task C：Web release 化
 
-目标：让 `hub-web` 成为独立 release 镜像或静态 tarball。
+目标：让 `hub-web` 成为独立 release 镜像或静态 tarball。已完成 image-only compose、Web tarball 打包命令与无源码挂载运行路径。
 
 文件范围：
 
 - `apps/hub-web/Dockerfile`
 - `apps/hub-web/nginx.conf`
-- release compose 模板
+- `deploy/docker-compose.hub.yml`
+- `scripts/package-web-release.mjs`
+- `package.json`
+- `.env.example`
 
 验收：
 
