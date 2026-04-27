@@ -1,6 +1,6 @@
-# [INPUT]: 依赖 hub-web 容器、宿主机 ccv-hub-service systemd 服务、Dokploy 的 dokploy-network 与 Traefik
-# [OUTPUT]: 对外提供 ccv-hub-dev 的 Web 入口部署清单，可把 Hub/API/viewer 子域名流量转发到宿主机服务
-# [POS]: deploy 目录的公网入口清单，负责把 Dokploy 路由、nginx Web 入口与宿主机 Hub service 桥接到同一网络面
+# [INPUT]: 依赖 hub-web 容器、宿主机 ccv-hub-agent systemd 服务、可配置 Docker 网络与 Traefik 路由变量
+# [OUTPUT]: 对外提供 ccv-hub-web Web 入口部署清单，可把 Hub/API/viewer 子域名流量转发到宿主机 Agent
+# [POS]: deploy 目录的公网入口清单，负责把平台路由、nginx Web 入口与宿主机 Agent 桥接到同一网络面
 # [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 services:
   ccv-hub-web:
@@ -9,45 +9,48 @@ services:
       dockerfile: apps/hub-web/Dockerfile
     restart: unless-stopped
     ports:
-      - "4317:80"
+      - "${CCV_HUB_WEB_PORT:-4317}:80"
     expose:
       - "80"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      CCV_HUB_PROXY_TARGET: http://host.docker.internal:4318
-      CCV_HUB_PUBLIC_HOST: ccv-hub-dev.paas.996667.xyz
-      CCV_HUB_PUBLIC_DOMAIN: paas.996667.xyz
-      CCV_HUB_VIEWER_SUBDOMAIN_PREFIX: ccv-
-      CCV_HUB_PUBLIC_PROTOCOL: https
+      CCV_HUB_AGENT_UPSTREAM: ${CCV_HUB_AGENT_UPSTREAM:-http://host.docker.internal:4318}
+      CCV_HUB_PROXY_TARGET: ${CCV_HUB_AGENT_UPSTREAM:-http://host.docker.internal:4318}
+      CCV_HUB_PUBLIC_HOST: ${CCV_HUB_PUBLIC_HOST:-ccv-hub-dev.paas.996667.xyz}
+      CCV_HUB_PUBLIC_DOMAIN: ${CCV_HUB_PUBLIC_DOMAIN:-paas.996667.xyz}
+      CCV_HUB_PUBLIC_DOMAIN_REGEX: ${CCV_HUB_PUBLIC_DOMAIN_REGEX:-paas\.996667\.xyz}
+      CCV_HUB_VIEWER_SUBDOMAIN_PREFIX: ${CCV_HUB_VIEWER_SUBDOMAIN_PREFIX:-ccv-}
+      CCV_HUB_PUBLIC_PROTOCOL: ${CCV_HUB_PUBLIC_PROTOCOL:-https}
     volumes:
-      - /home/opc/projects/ccvs:/home/opc/projects/ccvs
+      - ${CCV_HUB_HOST_PROJECTS_ROOT:-/home/opc/projects/ccvs}:${CCV_HUB_CONTAINER_PROJECTS_ROOT:-/home/opc/projects/ccvs}:ro
     labels:
       - traefik.enable=true
-      - traefik.docker.network=dokploy-network
-      - traefik.http.routers.ccv-hub-dev.rule=Host(`ccv-hub-dev.paas.996667.xyz`)
-      - traefik.http.routers.ccv-hub-dev.entrypoints=web
-      - traefik.http.routers.ccv-hub-dev.priority=100
-      - traefik.http.routers.ccv-hub-dev.service=ccv-hub-dev
-      - traefik.http.routers.ccv-hub-dev-secure.rule=Host(`ccv-hub-dev.paas.996667.xyz`)
-      - traefik.http.routers.ccv-hub-dev-secure.entrypoints=websecure
-      - traefik.http.routers.ccv-hub-dev-secure.priority=100
-      - traefik.http.routers.ccv-hub-dev-secure.tls=true
-      - traefik.http.routers.ccv-hub-dev-secure.service=ccv-hub-dev
-      - traefik.http.services.ccv-hub-dev.loadbalancer.server.port=80
-      - traefik.http.routers.ccv-viewer.rule=HostRegexp(`^ccv-[a-f0-9]{32}\.paas\.996667\.xyz$$`)
+      - traefik.docker.network=${CCV_HUB_DOCKER_NETWORK:-dokploy-network}
+      - traefik.http.routers.ccv-hub.rule=Host(`${CCV_HUB_PUBLIC_HOST:-ccv-hub-dev.paas.996667.xyz}`)
+      - traefik.http.routers.ccv-hub.entrypoints=web
+      - traefik.http.routers.ccv-hub.priority=100
+      - traefik.http.routers.ccv-hub.service=ccv-hub-web
+      - traefik.http.routers.ccv-hub-secure.rule=Host(`${CCV_HUB_PUBLIC_HOST:-ccv-hub-dev.paas.996667.xyz}`)
+      - traefik.http.routers.ccv-hub-secure.entrypoints=websecure
+      - traefik.http.routers.ccv-hub-secure.priority=100
+      - traefik.http.routers.ccv-hub-secure.tls=true
+      - traefik.http.routers.ccv-hub-secure.service=ccv-hub-web
+      - traefik.http.services.ccv-hub-web.loadbalancer.server.port=80
+      - traefik.http.routers.ccv-viewer.rule=HostRegexp(`^${CCV_HUB_VIEWER_SUBDOMAIN_PREFIX:-ccv-}[a-f0-9]{32}\.${CCV_HUB_PUBLIC_DOMAIN_REGEX:-paas\.996667\.xyz}$$`)
       - traefik.http.routers.ccv-viewer.entrypoints=web
       - traefik.http.routers.ccv-viewer.priority=10
-      - traefik.http.routers.ccv-viewer.service=ccv-hub-dev
-      - traefik.http.routers.ccv-viewer-secure.rule=HostRegexp(`^ccv-[a-f0-9]{32}\.paas\.996667\.xyz$$`)
+      - traefik.http.routers.ccv-viewer.service=ccv-hub-web
+      - traefik.http.routers.ccv-viewer-secure.rule=HostRegexp(`^${CCV_HUB_VIEWER_SUBDOMAIN_PREFIX:-ccv-}[a-f0-9]{32}\.${CCV_HUB_PUBLIC_DOMAIN_REGEX:-paas\.996667\.xyz}$$`)
       - traefik.http.routers.ccv-viewer-secure.entrypoints=websecure
       - traefik.http.routers.ccv-viewer-secure.priority=10
       - traefik.http.routers.ccv-viewer-secure.tls=true
-      - traefik.http.routers.ccv-viewer-secure.service=ccv-hub-dev
+      - traefik.http.routers.ccv-viewer-secure.service=ccv-hub-web
     networks:
-      - dokploy-network
+      - dokploy
       - default
 
 networks:
-  dokploy-network:
+  dokploy:
+    name: ${CCV_HUB_DOCKER_NETWORK:-dokploy-network}
     external: true

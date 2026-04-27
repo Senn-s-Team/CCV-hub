@@ -2,11 +2,13 @@
   "name": "hub-service",
   "private": true,
   "type": "module",
+  "main": "dist/server.js",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "build": "tsc -p tsconfig.json --noEmit false",
-    "test": "vitest run",
-    "lint": "tsc -p tsconfig.json"
+    "dev": "bun run --filter @ccv-hub/shared-contracts build && tsx watch src/server.ts",
+    "build": "bun run --filter @ccv-hub/shared-contracts build && tsc -p tsconfig.json --noEmit false",
+    "start": "node dist/server.js",
+    "test": "bun run --filter @ccv-hub/shared-contracts build && vitest run",
+    "lint": "bun run --filter @ccv-hub/shared-contracts build && tsc -p tsconfig.json"
   },
   "dependencies": {
     "@ccv-hub/shared-contracts": "workspace:*",

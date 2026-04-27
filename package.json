@@ -15,7 +15,8 @@
     "lint": "bun run --workspaces lint",
     "dev:web": "bun run --filter hub-web dev",
     "dev:service": "bun run --filter hub-service dev",
-    "deploy:service": "sudo install -m 0644 deploy/ccv-hub-service.service /etc/systemd/system/ccv-hub-service.service && sudo systemctl daemon-reload && sudo systemctl restart ccv-hub-service && systemctl is-active ccv-hub-service"
+    "release:agent": "node scripts/package-agent-release.mjs",
+    "deploy:service": "sudo install -m 0644 deploy/ccv-hub-agent.service /etc/systemd/system/ccv-hub-agent.service && sudo systemctl daemon-reload && sudo systemctl restart ccv-hub-agent && systemctl is-active ccv-hub-agent"
   },
   "devDependencies": {
     "@types/node": "24.7.2"

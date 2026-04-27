@@ -3,10 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "test": "vitest run",
-    "lint": "tsc -p tsconfig.json"
+    "dev": "bun run --filter @ccv-hub/shared-contracts build && vite",
+    "build": "bun run --filter @ccv-hub/shared-contracts build && vite build",
+    "test": "bun run --filter @ccv-hub/shared-contracts build && vitest run",
+    "lint": "bun run --filter @ccv-hub/shared-contracts build && tsc -p tsconfig.json"
   },
   "dependencies": {
     "@tanstack/react-query": "5.99.2",
