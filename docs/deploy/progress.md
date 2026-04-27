@@ -21,7 +21,7 @@
 | Phase 4 | Web release 化 | completed | image-only compose、Web 静态 tarball、无源码挂载 Web 容器 | `bun run release:web -- v0.0.0-test`、tarball 内容检查、Docker build、compose config、容器 smoke 均通过 |
 | Phase 5 | 平台适配补齐 | completed | Compose/Dokploy/Caddy/Nginx/Kubernetes 文档、standalone compose、Caddy/Nginx/Kubernetes 模板 | 每个平台有 smoke path；compose config 已纳入验证路径 |
 | Phase 6 | 发布验证自动化 | completed | `scripts/smoke-release.mjs`、`smoke:release`、release checklist、rollback checklist、troubleshooting | `node --check scripts/smoke-release.mjs`、`bun run lint`、`bun run test`、临时 Agent 鉴权 smoke 均通过 |
-| Phase 7 | 真实环境 release rehearsal | in_progress | `scripts/rehearse-release.mjs`、`release:rehearsal`、checksums 与 rehearsal evidence report | 本机 Agent rehearsal passed；真实项目 deep smoke passed；公网首页与回滚演练待部署环境确认 |
+| Phase 7 | 真实环境 release rehearsal | completed | `scripts/rehearse-release.mjs`、`release:rehearsal`、checksums、rehearsal evidence report、HTTPS WebSocket TLS smoke | 本机 Agent rehearsal、真实项目 deep smoke、公网 deep smoke、HTTPS WebSocket handshake、临时目录 rollback rehearsal 均通过 |
 
 ## 4. 已完成记录
 
@@ -49,7 +49,10 @@
 - 完成 Task E 验证：`node --check scripts/smoke-release.mjs`、`bun run lint`、`bun run test`、临时 Agent 鉴权 smoke 均通过；未提供真实 viewer 环境，深度 viewer 与 stop 检查保留为部署环境 smoke path。
 - 启动 Task F 真实环境 release rehearsal：新增 `scripts/rehearse-release.mjs` 与根脚本 `release:rehearsal`，串联现有 lint/test/build、Web/Agent 打包、Compose 模板验证、release smoke、checksums 与 evidence report。
 - 完成 Task F 本机 Agent rehearsal：`CCV_HUB_SMOKE_BASE_URL=http://127.0.0.1:4318`、本机 `.env` 鉴权口令与 `CCV_HUB_SMOKE_CHECK_INVALID_PATH=1` 下执行 `bun run release:rehearsal -- v0.0.0-rehearsal` 通过，生成 `build/checksums-v0.0.0-rehearsal.txt` 与 `build/release-rehearsal-v0.0.0-rehearsal.json`。
-- 完成 Task F 真实项目 deep smoke：以 `/home/opc/projects/ccvs/cc-viewer` 为 `CCV_HUB_SMOKE_PROJECT_PATH` 执行 `bun run smoke:release`，health、auth、instances、invalid-path、launch、viewer HTTP、viewer SSE 与 stop 均通过；HTTPS WebSocket 原始 socket 检查按脚本文档保留为浏览器/wscat 验证。
+- 完成 Task F 真实项目 deep smoke：以 `/home/opc/projects/ccvs/cc-viewer` 为 `CCV_HUB_SMOKE_PROJECT_PATH` 执行 `bun run smoke:release`，health、auth、instances、invalid-path、launch、viewer HTTP、viewer SSE 与 stop 均通过。
+- 完成 Task F HTTPS WebSocket 自动验证：`scripts/smoke-release.mjs` 已用 TLS socket 对 HTTPS viewer URL 执行 WebSocket upgrade handshake，公网 deep smoke 中 viewer-websocket 通过。
+- 完成 Task F 公网 Web entry 验证：`CCV_HUB_SMOKE_BASE_URL=https://ccv-hub-dev.paas.996667.xyz`、`CCV_HUB_SMOKE_CHECK_HOME=1`、真实项目路径与 stop 收敛启用时，home、health、auth、instances、invalid-path、launch、viewer HTTP、viewer SSE、viewer WebSocket 与 stop 均通过。
+- 完成 Task F 非破坏性 rollback rehearsal：使用 `build/ccv-hub-agent-v0.0.0-test.tar.gz` 与 `build/ccv-hub-agent-v0.0.0-rehearsal.tar.gz` 在临时目录解包，切换 `current` symlink 前进与回滚，执行 `bun install --production --frozen-lockfile`，并在临时端口 `4520` 启动回滚版本通过 `/api/health`。
 
 ## 5. 下一步任务拆分
 
@@ -158,7 +161,7 @@
 
 ### Task F：真实环境 release rehearsal
 
-目标：把首个版本发布前的真实环境验证收敛为一个可重复入口。当前已完成本机 Agent rehearsal 与真实项目 deep smoke，下一步在公网 Web 入口和回滚演练中复核同一套 evidence。
+目标：把首个版本发布前的真实环境验证收敛为一个可重复入口。已完成本机 Agent rehearsal、真实项目 deep smoke、公网 Web entry deep smoke、HTTPS WebSocket TLS handshake 与非破坏性 rollback rehearsal。
 
 文件范围：
 
@@ -177,11 +180,12 @@
 - `build/checksums-vX.Y.Z.txt` 记录版本产物校验值，当前 `build/checksums-v0.0.0-rehearsal.txt` 已生成。
 - `build/release-rehearsal-vX.Y.Z.json` 记录命令状态、耗时、产物与 smoke 环境键，当前 `build/release-rehearsal-v0.0.0-rehearsal.json` 为 `passed`。
 - 本机 Agent 完成 Hub health、鉴权、实例列表、非法路径、launch、viewer HTTP、viewer SSE 与 stop 验证。
-- 公网 Web 首页、HTTPS WebSocket 浏览器/wscat 验证与回滚演练仍需在部署环境执行。
+- 公网 Web entry 完成 Hub 首页、鉴权、实例列表、非法路径、launch、viewer HTTP、viewer SSE、HTTPS WebSocket handshake 与 stop 验证。
+- 回滚演练完成 Agent tarball 临时目录解包、`current` symlink 前进/回滚、production install 与临时端口 health 验证。
 
 ## 6. 当前阻塞项
 
-暂无。Phase 7 已完成本机 Agent rehearsal 与真实项目 deep smoke，公网 Web 首页、HTTPS WebSocket 浏览器/wscat 验证和回滚演练等待部署环境执行。
+暂无。Phase 7 已完成，后续进入首个正式版本发布准备。
 
 ## 7. 风险记录
 

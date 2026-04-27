@@ -6,6 +6,7 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { Socket } from 'node:net';
+import { connect as connectTls } from 'node:tls';
 import { setTimeout as delay } from 'node:timers/promises';
 
 const baseUrl = trimTrailingSlash(process.env.CCV_HUB_SMOKE_BASE_URL ?? 'http://127.0.0.1:4318');
@@ -139,11 +140,6 @@ async function checkViewerSse() {
 async function checkViewerWebSocket() {
   const viewerUrl = new URL(requireViewerUrl());
   const port = Number(viewerUrl.port || (viewerUrl.protocol === 'https:' ? 443 : 80));
-  if (viewerUrl.protocol === 'https:') {
-    report('skip', 'viewer-websocket', 'raw TLS websocket smoke is documented; run through browser or wscat for https deployments');
-    return;
-  }
-
   const target = new URL('/ws/terminal?smoke=1', viewerUrl);
   copyToken(viewerUrl, target);
   const request = [
@@ -156,7 +152,9 @@ async function checkViewerWebSocket() {
     '',
     '',
   ].join('\r\n');
-  const response = await readSocket(viewerUrl.hostname, port, request);
+  const response = viewerUrl.protocol === 'https:'
+    ? await readTlsSocket(viewerUrl.hostname, port, request)
+    : await readSocket(viewerUrl.hostname, port, request);
   assert(response.includes('HTTP/1.1 101') || response.includes('HTTP/1.1 404') || response.includes('HTTP/1.1 400'), 'viewer websocket path must return an HTTP upgrade response');
 }
 
@@ -250,6 +248,31 @@ function readSocket(host, port, request) {
     }, timeoutMs);
 
     socket.connect(port, host, () => socket.write(request));
+    socket.on('data', (chunk) => {
+      response += chunk.toString('utf8');
+      if (response.includes('\r\n\r\n')) {
+        clearTimeout(timer);
+        socket.destroy();
+        resolve(response);
+      }
+    });
+    socket.on('error', (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+  });
+}
+
+function readTlsSocket(host, port, request) {
+  return new Promise((resolve, reject) => {
+    const socket = connectTls({ host, port, servername: host });
+    let response = '';
+    const timer = setTimeout(() => {
+      socket.destroy();
+      reject(new Error('websocket TLS smoke timed out'));
+    }, timeoutMs);
+
+    socket.on('secureConnect', () => socket.write(request));
     socket.on('data', (chunk) => {
       response += chunk.toString('utf8');
       if (response.includes('\r\n\r\n')) {

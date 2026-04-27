@@ -6,6 +6,6 @@ package-agent-release.mjs: Agent release 打包脚本，构建 shared-contracts 
 package-web-release.mjs: Web release 打包脚本，构建 hub-web，并产出包含 dist 静态资源与 nginx 默认模板的 tarball
 rehearse-release.mjs: release rehearsal 编排脚本，串联 lint、test、build、打包、Compose 模板验证、smoke、checksums 与 evidence report
 install-agent-release.sh: Agent release 安装脚本，负责解压版本目录、切换 current symlink、安装 agent.env 模板与 systemd unit
-smoke-release.mjs: release smoke 验证脚本，检查 Hub health、auth、instances，并按环境变量验证 launch、viewer HTTP/SSE/WebSocket 与 stop 收敛
+smoke-release.mjs: release smoke 验证脚本，检查 Hub health、auth、instances，并按环境变量验证 launch、viewer HTTP/SSE、HTTP 或 HTTPS WebSocket handshake 与 stop 收敛
 
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md

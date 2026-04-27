@@ -190,7 +190,7 @@ build/release-rehearsal-vX.Y.Z.json
 
 1. 合法路径可以启动 `cc-viewer`。
 2. viewer 子域名可加载 HTML、JS、CSS。
-3. viewer API、SSE、WebSocket 可用。
+3. viewer API、SSE、WebSocket 可用，HTTPS viewer WebSocket 通过 TLS upgrade handshake 验证。
 4. 停止实例后列表收敛。
 5. Agent 日志中出现结构化注册、停止、bridge 记录。
 
