@@ -12,6 +12,7 @@ deploy/ - Web 入口与宿主机 Agent release 部署目录（9 文件: docker-c
 </directory>
 
 <config>
+README.md - 开源项目入口文档，定义项目定位、架构、快速开始、配置、部署、release、安全边界与贡献路径
 CLAUDE.md - ccv-hub 模块地图、职责边界与文档协议
 package.json - workspace 根配置，定义 Bun 脚本、工作区、根级类型依赖、Agent/Web release 打包命令、release smoke/rehearsal 验证命令与宿主机 Agent 部署命令
 tsconfig.json - ccv-hub 根 TypeScript 基线配置
