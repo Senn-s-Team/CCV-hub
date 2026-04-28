@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# [INPUT]: 依赖 Agent release tarball、/opt/ccv-hub-agent、/etc/ccv-hub、systemd 与 Node/Bun 运行环境
-# [OUTPUT]: 对外提供版本目录安装、current symlink 切换、.env.agent 初始化与 ccv-hub-agent.service 安装能力
+# [INPUT]: 依赖 Agent release tarball、/opt/ccv-hub-agent、/etc/ccv-hub、systemd、Node/Bun 运行环境与 bun.lock 生产依赖
+# [OUTPUT]: 对外提供版本目录安装、production 依赖安装、current symlink 切换、.env.agent 初始化与 ccv-hub-agent.service 安装能力
 # [POS]: scripts 的 Agent 安装入口，把 tarball 解包结果安装为宿主机 systemd release
 # [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 set -euo pipefail
@@ -9,12 +9,46 @@ release_dir="${1:?usage: install-agent-release.sh <extracted-release-dir>}"
 install_root="${CCV_HUB_AGENT_INSTALL_ROOT:-/opt/ccv-hub-agent}"
 env_dir="${CCV_HUB_AGENT_ENV_DIR:-/etc/ccv-hub}"
 service_dir="${CCV_HUB_SYSTEMD_DIR:-/etc/systemd/system}"
+bun_bin="${BUN_BIN:-}"
 version="$(basename "$release_dir")"
 target_dir="$install_root/releases/$version"
+
+require_absolute_path() {
+  case "$2" in
+    /*) ;;
+    *)
+      echo "$1 must be an absolute path: $2" >&2
+      exit 2
+      ;;
+  esac
+}
+
+require_absolute_path CCV_HUB_AGENT_INSTALL_ROOT "$install_root"
+require_absolute_path CCV_HUB_AGENT_ENV_DIR "$env_dir"
+require_absolute_path CCV_HUB_SYSTEMD_DIR "$service_dir"
+
+case "$version" in
+  ''|'.'|'..'|*'/'*)
+    echo "invalid release directory name: $version" >&2
+    exit 2
+    ;;
+esac
+
+if [ -z "$bun_bin" ]; then
+  bun_bin="$(command -v bun || true)"
+fi
+if [ -z "$bun_bin" ] && [ -x /home/opc/.bun/bin/bun ]; then
+  bun_bin=/home/opc/.bun/bin/bun
+fi
+if [ -z "$bun_bin" ]; then
+  echo "bun executable not found; set BUN_BIN=/path/to/bun" >&2
+  exit 127
+fi
 
 install -d "$install_root/releases" "$env_dir"
 rm -rf "$target_dir"
 cp -a "$release_dir" "$target_dir"
+(cd "$target_dir" && "$bun_bin" install --production --frozen-lockfile)
 ln -sfn "$target_dir" "$install_root/current"
 
 if [ ! -f "$env_dir/.env.agent" ]; then

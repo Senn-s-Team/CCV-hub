@@ -36,7 +36,7 @@ bun.lock - Bun 锁文件，固定 workspace 依赖解析结果
 - `apps/hub-service/` - 本地常驻服务实现，负责健康检查、实例查询、统一入口启动与状态收敛。
 - `apps/hub-web/` - 总览页实现，负责实例展示、项目名筛选、启动弹窗、复制与轮询刷新。
 - `packages/shared-contracts/` - 前后端共享契约实现，负责 Instance schema、响应结构与错误码。
-- `deploy/` - 部署资产目录，负责 Web image-only 公网入口、Compose/Caddy/Nginx/Kubernetes 平台模板、宿主机 `ccv-hub-agent` release systemd 单元、.env.agent 模板与 cc-viewer 插件安装源。
+- `deploy/` - 部署资产目录，负责 Web image-only 公网入口、Compose/Caddy/Nginx/Kubernetes 平台模板、宿主机 `ccv-hub-agent` release systemd 单元、含 Hub 插件回连地址的 .env.agent 模板与 cc-viewer 插件安装源。
 - `scripts/` - 存放 release 打包、演练与安装脚本，负责 Web/Agent tarball 产物、checksums、rehearsal evidence 和宿主机安装流程。
 
 ## 设计法则

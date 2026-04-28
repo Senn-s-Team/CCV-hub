@@ -45,6 +45,7 @@ CCV_HUB_PUBLIC_HOST=hub.example.com
 CCV_HUB_PUBLIC_DOMAIN=example.com
 CCV_HUB_PUBLIC_DOMAIN_REGEX=example\.com
 CCV_HUB_VIEWER_SUBDOMAIN_PREFIX=ccv-
+CCV_HUB_URL=http://127.0.0.1:4318
 CCV_HUB_AGENT_PROXY_TOKEN=change-me-to-a-random-secret
 CCV_HUB_AUTH_PASSWORD=change-me
 CCV_HUB_SESSION_SECRET=change-me-to-a-long-random-secret

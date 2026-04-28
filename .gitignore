@@ -8,3 +8,5 @@ coverage/
 .claude/
 .env
 .env.dev
+.env.agent.dev
+.env.agent
