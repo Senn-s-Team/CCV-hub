@@ -15,8 +15,8 @@ deploy/ - Web 入口与宿主机 Agent release 部署目录（9 文件: docker-c
 CLAUDE.md - ccv-hub 模块地图、职责边界与文档协议
 package.json - workspace 根配置，定义 Bun 脚本、工作区、根级类型依赖、Agent/Web release 打包命令、release smoke/rehearsal 验证命令与宿主机 Agent 部署命令
 tsconfig.json - ccv-hub 根 TypeScript 基线配置
-.gitignore - 本地依赖、锁文件、构建产物、release 打包产物与本机 .env 忽略规则
-.env.example - 本机服务鉴权、Web image tag、Agent upstream 与宿主机路径 allowlist 环境变量模板，真实 .env 只留在宿主机
+.gitignore - 本地依赖、锁文件、构建产物、release 打包产物、正式 `.env` 与开发 `.env.dev` 忽略规则
+.env.example - 可提交环境变量模板，覆盖 release Web image、Agent upstream、宿主机路径 allowlist 与本地验证变量；真实 `.env` 用于正式环境，`.env.dev` 用于开发环境
 bun.lock - Bun 锁文件，固定 workspace 依赖解析结果
 </config>
 

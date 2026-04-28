@@ -24,7 +24,7 @@ nginx -t
 kubectl apply --dry-run=client -f deploy/kubernetes-web.yaml
 ```
 
-Nginx 验证使用部署机的站点目录，把 `deploy/nginx.hub.conf.example` 渲染为实际 server 配置后执行。
+`.env.example` 只用于模板完整性验证；正式 Docker Compose 使用 `.env`，Dokploy 使用平台环境变量面板。Nginx 验证使用部署机的站点目录，把 `deploy/nginx.hub.conf.example` 渲染为实际 server 配置后执行。
 
 ## 4. Agent 验证
 
@@ -45,9 +45,11 @@ curl -fsS http://127.0.0.1:4318/api/health
 Docker/Dokploy：
 
 ```bash
-CCV_HUB_WEB_IMAGE=ccv-hub-web:vX.Y.Z docker compose --env-file .env.example -f deploy/docker-compose.standalone.yml up -d
+CCV_HUB_WEB_IMAGE=ccv-hub-web:vX.Y.Z docker compose --env-file .env -f deploy/docker-compose.standalone.yml up -d
 curl -fsS https://hub.example.com/
 ```
+
+Docker Compose 使用正式 `.env`；Dokploy 使用同一组变量写入环境变量面板。
 
 Nginx/Caddy 静态部署：
 
@@ -146,7 +148,7 @@ bun run smoke:release
 Web Docker/Dokploy：
 
 ```bash
-CCV_HUB_WEB_IMAGE=ccv-hub-web:vX.Y.Z-prev docker compose --env-file .env.example -f deploy/docker-compose.standalone.yml up -d
+CCV_HUB_WEB_IMAGE=ccv-hub-web:vX.Y.Z-prev docker compose --env-file .env -f deploy/docker-compose.standalone.yml up -d
 bun run smoke:release
 ```
 

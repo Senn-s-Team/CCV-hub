@@ -55,17 +55,26 @@ HOME=/home/user
 
 ## 4. Web 启动
 
-```bash
-export CCV_HUB_WEB_IMAGE=ccv-hub-web:vX.Y.Z
-export CCV_HUB_WEB_PORT=4317
-export CCV_HUB_AGENT_UPSTREAM=http://host.docker.internal:4318
-export CCV_HUB_PUBLIC_PROTOCOL=https
-export CCV_HUB_PUBLIC_HOST=hub.example.com
-export CCV_HUB_PUBLIC_DOMAIN=example.com
-export CCV_HUB_PUBLIC_DOMAIN_REGEX='example\.com'
-export CCV_HUB_VIEWER_SUBDOMAIN_PREFIX=ccv-
+正式环境使用 `.env` 保存 release Web 变量；开发环境使用 `.env.dev`。
 
-docker compose -f deploy/docker-compose.standalone.yml up -d
+```bash
+cp -n .env.example .env
+$EDITOR .env
+
+docker compose --env-file .env -f deploy/docker-compose.standalone.yml up -d
+```
+
+`.env` 必填：
+
+```env
+CCV_HUB_WEB_IMAGE=ccv-hub-web:vX.Y.Z
+CCV_HUB_WEB_PORT=4317
+CCV_HUB_AGENT_UPSTREAM=http://host.docker.internal:4318
+CCV_HUB_PUBLIC_PROTOCOL=https
+CCV_HUB_PUBLIC_HOST=hub.example.com
+CCV_HUB_PUBLIC_DOMAIN=example.com
+CCV_HUB_PUBLIC_DOMAIN_REGEX=example\.com
+CCV_HUB_VIEWER_SUBDOMAIN_PREFIX=ccv-
 ```
 
 上游反代把 `https://hub.example.com` 和 `https://ccv-*.example.com` 转发到宿主机 `${CCV_HUB_WEB_PORT}`。
@@ -73,7 +82,8 @@ docker compose -f deploy/docker-compose.standalone.yml up -d
 ## 5. 验证
 
 ```bash
-docker compose -f deploy/docker-compose.standalone.yml config
+docker compose --env-file .env.example -f deploy/docker-compose.standalone.yml config
+docker compose --env-file .env -f deploy/docker-compose.standalone.yml config
 curl -fsS http://127.0.0.1:4318/api/health
 curl -fsS http://127.0.0.1:4317/api/health
 ```

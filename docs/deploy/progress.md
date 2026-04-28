@@ -48,11 +48,12 @@
 - 完成故障排查文档：新增 `docs/deploy/troubleshooting.md`，覆盖 Agent 启动、health、鉴权、API 代理、启动实例、viewer 子域名、SSE、WebSocket、停止收敛与回滚异常。
 - 完成 Task E 验证：`node --check scripts/smoke-release.mjs`、`bun run lint`、`bun run test`、临时 Agent 鉴权 smoke 均通过；未提供真实 viewer 环境，深度 viewer 与 stop 检查保留为部署环境 smoke path。
 - 启动 Task F 真实环境 release rehearsal：新增 `scripts/rehearse-release.mjs` 与根脚本 `release:rehearsal`，串联现有 lint/test/build、Web/Agent 打包、Compose 模板验证、release smoke、checksums 与 evidence report。
-- 完成 Task F 本机 Agent rehearsal：`CCV_HUB_SMOKE_BASE_URL=http://127.0.0.1:4318`、本机 `.env` 鉴权口令与 `CCV_HUB_SMOKE_CHECK_INVALID_PATH=1` 下执行 `bun run release:rehearsal -- v0.0.0-rehearsal` 通过，生成 `build/checksums-v0.0.0-rehearsal.txt` 与 `build/release-rehearsal-v0.0.0-rehearsal.json`。
+- 完成 Task F 本机 Agent rehearsal：`CCV_HUB_SMOKE_BASE_URL=http://127.0.0.1:4318`、正式 `.env` 鉴权口令与 `CCV_HUB_SMOKE_CHECK_INVALID_PATH=1` 下执行 `bun run release:rehearsal -- v0.0.0-rehearsal` 通过，生成 `build/checksums-v0.0.0-rehearsal.txt` 与 `build/release-rehearsal-v0.0.0-rehearsal.json`。
 - 完成 Task F 真实项目 deep smoke：以 `/home/opc/projects/ccvs/cc-viewer` 为 `CCV_HUB_SMOKE_PROJECT_PATH` 执行 `bun run smoke:release`，health、auth、instances、invalid-path、launch、viewer HTTP、viewer SSE 与 stop 均通过。
 - 完成 Task F HTTPS WebSocket 自动验证：`scripts/smoke-release.mjs` 已用 TLS socket 对 HTTPS viewer URL 执行 WebSocket upgrade handshake，公网 deep smoke 中 viewer-websocket 通过。
 - 完成 Task F 公网 Web entry 验证：`CCV_HUB_SMOKE_BASE_URL=https://ccv-hub-dev.paas.996667.xyz`、`CCV_HUB_SMOKE_CHECK_HOME=1`、真实项目路径与 stop 收敛启用时，home、health、auth、instances、invalid-path、launch、viewer HTTP、viewer SSE、viewer WebSocket 与 stop 均通过。
 - 完成 Task F 非破坏性 rollback rehearsal：使用 `build/ccv-hub-agent-v0.0.0-test.tar.gz` 与 `build/ccv-hub-agent-v0.0.0-rehearsal.tar.gz` 在临时目录解包，切换 `current` symlink 前进与回滚，执行 `bun install --production --frozen-lockfile`，并在临时端口 `4520` 启动回滚版本通过 `/api/health`。
+- 正式环境配置使用 `.env` 或 Dokploy 环境变量面板，开发环境配置使用 `.env.dev`，可提交模板保留为 `.env.example`。
 
 ## 5. 下一步任务拆分
 
