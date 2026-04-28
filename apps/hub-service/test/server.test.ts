@@ -4,6 +4,7 @@
  * [POS]: hub-service 的测试入口，负责验证健康接口、实例列表、创建/注册流程、URL 投影、HTTP/WebSocket 桥接与启动环境收敛
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
+import { EventEmitter } from 'node:events';
 import { mkdtemp, mkdir, symlink, rm } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
@@ -15,6 +16,7 @@ import type { AuthConfig } from '../src/domain/auth-session.js';
 import { HostPathBrowser } from '../src/domain/host-path-browser.js';
 import { InstanceRegistry } from '../src/domain/instance-registry.js';
 import { buildLaunchArgs, buildLaunchEnv, parseViewerUrl, resolveViewerUrl } from '../src/launcher/ccv-launcher.js';
+import { createStopHandle } from '../src/launcher/process-supervisor.js';
 
 function listen(server: ReturnType<typeof createServer>): Promise<number> {
   return new Promise((resolve) => {
@@ -34,11 +36,21 @@ function close(server: ReturnType<typeof createServer>): Promise<void> {
   });
 }
 
+
+class FakeChildProcess extends EventEmitter {
+  killed = false;
+  readonly kill = vi.fn((signal?: NodeJS.Signals) => {
+    if (signal === 'SIGKILL') this.killed = true;
+    return true;
+  });
+}
+
 const authConfig: AuthConfig = {
   password: 'secret',
   sessionSecret: 'test-session-secret',
   cookieName: 'ccv_hub_session',
   cookieSecure: false,
+  cookieDomain: undefined,
   sessionTtlSeconds: 60,
 };
 
@@ -346,6 +358,40 @@ describe('hub-service routes', () => {
     await app.close();
   });
 
+  it('requires authentication for viewer bridge pages', async () => {
+    const registry = new InstanceRegistry();
+    registry.createRunning({
+      id: 'bridge-auth',
+      projectName: 'alpha',
+      projectPath: '/tmp/alpha',
+      url: 'https://ccv-1234567890abcdef1234567890abcdef.paas.996667.xyz/?token=abc',
+      upstreamUrl: 'http://127.0.0.1:4321?token=abc',
+      bridgeId: '1234567890abcdef1234567890abcdef',
+      port: 4321,
+      pid: 1001,
+      source: 'launcher',
+      startedAt: '2026-04-22T10:00:00.000Z',
+      lastSeen: '2026-04-22T10:00:01.000Z',
+      stop: vi.fn(),
+    });
+    const app = buildServer({
+      registry,
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/',
+      headers: { host: 'ccv-1234567890abcdef1234567890abcdef.paas.996667.xyz' },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json().error.code).toBe('UNAUTHORIZED');
+
+    await app.close();
+  });
+
   it('bridges viewer subdomain requests to the registered upstream with token', async () => {
     const upstream = createServer((request, response) => {
       response.setHeader('content-type', 'application/json');
@@ -377,7 +423,7 @@ describe('hub-service routes', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/api/events?cursor=1&token=evil',
-        headers: { host: bridgeHost },
+        headers: { host: bridgeHost, ...(await authHeaders(app)) },
       });
 
       expect(response.statusCode).toBe(200);
@@ -426,7 +472,7 @@ describe('hub-service routes', () => {
       const response = await app.inject({
         method: 'POST',
         url: '/api/resume-choice?token=abc&token=abc',
-        headers: { host: bridgeHost },
+        headers: { host: bridgeHost, ...(await authHeaders(app)) },
         payload: { choice: 'continue' },
       });
 
@@ -474,9 +520,11 @@ describe('hub-service routes', () => {
       });
       const bridgeHost = new URL(registerResponse.json().data.instance.url).host;
 
+      const headers = await authHeaders(app);
       const response = await readSocketUntil(port, [
         'GET /ws/terminal?session=1 HTTP/1.1',
         `Host: ${bridgeHost}`,
+        `Cookie: ${headers.cookie}`,
         'Connection: Upgrade',
         'Upgrade: websocket',
         'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==',
@@ -487,6 +535,53 @@ describe('hub-service routes', () => {
 
       expect(response).toContain('HTTP/1.1 101 Switching Protocols');
       expect(response).toContain('upstream:/ws/terminal?session=1&token=abc');
+    } finally {
+      await app.close();
+      await close(upstream);
+    }
+  });
+
+  it('requires authentication for viewer bridge websocket upgrades', async () => {
+    const upstream = createServer();
+    const upstreamPort = await listen(upstream);
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    try {
+      await app.listen({ port: 0, host: '127.0.0.1' });
+      const address = app.server.address();
+      const port = typeof address === 'object' && address ? address.port : 0;
+
+      const registerResponse = await app.inject({
+        method: 'POST',
+        url: '/api/instances/register',
+        payload: {
+          id: 'manual-bridge-ws-auth',
+          projectName: 'cc-viewer',
+          projectPath: '/home/opc/projects/ccvs/cc-viewer',
+          url: `http://127.0.0.1:${upstreamPort}?token=abc`,
+          port: upstreamPort,
+          pid: 4321,
+          source: 'manual',
+          startedAt: '2026-04-22T10:00:00.000Z',
+        },
+      });
+      const bridgeHost = new URL(registerResponse.json().data.instance.url).host;
+
+      const response = await readSocketUntil(port, [
+        'GET /ws/terminal?session=1 HTTP/1.1',
+        `Host: ${bridgeHost}`,
+        'Connection: Upgrade',
+        'Upgrade: websocket',
+        'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==',
+        'Sec-WebSocket-Version: 13',
+        '',
+        '',
+      ].join('\r\n'), '401 Unauthorized');
+
+      expect(response).toContain('HTTP/1.1 401 Unauthorized');
     } finally {
       await app.close();
       await close(upstream);
@@ -527,6 +622,23 @@ describe('hub-service routes', () => {
     expect(registry.get('launcher-stop')?.internalStatus).toBe('stopping');
 
     await app.close();
+  });
+
+
+  it('upgrades graceful stop to SIGKILL when the child does not exit', () => {
+    vi.useFakeTimers();
+    try {
+      const child = new FakeChildProcess();
+      const stop = createStopHandle(child as never);
+
+      stop('SIGTERM');
+      vi.advanceTimersByTime(3000);
+
+      expect(child.kill).toHaveBeenNthCalledWith(1, 'SIGTERM');
+      expect(child.kill).toHaveBeenNthCalledWith(2, 'SIGKILL');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('force stops instances with SIGKILL', async () => {

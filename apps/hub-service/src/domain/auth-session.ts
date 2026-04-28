@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 node:crypto 的 HMAC、哈希与安全比较能力
  * [OUTPUT]: 对外提供 AuthConfig、resolveAuthConfig、createSessionToken、verifySessionToken 与 verifyPassword
- * [POS]: hub-service 的面板会话核心，负责把管理员口令转换成可校验 HttpOnly cookie token
+ * [POS]: hub-service 的面板会话核心，负责把管理员口令转换成可校验 HttpOnly cookie token 并覆盖 viewer 子域名
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { createHmac, createHash, timingSafeEqual } from 'node:crypto';
@@ -11,10 +11,18 @@ export type AuthConfig = {
   sessionSecret: string | undefined;
   cookieName: string;
   cookieSecure: boolean;
+  cookieDomain: string | undefined;
   sessionTtlSeconds: number;
 };
 
 const defaultSessionTtlSeconds = 60 * 60 * 24 * 7;
+
+function resolveCookieDomain(env: NodeJS.ProcessEnv): string | undefined {
+  const explicitDomain = env.CCV_HUB_COOKIE_DOMAIN;
+  if (explicitDomain) return explicitDomain;
+  const publicDomain = env.CCV_HUB_PUBLIC_DOMAIN;
+  return publicDomain ? `.${publicDomain}` : undefined;
+}
 
 export function resolveAuthConfig(env: NodeJS.ProcessEnv = process.env): AuthConfig {
   return {
@@ -22,6 +30,7 @@ export function resolveAuthConfig(env: NodeJS.ProcessEnv = process.env): AuthCon
     sessionSecret: env.CCV_HUB_SESSION_SECRET,
     cookieName: env.CCV_HUB_SESSION_COOKIE ?? 'ccv_hub_session',
     cookieSecure: (env.CCV_HUB_COOKIE_SECURE ?? env.CCV_HUB_PUBLIC_PROTOCOL) === 'https',
+    cookieDomain: resolveCookieDomain(env),
     sessionTtlSeconds: Number(env.CCV_HUB_SESSION_TTL_SECONDS ?? defaultSessionTtlSeconds),
   };
 }

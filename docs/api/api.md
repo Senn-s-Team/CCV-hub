@@ -30,7 +30,7 @@
 - 返回结果优先服务当前总览页 MVP
 - 默认排序由服务端保证为最近启动时间降序
 - `stale` 与 `exited` 属于系统内部收敛状态，不作为页面列表结果返回
-- 错误返回格式统一，便于网页直接展示
+- Hub API 与 viewer bridge 页面共享管理员会话；viewer 子域名访问必须带有效 session cookie
 
 ## 4. 实例对象
 
@@ -288,7 +288,7 @@
 ```
 
 约束：
-- `stop` 向 hub 自身启动的实例发送 `SIGTERM`
+- `stop` 向 hub 自身启动的实例发送 `SIGTERM`，短暂宽限后仍未退出则升级为 `SIGKILL`
 - `force-stop` 向 hub 自身启动的实例发送 `SIGKILL`
 - 手动上报实例只通过 unregister 收敛，不由 lifecycle 接口按 pid 停止
 - 停止请求成功后实例退出运行列表，真实绝对路径 active 占用保留到进程退出事件收敛
@@ -351,6 +351,16 @@
 - 匹配成功后实例从运行列表移除
 - 重复注销返回 `removed: false`
 
+### 6.9 viewer bridge 子域名访问
+
+用于打开 `instance.url` 指向的 cc-viewer 实例页面，HTTP、SSE 与 WebSocket 都通过 Hub Agent 反向代理到对应 upstream。
+
+约束：
+- 请求 Host 必须匹配 `CCV_HUB_VIEWER_SUBDOMAIN_PREFIX + bridgeId + CCV_HUB_PUBLIC_DOMAIN`
+- 请求必须带有效 Hub session cookie
+- 登录 cookie 通过 `CCV_HUB_COOKIE_DOMAIN` 覆盖 Hub 主域名与 viewer 子域名
+- Hub 转发时自动把 upstream token 注入目标请求，页面不负责维护 raw upstream token
+
 ## 7. 状态约定
 
 ### 7.1 对页面可见状态
@@ -378,6 +388,7 @@
 - 过滤非运行中实例
 - 按启动时间排序
 - 返回统一错误结构
+- 提供可覆盖 Hub 主域名和 viewer 子域名的管理员 session cookie
 
 ### 8.2 前端负责
 
@@ -397,3 +408,4 @@
 7. 外部实例注销后，`GET /api/instances` 不再返回该实例。
 8. Dokploy viewer 子域名路由可用时，`url` 返回公网 bridge 地址。
 9. Hub bridge 访问 upstream 时自动保留或补充 token，`port` 保持 viewer 监听端口语义。
+10. 未登录访问 viewer 子域名 HTTP 或 WebSocket 入口返回 401。

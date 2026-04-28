@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 node:http、node:net、node:tls、FastifyInstance、bridge Host 解析与实例注册表 upstream 记录
- * [OUTPUT]: 对外提供 registerViewerBridgeRoute，用于按 viewer 子域名反代 HTTP/SSE 与 WebSocket 请求
+ * [INPUT]: 依赖 node:http、node:net、node:tls、FastifyInstance、bridge Host 解析、面板会话鉴权与实例注册表 upstream 记录
+ * [OUTPUT]: 对外提供 registerViewerBridgeRoute，用于按 viewer 子域名反代已鉴权 HTTP/SSE 与 WebSocket 请求
  * [POS]: hub-service 的公网 viewer 桥接面，把 Dokploy 子域名流量转发到对应 cc-viewer 内网实例
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -11,6 +11,8 @@ import { connect as netConnect, type Socket } from 'node:net';
 import { connect as tlsConnect } from 'node:tls';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { appendUpstreamToken, resolveBridgeIdFromHost } from '../domain/bridge-url.js';
+import type { AuthConfig } from '../domain/auth-session.js';
+import { hasValidSessionCookie } from './auth.js';
 import type { InstanceRegistry } from '../domain/instance-registry.js';
 import type { ManagedInstanceRecord } from '../domain/instance-model.js';
 
@@ -87,10 +89,14 @@ function serializeUpgradeRequest(request: IncomingMessage, target: URL): string 
   return `${lines.join('\r\n')}\r\n\r\n`;
 }
 
-function proxyUpgrade(request: IncomingMessage, socket: Socket | import('node:stream').Duplex, head: Buffer, registry: InstanceRegistry): void {
+function proxyUpgrade(request: IncomingMessage, socket: Socket | import('node:stream').Duplex, head: Buffer, registry: InstanceRegistry, auth: AuthConfig): void {
   const record = resolveBridgeRecord(request.headers.host, registry);
   if (!record) {
     socket.end('HTTP/1.1 404 Not Found\r\n\r\n');
+    return;
+  }
+  if (!hasValidSessionCookie(request.headers.cookie, auth)) {
+    socket.end('HTTP/1.1 401 Unauthorized\r\n\r\n');
     return;
   }
 
@@ -111,7 +117,7 @@ function proxyUpgrade(request: IncomingMessage, socket: Socket | import('node:st
   socket.on('error', () => upstream.destroy());
 }
 
-export function registerViewerBridgeRoute(app: FastifyInstance, registry: InstanceRegistry): void {
+export function registerViewerBridgeRoute(app: FastifyInstance, registry: InstanceRegistry, auth: AuthConfig): void {
   app.all('/*', async (request, reply) => {
     const record = resolveBridgeRecord(request.headers.host, registry);
     if (!record) {
@@ -121,5 +127,5 @@ export function registerViewerBridgeRoute(app: FastifyInstance, registry: Instan
     await proxyHttp(request as BridgeRequest, reply, record);
   });
 
-  app.server.on('upgrade', (request, socket, head) => proxyUpgrade(request, socket, head, registry));
+  app.server.on('upgrade', (request, socket, head) => proxyUpgrade(request, socket, head, registry, auth));
 }
