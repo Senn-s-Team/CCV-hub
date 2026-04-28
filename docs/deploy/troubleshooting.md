@@ -13,7 +13,7 @@ ls -l /opt/ccv-hub-agent/current
 处理：
 
 - `current` 必须指向存在的 release 目录。
-- `/etc/ccv-hub/agent.env` 权限为 `600`，属主为 `root:root`。
+- `/etc/ccv-hub/.env.agent` 权限为 `600`，属主为 `root:root`。
 - `CCV_CLI_PATH` 必须指向可执行的 cc-viewer CLI。
 - `CLAUDE_CONFIG_DIR` 与 `HOME` 必须指向运行 Agent 的宿主机用户环境。
 
@@ -30,6 +30,7 @@ ss -ltnp | grep 4318
 
 - `CCV_HUB_HOST` 与 `CCV_HUB_PORT` 决定 Agent 监听地址。
 - Docker Web 访问宿主机 Agent 时，`CCV_HUB_AGENT_UPSTREAM` 指向 `http://host.docker.internal:4318` 或部署机可达地址。
+- Dokploy/Compose 容器回连宿主机 Agent 时，Agent 推荐 `CCV_HUB_HOST=0.0.0.0`，并通过防火墙阻止公网直连 `4318`。
 - 防火墙只需要允许反向代理或 Web 容器访问 Agent。
 
 ## 3. 登录后仍然 401

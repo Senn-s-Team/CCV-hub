@@ -21,20 +21,21 @@ Web 容器只承载静态页面、`/api` 代理和 viewer 子域名入口。Agen
 - `ccv-hub-web:vX.Y.Z`
 - `ccv-hub-agent-vX.Y.Z.tar.gz`
 - `deploy/docker-compose.standalone.yml`
-- `deploy/agent.env.example`
+- `.env.example`
+- `deploy/.env.agent.example`
 
 ## 3. Agent 安装
 
 ```bash
 sudo tar -xzf ccv-hub-agent-vX.Y.Z.tar.gz -C /opt/ccv-hub-agent/releases/vX.Y.Z
 sudo ln -sfn /opt/ccv-hub-agent/releases/vX.Y.Z /opt/ccv-hub-agent/current
-sudo install -m 0600 deploy/agent.env.example /etc/ccv-hub/agent.env
+sudo install -m 0600 deploy/.env.agent.example /etc/ccv-hub/.env.agent
 sudo install -m 0644 deploy/ccv-hub-agent.service /etc/systemd/system/ccv-hub-agent.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now ccv-hub-agent
 ```
 
-`/etc/ccv-hub/agent.env` 必填：
+`/etc/ccv-hub/.env.agent` 必填：
 
 ```env
 CCV_HUB_HOST=0.0.0.0
@@ -55,7 +56,7 @@ HOME=/home/user
 
 ## 4. Web 启动
 
-正式环境使用 `.env` 保存 release Web 变量；开发环境使用 `.env.dev`。
+正式环境使用 `.env` 保存 release Web 变量；开发环境使用 `.env.dev`。宿主机 Agent 使用 `/etc/ccv-hub/.env.agent`，从 `deploy/.env.agent.example` 初始化。
 
 ```bash
 cp -n .env.example .env

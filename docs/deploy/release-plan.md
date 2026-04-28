@@ -56,7 +56,7 @@ checksums.txt
 └── current -> /opt/ccv-hub-agent/releases/v0.1.1
 
 /etc/ccv-hub/
-└── agent.env
+└── .env.agent
 
 /etc/systemd/system/
 └── ccv-hub-agent.service
@@ -66,11 +66,11 @@ systemd 指向 `current` symlink，回滚只切换 symlink 并重启服务。
 
 ## 5. Agent 环境变量模板
 
-`/etc/ccv-hub/agent.env`：
+`/etc/ccv-hub/.env.agent`：
 
 ```env
 CCV_HUB_ENV=production
-CCV_HUB_HOST=127.0.0.1
+CCV_HUB_HOST=0.0.0.0
 CCV_HUB_PORT=4318
 
 CCV_HUB_PUBLIC_PROTOCOL=https
@@ -89,11 +89,11 @@ HOME=/home/user
 LOG_LEVEL=info
 ```
 
-权限：
+权限：安装脚本会在首次安装时初始化 `/etc/ccv-hub/.env.agent`，升级时保留已有配置并收敛为 `0600 root:root`。
 
 ```bash
-sudo chown root:root /etc/ccv-hub/agent.env
-sudo chmod 600 /etc/ccv-hub/agent.env
+sudo chown root:root /etc/ccv-hub/.env.agent
+sudo chmod 600 /etc/ccv-hub/.env.agent
 ```
 
 ## 6. Web 环境变量模板
@@ -137,7 +137,7 @@ docker save ccv-hub-web:vX.Y.Z | gzip > build/ccv-hub-web-vX.Y.Z.image.tar.gz
 
 ```text
 apps/hub-web/dist + apps/hub-web/nginx.conf -> ccv-hub-web-vX.Y.Z.tar.gz
-apps/hub-service/dist + package metadata + deploy/ccv-hub-agent.service + deploy/agent.env.example + scripts/install-agent-release.sh -> ccv-hub-agent-vX.Y.Z.tar.gz
+apps/hub-service/dist + package metadata + deploy/ccv-hub-agent.service + deploy/.env.agent.example + scripts/install-agent-release.sh -> ccv-hub-agent-vX.Y.Z.tar.gz
 deploy/docker-compose.hub.yml + deploy/docker-compose.standalone.yml + deploy/Caddyfile.example + deploy/nginx.hub.conf.example + deploy/kubernetes-web.yaml + systemd/env templates -> deploy-templates-vX.Y.Z.zip
 ```
 

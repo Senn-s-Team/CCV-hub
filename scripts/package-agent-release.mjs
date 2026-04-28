@@ -2,7 +2,7 @@
 /**
  * [INPUT]: 依赖 node:fs、node:child_process、workspace package metadata、hub-service/shared-contracts 构建产物与 deploy 模板
  * [OUTPUT]: 对外提供 build/ccv-hub-agent-<version>.tar.gz release 产物
- * [POS]: scripts 的 Agent 打包入口，把可运行 dist、包元数据、systemd unit、agent.env 模板与安装脚本收敛为单一 tarball
+ * [POS]: scripts 的 Agent 打包入口，把可运行 dist、包元数据、systemd unit、.env.agent 模板与安装脚本收敛为单一 tarball
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { cpSync, mkdirSync, rmSync } from 'node:fs';
@@ -34,7 +34,7 @@ mkdirSync(scriptsDir, { recursive: true });
 cpSync(join(root, 'apps', 'hub-service', 'dist'), join(serviceDir, 'dist'), { recursive: true });
 cpSync(join(root, 'packages', 'shared-contracts', 'dist'), join(contractsDir, 'dist'), { recursive: true });
 cpSync(join(root, 'deploy', 'ccv-hub-agent.service'), join(deployDir, 'ccv-hub-agent.service'));
-cpSync(join(root, 'deploy', 'agent.env.example'), join(deployDir, 'agent.env.example'));
+cpSync(join(root, 'deploy', '.env.agent.example'), join(deployDir, '.env.agent.example'));
 cpSync(join(root, 'scripts', 'install-agent-release.sh'), join(scriptsDir, 'install-agent-release.sh'));
 
 cpSync(join(root, 'package.json'), join(stageDir, 'package.json'));

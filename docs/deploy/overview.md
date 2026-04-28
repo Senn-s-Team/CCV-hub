@@ -96,9 +96,9 @@ User -> Viewer: per-instance viewer token
 
 生产环境要求：
 
-- agent 监听端口默认绑定 `127.0.0.1`，需要容器回连时才使用受控的 host gateway。
+- agent 监听端口默认按部署模式收口：本机反代使用 `127.0.0.1`，Dokploy/Compose 容器回连使用 `0.0.0.0` 与受控 host gateway。
 - 防火墙阻止公网直连 agent 端口。
-- `/etc/ccv-hub/agent.env` 使用 `0600` 权限。
+- `/etc/ccv-hub/.env.agent` 使用 `0600` 权限。
 - viewer 子域名只通过 bridge id 与 token 访问具体 upstream。
 - 路径浏览严格受 `CCV_HUB_PATH_ROOTS` 限制。
 

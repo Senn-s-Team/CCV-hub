@@ -34,8 +34,8 @@
 - 完成 Task A 配置模板化：compose、nginx、systemd 与 `.env.example` 统一使用可覆盖的域名、端口、路径和 viewer 前缀变量。
 - 完成 Task A 命令复核：Traefik HostRegexp、nginx server_name、Agent viewer URL 与 `.env.example` 使用同一组域名、domain regex、viewer 前缀和 upstream 变量。
 - 完成 Task B release baseline：`shared-contracts` 和 `hub-service` 改为 `src -> dist` 构建，`node apps/hub-service/dist/server.js` 可启动并返回 `/api/health`。
-- systemd 单元已指向 `/opt/ccv-hub-agent/current/apps/hub-service` 与 `/etc/ccv-hub/agent.env`，Docker Agent 镜像已改为构建后运行 `dist/server.js`。
-- 完成 Task B Agent release 打包：新增 `deploy/ccv-hub-agent.service`、`deploy/agent.env.example`、`scripts/package-agent-release.mjs`、`scripts/install-agent-release.sh`，`bun run release:agent -- v0.0.0-test` 可产出 tarball。
+- systemd 单元已指向 `/opt/ccv-hub-agent/current/apps/hub-service` 与 `/etc/ccv-hub/.env.agent`，Docker Agent 镜像已改为构建后运行 `dist/server.js`。
+- 完成 Task B Agent release 打包：新增 `deploy/ccv-hub-agent.service`、`deploy/.env.agent.example`、`scripts/package-agent-release.mjs`、`scripts/install-agent-release.sh`，`bun run release:agent -- v0.0.0-test` 可产出 tarball。
 - 完成 Task B 端到端验证：tarball 内容检查、解包后 `bun install --production`、携带宿主机 `CCV_CLI_PATH` 启动 `dist/server.js`、`/api/health`、Docker build、systemd verify、workspace test/build 均通过。
 - 完成 Task C Web release 化：`deploy/docker-compose.hub.yml` 改为 image-only 部署，移除 Web 容器源码挂载，新增 `scripts/package-web-release.mjs` 与 `release:web`，Web tarball 固定包含 `dist/` 与 nginx 模板；`bun run --filter hub-web build`、`bun run release:web -- v0.0.0-test`、tarball 内容检查、`docker build`、`docker compose config`、容器首页/API/mounts smoke 均通过。
 - 完成 Task D 平台适配补齐：新增 `compose.md`、`dokploy.md`、`caddy.md`、`nginx.md`、`kubernetes.md` 五个平台文档，新增 `docker-compose.standalone.yml`、`Caddyfile.example`、`nginx.hub.conf.example`、`kubernetes-web.yaml` 四个部署模板；Compose/Dokploy/Caddy/Nginx/Kubernetes 均给出宿主机 Agent 主路径和 smoke path。
@@ -85,7 +85,7 @@
 - `apps/hub-service/tsconfig.json`
 - `deploy/ccv-hub-agent.service`
 - `deploy/ccv-hub-service.service`
-- `deploy/agent.env.example`
+- `deploy/.env.agent.example`
 - `scripts/package-agent-release.mjs`
 - `scripts/install-agent-release.sh`
 

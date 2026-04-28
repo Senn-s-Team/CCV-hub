@@ -1,5 +1,5 @@
-# [INPUT]: 依赖 /opt/ccv-hub-agent/current release 目录、Node/Claude Code 用户环境、systemd agent.env 与 ccv-hub-agent 构建产物
-# [OUTPUT]: 对外提供运行在宿主机用户环境中的 ccv-hub-agent systemd 单元与 /etc/ccv-hub/agent.env 配置入口
+# [INPUT]: 依赖 /opt/ccv-hub-agent/current release 目录、Node/Claude Code 用户环境、systemd .env.agent 与 ccv-hub-agent 构建产物
+# [OUTPUT]: 对外提供运行在宿主机用户环境中的 ccv-hub-agent systemd 单元与 /etc/ccv-hub/.env.agent 配置入口
 # [POS]: deploy 目录的宿主机 Agent release 入口，通过 current symlink 运行 dist/server.js 并保留用户 Claude 环境
 # [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 [Unit]
@@ -21,7 +21,7 @@ Environment=CCV_CLI_PATH=/home/opc/projects/ccvs/cc-viewer/cli.js
 Environment=HOME=/home/opc
 Environment=PATH=/home/linuxbrew/.linuxbrew/bin:/home/opc/.local/bin:/home/opc/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 Environment=CLAUDE_CONFIG_DIR=/home/opc/.claude
-EnvironmentFile=/etc/ccv-hub/agent.env
+EnvironmentFile=/etc/ccv-hub/.env.agent
 ExecStart=/usr/bin/env node dist/server.js
 Restart=always
 RestartSec=2

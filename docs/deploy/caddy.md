@@ -15,7 +15,7 @@ Caddy 负责 TLS、主域名和 viewer wildcard。Agent 运行在宿主机 syste
 ## 2. 使用的模板
 
 - `deploy/Caddyfile.example`
-- `deploy/agent.env.example`
+- `deploy/.env.agent.example`
 
 Web 可以使用两种入口：
 

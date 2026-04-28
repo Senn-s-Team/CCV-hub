@@ -22,7 +22,7 @@ Kubernetes 负责 Web image、Service 和 Ingress。Agent 需要访问宿主机 
 ## 2. 使用的模板
 
 - `deploy/kubernetes-web.yaml`
-- `deploy/agent.env.example`
+- `deploy/.env.agent.example`
 
 ## 3. 必填配置
 

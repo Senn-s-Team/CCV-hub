@@ -50,7 +50,7 @@ Host process: cc-viewer
 模板：
 
 - `deploy/docker-compose.standalone.yml`
-- `deploy/agent.env.example`
+- `deploy/.env.agent.example`
 
 必需配置：
 
@@ -93,7 +93,7 @@ host ccv-hub-agent
 模板：
 
 - `deploy/docker-compose.hub.yml`
-- `deploy/agent.env.example`
+- `deploy/.env.agent.example`
 
 平台差异：
 
@@ -129,7 +129,7 @@ Caddy
 模板：
 
 - `deploy/Caddyfile.example`
-- `deploy/agent.env.example`
+- `deploy/.env.agent.example`
 
 验收：
 
@@ -159,7 +159,7 @@ Nginx
 模板：
 
 - `deploy/nginx.hub.conf.example`
-- `deploy/agent.env.example`
+- `deploy/.env.agent.example`
 
 验收：
 
@@ -181,7 +181,7 @@ Host node: ccv-hub-agent
 模板：
 
 - `deploy/kubernetes-web.yaml`
-- `deploy/agent.env.example`
+- `deploy/.env.agent.example`
 
 Agent 的默认形态是节点 systemd。DaemonSet Agent 是高级方向，需要每个节点都有 Claude Code 环境、项目目录、`cc-viewer` CLI 和明确的路径授权。
 
