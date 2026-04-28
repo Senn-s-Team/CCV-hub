@@ -13,6 +13,8 @@ ls -l /opt/ccv-hub-agent/current
 处理：
 
 - `current` 必须指向存在的 release 目录。
+- release 目录必须通过 `scripts/install-agent-release.sh` 安装，安装过程会执行 `bun install --production --frozen-lockfile`。
+- `Cannot find package 'fastify'` 表示当前 release 缺少 production 依赖，重新执行 `bun run deploy:service`。
 - `/etc/ccv-hub/.env.agent` 权限为 `600`，属主为 `root:root`。
 - `CCV_CLI_PATH` 必须指向可执行的 cc-viewer CLI。
 - `CLAUDE_CONFIG_DIR` 与 `HOME` 必须指向运行 Agent 的宿主机用户环境。
@@ -139,6 +141,7 @@ journalctl -u ccv-hub-agent -n 200 --no-pager
 - 手动上报实例由 cc-viewer 插件发送 unregister。
 - 进程退出事件到达后，registry 才完全释放 active path。
 
+
 ## 10. 回滚后异常
 
 检查：
@@ -155,3 +158,20 @@ bun run smoke:release
 - Agent 回滚只切换 `current` symlink 并重启 systemd。
 - Web 回滚只切换 image tag 或静态目录 symlink。
 - 回滚后立即运行 health、instances、viewer bridge smoke。
+
+## 11. dev 部署流程失败
+
+检查：
+
+```bash
+bun run deploy:service
+bun run smoke:dev
+bun run dev:web
+```
+
+处理：
+
+- `deploy:service` 固定执行 Agent 打包、tarball 安装、production 依赖安装、`current` symlink 切换与 systemd 重启。
+- `dev:service` 固定加载 `deploy/.env.agent.dev`，用于源码 watch 调试。
+- `dev:web` 固定加载 `.env.dev`，用于 Vite 开发代理。
+- `smoke:dev` 固定加载 `deploy/.env.agent.dev`，默认验证本机 `http://127.0.0.1:4318` 的 health、auth 与 instances，并只在 dev wrapper 中从 `CCV_HUB_AUTH_PASSWORD` 派生 smoke 登录口令。

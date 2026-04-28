@@ -1,17 +1,23 @@
 #!/usr/bin/env bash
-# [INPUT]: 依赖 Agent release tarball、/opt/ccv-hub-agent、/etc/ccv-hub、systemd、Node/Bun 运行环境与 bun.lock 生产依赖
-# [OUTPUT]: 对外提供版本目录安装、production 依赖安装、current symlink 切换、.env.agent 初始化与 ccv-hub-agent.service 安装能力
-# [POS]: scripts 的 Agent 安装入口，把 tarball 解包结果安装为宿主机 systemd release
+# [INPUT]: 依赖 Agent release tarball 或解包目录、/opt/ccv-hub-agent、/etc/ccv-hub、systemd、Node/Bun 运行环境与 bun.lock 生产依赖
+# [OUTPUT]: 对外提供 tarball 解包、版本目录安装、production 依赖安装、current symlink 切换、.env.agent 初始化与 ccv-hub-agent.service 安装能力
+# [POS]: scripts 的 Agent 安装入口，把 release 产物安装为宿主机 systemd release
 # [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 set -euo pipefail
 
-release_dir="${1:?usage: install-agent-release.sh <extracted-release-dir>}"
+release_input="${1:?usage: install-agent-release.sh <release-tarball-or-dir>}"
 install_root="${CCV_HUB_AGENT_INSTALL_ROOT:-/opt/ccv-hub-agent}"
 env_dir="${CCV_HUB_AGENT_ENV_DIR:-/etc/ccv-hub}"
 service_dir="${CCV_HUB_SYSTEMD_DIR:-/etc/systemd/system}"
 bun_bin="${BUN_BIN:-}"
-version="$(basename "$release_dir")"
-target_dir="$install_root/releases/$version"
+staging_dir=""
+
+cleanup() {
+  if [ -n "$staging_dir" ]; then
+    rm -rf "$staging_dir"
+  fi
+}
+trap cleanup EXIT
 
 require_absolute_path() {
   case "$2" in
@@ -23,9 +29,44 @@ require_absolute_path() {
   esac
 }
 
+resolve_release_dir() {
+  case "$release_input" in
+    *.tar.gz|*.tgz)
+      staging_dir="$(mktemp -d)"
+      tar -tzf "$release_input" | validate_tarball_layout || {
+        echo "release tarball must contain exactly one safe top-level directory" >&2
+        exit 2
+      }
+      tar -xzf "$release_input" -C "$staging_dir"
+      find "$staging_dir" -mindepth 1 -maxdepth 1 -type d
+      ;;
+    *)
+      printf '%s\n' "$release_input"
+      ;;
+  esac
+}
+
+validate_tarball_layout() {
+  awk -F/ '
+    NF && $1 != "" && $1 != "." { roots[$1] = 1 }
+    END {
+      for (root in roots) {
+        count++
+        name = root
+      }
+      if (count != 1) exit 1
+      if (name == ".." || name ~ /^-/) exit 1
+    }
+  '
+}
+
 require_absolute_path CCV_HUB_AGENT_INSTALL_ROOT "$install_root"
 require_absolute_path CCV_HUB_AGENT_ENV_DIR "$env_dir"
 require_absolute_path CCV_HUB_SYSTEMD_DIR "$service_dir"
+
+release_dir="$(resolve_release_dir)"
+version="$(basename "$release_dir")"
+target_dir="$install_root/releases/$version"
 
 case "$version" in
   ''|'.'|'..'|*'/'*)
@@ -60,7 +101,9 @@ if [ ! -f "$env_dir/.env.agent" ]; then
   fi
 fi
 chmod 600 "$env_dir/.env.agent"
-chown root:root "$env_dir/.env.agent"
+if [ "$(id -u)" -eq 0 ]; then
+  chown root:root "$env_dir/.env.agent"
+fi
 
 install -m 0644 "$target_dir/deploy/ccv-hub-agent.service" "$service_dir/ccv-hub-agent.service"
 systemctl daemon-reload

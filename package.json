@@ -13,13 +13,14 @@
     "build": "bun run --workspaces build",
     "test": "bun run --workspaces test",
     "lint": "bun run --workspaces lint",
-    "dev:web": "bun run --filter hub-web dev",
-    "dev:service": "bun run --filter hub-service dev",
+    "dev:web": "bun --env-file=.env.dev run --filter hub-web dev",
+    "dev:service": "bun --env-file=deploy/.env.agent.dev run --filter hub-service dev",
+    "smoke:dev": "bun --env-file=deploy/.env.agent.dev -e \"process.env.CCV_HUB_SMOKE_PASSWORD ??= process.env.CCV_HUB_AUTH_PASSWORD; await import('./scripts/smoke-release.mjs')\"",
     "release:agent": "node scripts/package-agent-release.mjs",
     "release:web": "node scripts/package-web-release.mjs",
     "release:rehearsal": "node scripts/rehearse-release.mjs",
     "smoke:release": "node scripts/smoke-release.mjs",
-    "deploy:service": "sudo install -m 0644 deploy/ccv-hub-agent.service /etc/systemd/system/ccv-hub-agent.service && sudo systemctl daemon-reload && sudo systemctl restart ccv-hub-agent && systemctl is-active ccv-hub-agent"
+    "deploy:service": "bun run release:agent -- v0.0.0-dev && sudo ./scripts/install-agent-release.sh build/ccv-hub-agent-v0.0.0-dev.tar.gz"
   },
   "devDependencies": {
     "@types/node": "24.7.2"

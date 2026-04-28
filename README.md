@@ -38,11 +38,18 @@ cc-viewer instances
 
 ## 快速开始
 
-### 环境要求
+### 前置条件
 
 - Bun `1.3.10`
 - Node.js `>=24.0.0`
-- 可用的 `cc-viewer` CLI
+- Claude Code：先按 [Claude Code 官方安装文档](https://code.claude.com/docs/en/setup) 安装并完成登录，确认 `claude --version` 可用。
+- cc-viewer：按 [cc-viewer GitHub](https://github.com/weiesky/cc-viewer) / [npm package](https://www.npmjs.com/package/cc-viewer) 安装 CLI：
+
+```bash
+npm install -g cc-viewer --registry=https://registry.npmjs.org
+ccv -h
+```
+
 - 本机 Claude Code 配置目录，通常是 `~/.claude`
 
 ### 安装依赖

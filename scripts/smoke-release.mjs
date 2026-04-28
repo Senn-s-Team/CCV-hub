@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * [INPUT]: 依赖 Node fetch、net Socket、ccv-hub Agent HTTP API 与可选 viewer bridge 地址
+ * [INPUT]: 依赖 Node fetch、net Socket、ccv-hub Agent HTTP API、Agent/Smoke 环境变量与可选 viewer bridge 地址
  * [OUTPUT]: 对外提供 release smoke test CLI，用于验证 health、auth、instances、launch、viewer bridge 与 stop 收敛
  * [POS]: scripts 的发布验证入口，连接 release 文档中的验收项与真实部署环境
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
