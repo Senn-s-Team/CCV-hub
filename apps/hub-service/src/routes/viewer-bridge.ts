@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 node:http、node:net、node:tls、FastifyInstance、bridge Host 解析、面板会话鉴权与实例注册表 upstream 记录
+ * [INPUT]: 依赖 node:http、node:net、node:tls、FastifyInstance、bridge Host 解析、实例级 viewer token 与实例注册表 upstream 记录
  * [OUTPUT]: 对外提供 registerViewerBridgeRoute，用于按 viewer 子域名反代已鉴权 HTTP/SSE 与 WebSocket 请求
  * [POS]: hub-service 的公网 viewer 桥接面，把 Dokploy 子域名流量转发到对应 cc-viewer 内网实例
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
@@ -11,12 +11,24 @@ import { connect as netConnect, type Socket } from 'node:net';
 import { connect as tlsConnect } from 'node:tls';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { appendUpstreamToken, resolveBridgeIdFromHost } from '../domain/bridge-url.js';
-import type { AuthConfig } from '../domain/auth-session.js';
-import { hasValidSessionCookie } from './auth.js';
 import type { InstanceRegistry } from '../domain/instance-registry.js';
 import type { ManagedInstanceRecord } from '../domain/instance-model.js';
 
 type BridgeRequest = FastifyRequest & { raw: IncomingMessage; body?: unknown };
+const viewerSessionCookie = 'ccv_viewer_session';
+const blockedProxyHeaders = new Set([
+  'connection',
+  'content-length',
+  'cookie',
+  'host',
+  'keep-alive',
+  'proxy-authenticate',
+  'proxy-authorization',
+  'te',
+  'trailer',
+  'transfer-encoding',
+  'upgrade',
+]);
 
 function resolveBridgeRecord(host: string | undefined, registry: InstanceRegistry): ManagedInstanceRecord | undefined {
   const bridgeId = resolveBridgeIdFromHost(host);
@@ -30,10 +42,61 @@ function buildTargetUrl(record: ManagedInstanceRecord, requestUrl = '/'): URL {
   return appendUpstreamToken(target, record.upstreamUrl);
 }
 
+function decodeCookieValue(value: string): string | undefined {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return undefined;
+  }
+}
+
+function parseCookies(header: string | undefined): Record<string, string> {
+  if (!header) return {};
+  return Object.fromEntries(header.split(';').flatMap((part) => {
+    const [name = '', ...valueParts] = part.trim().split('=');
+    const value = decodeCookieValue(valueParts.join('='));
+    return name.length > 0 && value !== undefined ? [[name, value]] : [];
+  }));
+}
+
+function upstreamToken(record: ManagedInstanceRecord): string | undefined {
+  return new URL(record.upstreamUrl).searchParams.get('token') ?? undefined;
+}
+
+function requestToken(requestUrl: string | undefined): string | undefined {
+  return new URL(requestUrl ?? '/', 'http://localhost').searchParams.get('token') ?? undefined;
+}
+
+function hasViewerAccess(record: ManagedInstanceRecord, requestUrl: string | undefined, cookieHeader: string | undefined): boolean {
+  const token = upstreamToken(record);
+  return Boolean(token && (requestToken(requestUrl) === token || parseCookies(cookieHeader)[viewerSessionCookie] === token));
+}
+
+function viewerSessionHeader(record: ManagedInstanceRecord): string | undefined {
+  const token = upstreamToken(record);
+  if (!token) return undefined;
+  const secure = new URL(record.instance.url).protocol === 'https:' ? '; Secure' : '';
+  return `${viewerSessionCookie}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800${secure}`;
+}
+
+function withViewerSession(headers: IncomingHttpHeaders, record: ManagedInstanceRecord): IncomingHttpHeaders {
+  const cookie = viewerSessionHeader(record);
+  if (!cookie) return headers;
+  const existing = headers['set-cookie'];
+  return {
+    ...headers,
+    'set-cookie': Array.isArray(existing) ? [...existing, cookie] : [existing, cookie].filter(Boolean) as string[],
+  };
+}
+
+
 function toProxyHeaders(headers: IncomingHttpHeaders, target: URL, body?: Buffer): IncomingHttpHeaders {
-  const forwarded: IncomingHttpHeaders = { ...headers, host: target.host };
-  delete forwarded.connection;
-  delete forwarded['content-length'];
+  const forwarded: IncomingHttpHeaders = { host: target.host };
+  for (const [key, value] of Object.entries(headers)) {
+    if (!blockedProxyHeaders.has(key.toLowerCase())) {
+      forwarded[key] = value;
+    }
+  }
   if (body) forwarded['content-length'] = String(body.length);
   return forwarded;
 }
@@ -54,6 +117,16 @@ function rewriteResponseHeaders(headers: IncomingHttpHeaders, record: ManagedIns
 }
 
 async function proxyHttp(request: BridgeRequest, reply: FastifyReply, record: ManagedInstanceRecord): Promise<void> {
+  if (!hasViewerAccess(record, request.raw.url, request.headers.cookie)) {
+    reply.code(401).send({
+      ok: false,
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Authentication required',
+      },
+    });
+    return;
+  }
   const target = buildTargetUrl(record, request.raw.url);
   const body = request.method === 'GET' || request.method === 'HEAD' ? undefined : serializeBody(request.body);
   await new Promise<void>((resolve, reject) => {
@@ -64,7 +137,7 @@ async function proxyHttp(request: BridgeRequest, reply: FastifyReply, record: Ma
       method: request.method,
       headers: toProxyHeaders(request.headers, target, body),
     }, (upstreamResponse) => {
-      reply.raw.writeHead(upstreamResponse.statusCode ?? 502, rewriteResponseHeaders(upstreamResponse.headers, record, request.headers.host));
+      reply.raw.writeHead(upstreamResponse.statusCode ?? 502, withViewerSession(rewriteResponseHeaders(upstreamResponse.headers, record, request.headers.host), record));
       upstreamResponse.pipe(reply.raw);
       upstreamResponse.on('end', resolve);
     });
@@ -76,9 +149,14 @@ async function proxyHttp(request: BridgeRequest, reply: FastifyReply, record: Ma
 }
 
 function serializeUpgradeRequest(request: IncomingMessage, target: URL): string {
-  const headers = { ...request.headers, host: target.host };
-  const lines = [`GET ${target.pathname}${target.search} HTTP/1.1`];
-  for (const [key, value] of Object.entries(headers)) {
+  const lines = [
+    `GET ${target.pathname}${target.search} HTTP/1.1`,
+    `host: ${target.host}`,
+    'connection: Upgrade',
+    'upgrade: websocket',
+  ];
+  for (const key of ['sec-websocket-key', 'sec-websocket-version', 'sec-websocket-protocol', 'sec-websocket-extensions']) {
+    const value = request.headers[key];
     if (!value) continue;
     if (Array.isArray(value)) {
       for (const item of value) lines.push(`${key}: ${item}`);
@@ -89,13 +167,13 @@ function serializeUpgradeRequest(request: IncomingMessage, target: URL): string 
   return `${lines.join('\r\n')}\r\n\r\n`;
 }
 
-function proxyUpgrade(request: IncomingMessage, socket: Socket | import('node:stream').Duplex, head: Buffer, registry: InstanceRegistry, auth: AuthConfig): void {
+function proxyUpgrade(request: IncomingMessage, socket: Socket | import('node:stream').Duplex, head: Buffer, registry: InstanceRegistry): void {
   const record = resolveBridgeRecord(request.headers.host, registry);
   if (!record) {
     socket.end('HTTP/1.1 404 Not Found\r\n\r\n');
     return;
   }
-  if (!hasValidSessionCookie(request.headers.cookie, auth)) {
+  if (!hasViewerAccess(record, request.url, request.headers.cookie)) {
     socket.end('HTTP/1.1 401 Unauthorized\r\n\r\n');
     return;
   }
@@ -117,7 +195,7 @@ function proxyUpgrade(request: IncomingMessage, socket: Socket | import('node:st
   socket.on('error', () => upstream.destroy());
 }
 
-export function registerViewerBridgeRoute(app: FastifyInstance, registry: InstanceRegistry, auth: AuthConfig): void {
+export function registerViewerBridgeRoute(app: FastifyInstance, registry: InstanceRegistry): void {
   app.all('/*', async (request, reply) => {
     const record = resolveBridgeRecord(request.headers.host, registry);
     if (!record) {
@@ -127,5 +205,5 @@ export function registerViewerBridgeRoute(app: FastifyInstance, registry: Instan
     await proxyHttp(request as BridgeRequest, reply, record);
   });
 
-  app.server.on('upgrade', (request, socket, head) => proxyUpgrade(request, socket, head, registry, auth));
+  app.server.on('upgrade', (request, socket, head) => proxyUpgrade(request, socket, head, registry));
 }

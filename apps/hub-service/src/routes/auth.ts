@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Fastify hook/route 能力、共享鉴权契约、auth-session 会话核心与 bridge Host 解析
- * [OUTPUT]: 对外提供 registerAuthRoutes 与 registerPanelAuthGuard，用于登录、登出、登录态查询、控制面 API 保护和 viewer bridge 页面保护
- * [POS]: hub-service 的面板鉴权边界，允许本机插件注册流量，把 viewer bridge 与控制面 API 统一到管理员会话
+ * [OUTPUT]: 对外提供 registerAuthRoutes 与 registerPanelAuthGuard，用于登录、登出、登录态查询、控制面 API 保护和 viewer bridge 保留路径保护
+ * [POS]: hub-service 的面板鉴权边界，允许本机插件注册流量，把 viewer bridge 实例级鉴权交给 bridge 路由
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -20,12 +20,21 @@ const publicPanelPaths = new Set(['/api/auth/login', '/api/auth/me', '/api/healt
 const pluginPaths = new Set(['/api/instances/register', '/api/instances/unregister']);
 const bridgeBlockedPathPrefixes = ['/api/auth', '/api/host-paths', '/api/instances'];
 
+function decodeCookieValue(value: string): string | undefined {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return undefined;
+  }
+}
+
 function parseCookies(header: string | undefined): Record<string, string> {
   if (!header) return {};
-  return Object.fromEntries(header.split(';').map((part) => {
+  return Object.fromEntries(header.split(';').flatMap((part) => {
     const [name = '', ...valueParts] = part.trim().split('=');
-    return [name, decodeURIComponent(valueParts.join('='))];
-  }).filter(([name]) => name.length > 0));
+    const value = decodeCookieValue(valueParts.join('='));
+    return name.length > 0 && value !== undefined ? [[name, value]] : [];
+  }));
 }
 
 function cookieAttributes(config: AuthConfig): string {
@@ -68,8 +77,8 @@ function isBridgeBlockedPath(pathname: string): boolean {
   return bridgeBlockedPathPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
-function isBridgeProxyRequest(request: FastifyRequest, pathname: string): boolean {
-  return Boolean(resolveBridgeIdFromHost(request.headers.host)) && !isBridgeBlockedPath(pathname);
+function isBridgeHost(request: FastifyRequest): boolean {
+  return Boolean(resolveBridgeIdFromHost(request.headers.host));
 }
 
 function isAuthenticated(request: FastifyRequest, config: AuthConfig): boolean {
@@ -109,7 +118,8 @@ export function registerAuthRoutes(app: FastifyInstance, config: AuthConfig): vo
 export function registerPanelAuthGuard(app: FastifyInstance, config: AuthConfig): void {
   app.addHook('preHandler', async (request, reply) => {
     const pathname = new URL(request.url, 'http://localhost').pathname;
-    if (isBridgeProxyRequest(request, pathname)) {
+    if (isBridgeHost(request)) {
+      if (!isBridgeBlockedPath(pathname)) return;
       if (isAuthenticated(request, config)) return;
     } else {
       if (!pathname.startsWith('/api/') || isPublicPanelPath(pathname)) return;

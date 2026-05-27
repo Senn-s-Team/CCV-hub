@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 FastifyInstance 路由能力、共享注册契约、bridge URL 生成、实例注册表与错误归一
  * [OUTPUT]: 对外提供 registerExternalInstanceRoute，用于挂载 /api/instances/register POST
- * [POS]: hub-service 的外部实例登记面，负责接收 cc-viewer 插件上报的手动启动实例，并保持 launcher 实例的路径所有权
+ * [POS]: hub-service 的外部实例登记面，负责接收带 token 的 cc-viewer 插件实例，并保持 launcher 实例的路径所有权
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { randomUUID } from 'node:crypto';
@@ -9,13 +9,16 @@ import type { FastifyInstance } from 'fastify';
 import { registerInstanceRequestSchema, type RegisterInstanceRequest, type RegisterInstanceResponse } from '@ccv-hub/shared-contracts';
 import { buildBridgeUrl, createBridgeIdentity } from '../domain/bridge-url.js';
 import { assertProjectPath } from '../domain/path-validator.js';
-import { toFailureResponse } from '../domain/error-mapper.js';
+import { createAppError, toFailureResponse } from '../domain/error-mapper.js';
 import type { InstanceRegistry } from '../domain/instance-registry.js';
 
 export function registerExternalInstanceRoute(app: FastifyInstance, registry: InstanceRegistry): void {
   app.post<{ Body: RegisterInstanceRequest }>('/api/instances/register', async (request, reply): Promise<RegisterInstanceResponse> => {
     try {
       const payload = registerInstanceRequestSchema.parse(request.body);
+      if (!new URL(payload.url).searchParams.has('token')) {
+        throw createAppError('REGISTER_FAILED', 'Instance URL token is required');
+      }
       const projectPath = assertProjectPath(payload.projectPath);
       const now = new Date().toISOString();
       const existing = registry.findActiveByProjectPath(projectPath);

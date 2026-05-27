@@ -56,7 +56,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   registerInstanceLifecycleRoute(app, registry);
   registerExternalInstanceRoute(app, registry);
   registerUnregisterInstanceRoute(app, registry);
-  registerViewerBridgeRoute(app, registry, auth);
+  registerViewerBridgeRoute(app, registry);
 
   return app;
 }

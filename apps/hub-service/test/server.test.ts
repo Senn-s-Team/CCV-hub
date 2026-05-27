@@ -120,6 +120,23 @@ describe('hub-service routes', () => {
     await app.close();
   });
 
+  it('treats malformed auth cookies as unauthenticated panel requests', async () => {
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/instances',
+      headers: { cookie: 'ccv_hub_session=%' },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json().error.code).toBe('UNAUTHORIZED');
+
+    await app.close();
+  });
   it('sets and clears authenticated panel sessions', async () => {
     const app = buildServer({
       launcher: { launch: vi.fn() },
@@ -150,6 +167,37 @@ describe('hub-service routes', () => {
       headers: { cookie: String(cookie).split(';')[0]! },
     });
     expect(logoutResponse.headers['set-cookie']).toContain('Max-Age=0');
+
+    await app.close();
+  });
+
+  it('rejects external registration without an upstream token', async () => {
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/instances/register',
+      remoteAddress: '127.0.0.1',
+      payload: {
+        id: 'manual-tokenless',
+        projectName: 'cc-viewer',
+        projectPath: '/home/opc/projects/ccvs/cc-viewer',
+        url: 'http://127.0.0.1:7008',
+        port: 7008,
+        pid: 4321,
+        source: 'manual',
+        startedAt: '2026-04-22T10:00:00.000Z',
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error).toEqual({
+      code: 'REGISTER_FAILED',
+      message: 'Instance URL token is required',
+    });
 
     await app.close();
   });
@@ -358,7 +406,7 @@ describe('hub-service routes', () => {
     await app.close();
   });
 
-  it('requires authentication for viewer bridge pages', async () => {
+  it('requires the viewer token for bridge pages', async () => {
     const registry = new InstanceRegistry();
     registry.createRunning({
       id: 'bridge-auth',
@@ -392,6 +440,57 @@ describe('hub-service routes', () => {
     await app.close();
   });
 
+  it('bridges viewer pages with the URL token and sets an instance session cookie', async () => {
+    const upstream = createServer((request, response) => {
+      response.setHeader('content-type', 'text/html');
+      response.end(`page:${request.url}`);
+    });
+    const upstreamPort = await listen(upstream);
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    try {
+      const registerResponse = await app.inject({
+        method: 'POST',
+        url: '/api/instances/register',
+        payload: {
+          id: 'manual-bridge-page',
+          projectName: 'cc-viewer',
+          projectPath: '/home/opc/projects/ccvs/cc-viewer',
+          url: `http://127.0.0.1:${upstreamPort}?token=abc`,
+          port: upstreamPort,
+          pid: 4321,
+          source: 'manual',
+          startedAt: '2026-04-22T10:00:00.000Z',
+        },
+      });
+      const bridgeHost = new URL(registerResponse.json().data.instance.url).host;
+
+      const firstResponse = await app.inject({
+        method: 'GET',
+        url: '/?token=abc',
+        headers: { host: bridgeHost },
+      });
+      const cookie = String(firstResponse.headers['set-cookie']).split(';')[0]!;
+      const nextResponse = await app.inject({
+        method: 'GET',
+        url: '/assets/app.js',
+        headers: { host: bridgeHost, cookie },
+      });
+
+      expect(firstResponse.statusCode).toBe(200);
+      expect(firstResponse.body).toBe('page:/?token=abc');
+      expect(cookie).toBe('ccv_viewer_session=abc');
+      expect(String(firstResponse.headers['set-cookie'])).toContain('Secure');
+      expect(nextResponse.statusCode).toBe(200);
+      expect(nextResponse.body).toBe('page:/assets/app.js?token=abc');
+    } finally {
+      await app.close();
+      await close(upstream);
+    }
+  });
   it('bridges viewer subdomain requests to the registered upstream with token', async () => {
     const upstream = createServer((request, response) => {
       response.setHeader('content-type', 'application/json');
@@ -423,7 +522,7 @@ describe('hub-service routes', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/api/events?cursor=1&token=evil',
-        headers: { host: bridgeHost, ...(await authHeaders(app)) },
+        headers: { host: bridgeHost, cookie: 'ccv_viewer_session=abc' },
       });
 
       expect(response.statusCode).toBe(200);
@@ -437,6 +536,60 @@ describe('hub-service routes', () => {
     }
   });
 
+  it('strips viewer cookies and hop-by-hop headers before proxying viewer requests', async () => {
+    const upstream = createServer((request, response) => {
+      response.setHeader('content-type', 'application/json');
+      response.end(JSON.stringify({
+        cookie: request.headers.cookie ?? null,
+        proxyAuthorization: request.headers['proxy-authorization'] ?? null,
+        transferEncoding: request.headers['transfer-encoding'] ?? null,
+      }));
+    });
+    const upstreamPort = await listen(upstream);
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    try {
+      const registerResponse = await app.inject({
+        method: 'POST',
+        url: '/api/instances/register',
+        payload: {
+          id: 'manual-bridge-headers',
+          projectName: 'cc-viewer',
+          projectPath: '/home/opc/projects/ccvs/cc-viewer',
+          url: `http://127.0.0.1:${upstreamPort}?token=abc`,
+          port: upstreamPort,
+          pid: 4321,
+          source: 'manual',
+          startedAt: '2026-04-22T10:00:00.000Z',
+        },
+      });
+      const bridgeHost = new URL(registerResponse.json().data.instance.url).host;
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/events',
+        headers: {
+          host: bridgeHost,
+          cookie: 'ccv_viewer_session=abc; other=value',
+          'proxy-authorization': 'Basic abc',
+          'transfer-encoding': 'chunked',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({
+        cookie: null,
+        proxyAuthorization: null,
+        transferEncoding: null,
+      });
+    } finally {
+      await app.close();
+      await close(upstream);
+    }
+  });
   it('bridges viewer POST bodies to the registered upstream with token', async () => {
     const upstream = createServer((request, response) => {
       let body = '';
@@ -472,7 +625,7 @@ describe('hub-service routes', () => {
       const response = await app.inject({
         method: 'POST',
         url: '/api/resume-choice?token=abc&token=abc',
-        headers: { host: bridgeHost, ...(await authHeaders(app)) },
+        headers: { host: bridgeHost, cookie: 'ccv_viewer_session=abc' },
         payload: { choice: 'continue' },
       });
 
@@ -520,11 +673,62 @@ describe('hub-service routes', () => {
       });
       const bridgeHost = new URL(registerResponse.json().data.instance.url).host;
 
-      const headers = await authHeaders(app);
       const response = await readSocketUntil(port, [
         'GET /ws/terminal?session=1 HTTP/1.1',
         `Host: ${bridgeHost}`,
-        `Cookie: ${headers.cookie}`,
+        'Cookie: ccv_viewer_session=abc',
+        'Connection: Upgrade',
+        'Upgrade: websocket',
+        'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==',
+        'Sec-WebSocket-Version: 13',
+        '',
+        '',
+      ].join('\r\n'), 'upstream:/ws/terminal?session=1&token=abc');
+
+      expect(response).toContain('HTTP/1.1 101 Switching Protocols');
+      expect(response).toContain('upstream:/ws/terminal?session=1&token=abc');
+    } finally {
+      await app.close();
+      await close(upstream);
+    }
+  });
+
+  it('bridges viewer websocket upgrades with the URL token', async () => {
+    const upstream = createServer();
+    upstream.on('upgrade', (request, socket) => {
+      socket.write('HTTP/1.1 101 Switching Protocols\r\nupgrade: websocket\r\nconnection: Upgrade\r\n\r\n');
+      socket.end(`upstream:${request.url}`);
+    });
+    const upstreamPort = await listen(upstream);
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    try {
+      await app.listen({ port: 0, host: '127.0.0.1' });
+      const address = app.server.address();
+      const port = typeof address === 'object' && address ? address.port : 0;
+
+      const registerResponse = await app.inject({
+        method: 'POST',
+        url: '/api/instances/register',
+        payload: {
+          id: 'manual-bridge-ws-url-token',
+          projectName: 'cc-viewer',
+          projectPath: '/home/opc/projects/ccvs/cc-viewer',
+          url: `http://127.0.0.1:${upstreamPort}?token=abc`,
+          port: upstreamPort,
+          pid: 4321,
+          source: 'manual',
+          startedAt: '2026-04-22T10:00:00.000Z',
+        },
+      });
+      const bridgeHost = new URL(registerResponse.json().data.instance.url).host;
+
+      const response = await readSocketUntil(port, [
+        'GET /ws/terminal?session=1&token=abc HTTP/1.1',
+        `Host: ${bridgeHost}`,
         'Connection: Upgrade',
         'Upgrade: websocket',
         'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==',
@@ -639,6 +843,44 @@ describe('hub-service routes', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('maps stop handle failures to lifecycle errors', async () => {
+    const registry = new InstanceRegistry();
+    registry.createRunning({
+      id: 'stop-throws',
+      projectName: 'alpha',
+      projectPath: '/tmp/alpha',
+      url: 'http://127.0.0.1:4321',
+      port: 4321,
+      pid: 1001,
+      source: 'launcher',
+      startedAt: '2026-04-22T10:00:00.000Z',
+      lastSeen: '2026-04-22T10:00:01.000Z',
+      stop: vi.fn(() => {
+        throw new Error('kill failed');
+      }),
+    });
+    const app = buildServer({
+      registry,
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/instances/stop-throws/actions/stop',
+      headers: await authHeaders(app),
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error).toEqual({
+      code: 'LIFECYCLE_FAILED',
+      message: 'Failed to control instance lifecycle',
+    });
+    expect(registry.get('stop-throws')?.internalStatus).toBe('running');
+
+    await app.close();
   });
 
   it('force stops instances with SIGKILL', async () => {

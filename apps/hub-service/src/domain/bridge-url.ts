@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 node:crypto、标准 URL 能力与 ccv-hub 公网域名环境变量
  * [OUTPUT]: 对外提供 createBridgeConfig、createBridgeIdentity、buildBridgeUrl、resolveBridgeIdFromHost 与 appendUpstreamToken
- * [POS]: hub-service 的公网桥接地址模块，统一随机实例子域名生成、Host 解析与 token 传递规则
+ * [POS]: hub-service 的公网桥接地址模块，统一随机实例子域名生成、Host 解析与 upstream token 注入规则
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { randomUUID } from 'node:crypto';

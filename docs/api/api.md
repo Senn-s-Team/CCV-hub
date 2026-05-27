@@ -30,7 +30,7 @@
 - 返回结果优先服务当前总览页 MVP
 - 默认排序由服务端保证为最近启动时间降序
 - `stale` 与 `exited` 属于系统内部收敛状态，不作为页面列表结果返回
-- Hub API 与 viewer bridge 页面共享管理员会话；viewer 子域名访问必须带有效 session cookie
+- Hub 控制面 API 使用管理员会话；viewer bridge 使用实例 URL token，并在首次验证后设置实例级 viewer cookie
 
 ## 4. 实例对象
 
@@ -357,8 +357,8 @@
 
 约束：
 - 请求 Host 必须匹配 `CCV_HUB_VIEWER_SUBDOMAIN_PREFIX + bridgeId + CCV_HUB_PUBLIC_DOMAIN`
-- 请求必须带有效 Hub session cookie
-- 登录 cookie 通过 `CCV_HUB_COOKIE_DOMAIN` 覆盖 Hub 主域名与 viewer 子域名
+- 首次请求必须带有效 upstream `token` 查询参数
+- 首次验证成功后，Hub bridge 设置 host-only `ccv_viewer_session` cookie，用于后续静态资源、SSE 与 WebSocket 请求
 - Hub 转发时自动把 upstream token 注入目标请求，页面不负责维护 raw upstream token
 
 ## 7. 状态约定
@@ -408,4 +408,4 @@
 7. 外部实例注销后，`GET /api/instances` 不再返回该实例。
 8. Dokploy viewer 子域名路由可用时，`url` 返回公网 bridge 地址。
 9. Hub bridge 访问 upstream 时自动保留或补充 token，`port` 保持 viewer 监听端口语义。
-10. 未登录访问 viewer 子域名 HTTP 或 WebSocket 入口返回 401。
+10. 无有效 token 或实例级 viewer cookie 访问 viewer 子域名 HTTP 或 WebSocket 入口返回 401。

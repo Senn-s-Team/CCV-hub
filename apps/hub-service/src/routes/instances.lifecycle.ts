@@ -18,12 +18,15 @@ function stopInstance(registry: InstanceRegistry, id: string, action: LifecycleA
     throw createAppError('LIFECYCLE_FAILED', 'Instance cannot be stopped by ccv-hub');
   }
 
-  const removed = registry.stop(id, action);
+  if (!registry.stop(id, action)) {
+    throw createAppError('LIFECYCLE_FAILED');
+  }
+
   return {
     ok: true,
     data: {
       action,
-      removed,
+      removed: true,
     },
   };
 }

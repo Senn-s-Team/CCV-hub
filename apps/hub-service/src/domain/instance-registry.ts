@@ -151,10 +151,10 @@ export class InstanceRegistry {
 
   stop(id: string, action: Extract<LifecycleAction, 'stop' | 'force-stop'>): boolean {
     const record = this.records.get(id);
-    if (!record) return false;
+    if (!record?.stop) return false;
 
     const signal = action === 'force-stop' ? 'SIGKILL' : 'SIGTERM';
-    record.stop?.(signal);
+    record.stop(signal);
     this.markStopping(id);
     return true;
   }

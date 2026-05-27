@@ -14,7 +14,7 @@ deploy/ - Web 入口与宿主机 Agent release 部署目录（9 文件: docker-c
 <config>
 README.md - 开源项目入口文档，定义项目定位、架构、快速开始、配置、部署、release、安全边界与贡献路径
 CLAUDE.md - ccv-hub 模块地图、职责边界与文档协议
-package.json - workspace 根配置，定义 Bun 脚本、工作区、根级类型依赖、Agent/Web release 打包命令、release smoke/rehearsal 验证命令与宿主机 Agent 部署命令
+package.json - workspace 根配置，定义 Bun 脚本、工作区、根级类型依赖、Agent/Web release 打包命令、release smoke/rehearsal 验证命令、会先停旧 service 与按 `.env.dev` Web 端口收敛旧容器的 dev 部署命令
 tsconfig.json - ccv-hub 根 TypeScript 基线配置
 .gitignore - 本地依赖、锁文件、构建产物、release 打包产物、正式 `.env` 与开发 `.env.dev` 忽略规则
 .env.example - 可提交 Web/adapter 环境变量模板，覆盖 release Web image、Agent upstream、Dokploy 网络和公网域名；真实 `.env` 用于正式 Web 环境，`.env.dev` 用于开发环境，宿主机 Agent 使用 `deploy/.env.agent.example`
