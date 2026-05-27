@@ -46,12 +46,13 @@ function readFailure(payload: unknown): { code: string; message: string } | unde
 }
 
 async function request<T>(path: string, init: RequestInit, parser: (payload: unknown) => T): Promise<T> {
+  const headers = {
+    ...(init.body === undefined ? {} : { 'Content-Type': 'application/json' }),
+    ...(init.headers ?? {}),
+  };
   const response = await fetch(`${apiBaseUrl}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init.headers ?? {}),
-    },
     ...init,
+    ...(Object.keys(headers).length === 0 ? {} : { headers }),
   });
 
   const payload = await response.json();

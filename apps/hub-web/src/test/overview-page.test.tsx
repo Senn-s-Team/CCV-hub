@@ -232,11 +232,9 @@ describe('OverviewPage', () => {
 
     expect(screen.getByPlaceholderText('输入项目绝对路径')).toHaveValue('/home/opc/projects/ccvs');
     expect(fetchMock).toHaveBeenCalledWith('/api/host-paths/roots', {
-      headers: { 'Content-Type': 'application/json' },
       method: 'GET',
     });
     expect(fetchMock).toHaveBeenCalledWith('/api/host-paths/list?path=%2Fhome%2Fopc%2Fprojects', {
-      headers: { 'Content-Type': 'application/json' },
       method: 'GET',
     });
   });
@@ -544,7 +542,6 @@ describe('OverviewPage', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith('/api/instances/one/actions/stop', {
-        headers: { 'Content-Type': 'application/json' },
         method: 'POST',
       });
     });
