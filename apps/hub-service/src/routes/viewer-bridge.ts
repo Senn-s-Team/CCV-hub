@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 node:http、node:net、node:tls、FastifyInstance、bridge Host 解析、实例级 viewer token 与实例注册表 upstream 记录
- * [OUTPUT]: 对外提供 registerViewerBridgeRoute，用于按 viewer 子域名反代已鉴权 HTTP/SSE 与 WebSocket 请求
+ * [INPUT]: 依赖 node:http、node:net、node:tls、FastifyInstance、bridge Host 解析、multipart raw parser、实例级 viewer token 与实例注册表 upstream 记录
+ * [OUTPUT]: 对外提供 registerViewerBridgeRoute，用于按 viewer 子域名反代已鉴权 HTTP/SSE、multipart 上传与 WebSocket 请求
  * [POS]: hub-service 的公网 viewer 桥接面，把 Dokploy 子域名流量转发到对应 cc-viewer 内网实例
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -15,7 +15,9 @@ import type { InstanceRegistry } from '../domain/instance-registry.js';
 import type { ManagedInstanceRecord } from '../domain/instance-model.js';
 
 type BridgeRequest = FastifyRequest & { raw: IncomingMessage; body?: unknown };
+type RawBodyParserDone = (error: Error | null, body?: Buffer) => void;
 const viewerSessionCookie = 'ccv_viewer_session';
+const viewerUploadBodyLimit = 100 * 1024 * 1024;
 const blockedProxyHeaders = new Set([
   'connection',
   'content-length',
@@ -108,6 +110,10 @@ function serializeBody(body: unknown): Buffer | undefined {
   return Buffer.from(JSON.stringify(body));
 }
 
+function parseRawBody(_: FastifyRequest, payload: Buffer, done: RawBodyParserDone): void {
+  done(null, payload);
+}
+
 function rewriteResponseHeaders(headers: IncomingHttpHeaders, record: ManagedInstanceRecord, host: string | undefined): IncomingHttpHeaders {
   if (!headers.location || !host) return headers;
   return {
@@ -196,6 +202,8 @@ function proxyUpgrade(request: IncomingMessage, socket: Socket | import('node:st
 }
 
 export function registerViewerBridgeRoute(app: FastifyInstance, registry: InstanceRegistry): void {
+  app.addContentTypeParser(/^multipart\/form-data(?:;.*)?$/u, { bodyLimit: viewerUploadBodyLimit, parseAs: 'buffer' }, parseRawBody);
+
   app.all('/*', async (request, reply) => {
     const record = resolveBridgeRecord(request.headers.host, registry);
     if (!record) {

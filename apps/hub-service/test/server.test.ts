@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 vitest、node:http、node:net、hub-service 服务装配与 launcher 参数/环境构造函数
  * [OUTPUT]: 对外提供 hub-service 路由、启动 URL、外部注册、viewer bridge、存活清理与启动参数/环境回归测试
- * [POS]: hub-service 的测试入口，负责验证健康接口、实例列表、创建/注册流程、URL 投影、HTTP/WebSocket 桥接与启动环境收敛
+ * [POS]: hub-service 的测试入口，负责验证健康接口、实例列表、创建/注册流程、URL 投影、HTTP/multipart/WebSocket 桥接与启动环境收敛
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { EventEmitter } from 'node:events';
@@ -633,6 +633,78 @@ describe('hub-service routes', () => {
       expect(response.json()).toEqual({
         url: '/api/resume-choice?token=abc',
         body: { choice: 'continue' },
+      });
+    } finally {
+      await app.close();
+      await close(upstream);
+    }
+  });
+
+  it('bridges viewer multipart uploads as raw bytes with token', async () => {
+    const boundary = '----CcvHubUploadBoundary';
+    const payload = Buffer.from([
+      `--${boundary}`,
+      'Content-Disposition: form-data; name="file"; filename="pasted.png"',
+      'Content-Type: image/png',
+      '',
+      'PNGDATA',
+      `--${boundary}--`,
+      '',
+    ].join('\r\n'));
+    const upstream = createServer((request, response) => {
+      const chunks: Buffer[] = [];
+      request.on('data', (chunk: Buffer) => { chunks.push(chunk); });
+      request.on('end', () => {
+        const body = Buffer.concat(chunks);
+        response.setHeader('content-type', 'application/json');
+        response.end(JSON.stringify({
+          url: request.url,
+          contentType: request.headers['content-type'],
+          contentLength: request.headers['content-length'],
+          bodyHex: body.toString('hex'),
+        }));
+      });
+    });
+    const upstreamPort = await listen(upstream);
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    try {
+      const registerResponse = await app.inject({
+        method: 'POST',
+        url: '/api/instances/register',
+        payload: {
+          id: 'manual-bridge-upload',
+          projectName: 'cc-viewer',
+          projectPath: '/home/opc/projects/ccvs/cc-viewer',
+          url: `http://127.0.0.1:${upstreamPort}?token=abc`,
+          port: upstreamPort,
+          pid: 4321,
+          source: 'manual',
+          startedAt: '2026-04-22T10:00:00.000Z',
+        },
+      });
+      const bridgeHost = new URL(registerResponse.json().data.instance.url).host;
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/upload?token=abc&token=abc',
+        headers: {
+          host: bridgeHost,
+          cookie: 'ccv_viewer_session=abc',
+          'content-type': `multipart/form-data; boundary=${boundary}`,
+        },
+        payload,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({
+        url: '/api/upload?token=abc',
+        contentType: `multipart/form-data; boundary=${boundary}`,
+        contentLength: String(payload.length),
+        bodyHex: payload.toString('hex'),
       });
     } finally {
       await app.close();
