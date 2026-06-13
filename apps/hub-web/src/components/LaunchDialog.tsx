@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React 状态、Hub API 客户端、shared-contracts 启动请求与宿主机路径类型、父级传入的启动回调、错误消息和开关状态
- * [OUTPUT]: 对外提供 LaunchDialog 组件，处理宿主机路径选择、绝对路径、cc-viewer 启动参数、错误保留与提交动作
+ * [OUTPUT]: 对外提供 LaunchDialog 组件，处理宿主机路径选择/进入、绝对路径、cc-viewer 启动参数、错误保留与提交动作
  * [POS]: hub-web 的聚焦层组件，承接 prototype 启动弹窗的交互闭环
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -257,16 +257,30 @@ export default function LaunchDialog({
               {pathBrowserError ? <p className="input-hint danger-text">{pathBrowserError}</p> : null}
               <div className="host-path-list" aria-label="宿主机目录列表">
                 {filteredEntries.map((entry) => (
-                  <button
-                    className="host-path-entry"
-                    type="button"
-                    key={entry.path}
-                    disabled={!entry.readable || isBrowsingPaths}
-                    onClick={() => void loadPath(entry.path)}
-                  >
-                    <span>{entry.name}</span>
-                    <span className="mono-inline">{entry.path}</span>
-                  </button>
+                  <div className="host-path-entry" key={entry.path}>
+                    <button
+                      className="host-path-entry-main"
+                      type="button"
+                      disabled={!entry.readable || isBrowsingPaths}
+                      aria-label={`选择 ${entry.path}`}
+                      onClick={() => {
+                        setProjectPath(entry.path);
+                        rememberPath(entry.path);
+                      }}
+                    >
+                      <span>{entry.name}</span>
+                      <span className="mono-inline">{entry.path}</span>
+                    </button>
+                    <button
+                      className="host-path-entry-drill"
+                      type="button"
+                      disabled={!entry.readable || isBrowsingPaths}
+                      aria-label={`进入 ${entry.path}`}
+                      onClick={() => void loadPath(entry.path)}
+                    >
+                      进入
+                    </button>
+                  </div>
                 ))}
                 {entries.length > 0 && filteredEntries.length === 0 ? (
                   <p className="input-hint host-path-empty">当前目录没有匹配项</p>

@@ -489,7 +489,9 @@ h1 {
 
 .host-path-entry {
   display: grid;
-  gap: 4px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
   width: 100%;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
@@ -498,8 +500,25 @@ h1 {
   text-align: left;
 }
 
-.host-path-entry span:first-child {
+.host-path-entry-main {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  text-align: left;
+}
+
+.host-path-entry-main span:first-child {
   font-weight: 800;
+}
+
+.host-path-entry-drill {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 800;
+  background: rgba(244, 237, 228, 0.9);
 }
 
 .host-path-search {
@@ -1101,8 +1120,13 @@ h1 {
   .host-path-browser,
   .host-path-current,
   .host-path-list,
-  .host-path-entry {
+  .host-path-entry,
+  .host-path-entry-main {
     min-width: 0;
+  }
+
+  .host-path-entry {
+    grid-template-columns: 1fr;
   }
 
   .host-path-current .mono-inline,

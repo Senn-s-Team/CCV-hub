@@ -185,7 +185,7 @@ describe('OverviewPage', () => {
     expect(within(dialog).getByText('确认启动')).toBeDisabled();
   });
 
-  it('selects a host directory into the launch path input', async () => {
+  it('selects a visible host directory into the launch path input', async () => {
     fetchMock
       .mockResolvedValueOnce({
         json: async () => ({
@@ -210,25 +210,13 @@ describe('OverviewPage', () => {
             entries: [{ name: 'ccvs', path: '/home/opc/projects/ccvs', readable: true }],
           },
         }),
-      })
-      .mockResolvedValueOnce({
-        json: async () => ({
-          ok: true,
-          data: {
-            currentPath: '/home/opc/projects/ccvs',
-            parentPath: '/home/opc/projects',
-            entries: [],
-          },
-        }),
       });
 
     renderPage();
 
     fireEvent.click((await screen.findAllByText('启动新实例'))[0]!);
     fireEvent.click(screen.getByText('选择宿主机路径'));
-    fireEvent.click(await screen.findByText('ccvs'));
-    await waitFor(() => expect(screen.getByText('/home/opc/projects/ccvs')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('使用此目录'));
+    fireEvent.click(await screen.findByRole('button', { name: '选择 /home/opc/projects/ccvs' }));
 
     expect(screen.getByPlaceholderText('输入项目绝对路径')).toHaveValue('/home/opc/projects/ccvs');
     expect(fetchMock).toHaveBeenCalledWith('/api/host-paths/roots', {
