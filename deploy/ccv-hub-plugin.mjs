@@ -1,7 +1,8 @@
 /**
+ * [CCV_HUB_MANAGED_PLUGIN]
  * [INPUT]: 依赖 cc-viewer 插件生命周期 hooks 与 hub-service 外部实例注册 API
  * [OUTPUT]: 对外提供 ccv-hub 插件默认导出，发布 localUrl、serverStarted 与 serverStopping hook
- * [POS]: deploy 的手动实例桥接器，负责让终端启动的 cc-viewer 自动进入 Hub 实例目录
+ * [POS]: deploy 的 logger 实例桥接器，负责让终端/logger 启动的 cc-viewer 自动进入 Hub 实例目录
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 const hubBaseUrl = process.env.CCV_HUB_URL ?? 'http://127.0.0.1:4318';
@@ -47,7 +48,7 @@ export default {
         url: `${protocol}://${ip}:${port}?token=${token}`,
         port,
         pid: process.pid,
-        source: 'manual',
+        source: 'logger',
         startedAt: new Date().toISOString(),
       };
       await post('/api/instances/register', currentInstance);
@@ -60,6 +61,7 @@ export default {
         pid: currentInstance.pid,
         port: currentInstance.port,
         projectPath: currentInstance.projectPath,
+        source: currentInstance.source,
       });
     },
   },

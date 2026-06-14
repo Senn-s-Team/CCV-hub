@@ -7,6 +7,7 @@
 ## 核心能力
 
 - **实例总览**：展示当前运行中的 `cc-viewer` 实例，按启动时间排序。
+- **logger 发现**：启用 `CCV_HUB_PLUGIN_AUTO_INSTALL=1` 后，Agent 同步带受管标记的 Hub 插件，让 logger 模式下直接使用 `claude` 启动的 viewer 进入实例列表。
 - **统一入口**：从 Hub 页面一键打开 viewer，复制访问链接。
 - **受控启动**：通过宿主机 Agent 在路径 allowlist 内启动 `cc-viewer`。
 - **公网控制面**：Hub Web 可部署到 Docker Compose、Dokploy、Caddy、Nginx 或 Kubernetes 入口。
@@ -31,7 +32,7 @@ cc-viewer instances
 ### 组件职责
 
 - `apps/hub-web/`：React + Vite 总览页，负责实例列表、筛选、启动弹窗、复制与轮询刷新。
-- `apps/hub-service/`：Fastify 本地 Agent，负责健康检查、实例注册表、路径校验、启动 `cc-viewer` 与 viewer bridge。
+- `apps/hub-service/`：Fastify 本地 Agent，负责健康检查、Hub 插件同步、实例注册表、路径校验、启动 `cc-viewer` 与 viewer bridge。
 - `packages/shared-contracts/`：共享 schema 与类型定义，保证 Web 和 Agent 的 API 契约一致。
 - `deploy/`：Compose、Dokploy、Caddy、Nginx、Kubernetes、systemd 与插件模板。
 - `scripts/`：Agent/Web release 打包、rehearsal 和 smoke 验证脚本。
@@ -111,7 +112,7 @@ cp deploy/.env.agent.example /etc/ccv-hub/.env.agent
 - `CCV_HUB_SESSION_SECRET`：Hub 会话密钥。
 - `CCV_HUB_PATH_ROOTS`：Agent 允许启动 viewer 的项目根路径列表。
 - `CCV_CLI_PATH`：`cc-viewer` CLI 入口。
-- `CLAUDE_CONFIG_DIR`：Claude Code 配置目录。
+- `CLAUDE_CONFIG_DIR`：Claude Code 配置目录；启用 `CCV_HUB_PLUGIN_AUTO_INSTALL=1` 后，Agent 把 Hub 插件同步到 `CCV_LOG_DIR/plugins/` 或其下的 `cc-viewer/plugins/`。
 
 正式环境请使用强随机值填充 token、password 和 session secret，并收紧 `.env.agent` 文件权限。
 
@@ -205,7 +206,7 @@ User -> Viewer: per-instance viewer token
 ## 设计原则
 
 - `cc-viewer` 负责单实例内容展示。
-- `ccv-hub` 负责实例发现、实例目录和统一入口。
+- `ccv-hub` 负责实例发现、logger 插件播种、实例目录和统一入口。
 - Web 层保持可替换，Agent 层稳定掌握宿主机能力。
 - API 契约由共享包固定，页面状态只消费明确的实例模型。
 - 部署模板只表达平台适配差异，Agent 协议保持统一。

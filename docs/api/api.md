@@ -60,7 +60,7 @@
 - `port`: 实例本机监听端口，用于诊断、回退与路由桥接
 - `pid`: 实例进程号
 - `status`: 第一版固定返回 `running`
-- `source`: 实例来源，第一版至少支持 `launcher` 与 `manual`
+- `source`: 实例来源，第一版至少支持 `launcher`、`logger` 与 `manual`
 - `startedAt`: 启动时间，用于默认排序
 - `lastSeen`: 最近确认时间，用于内部状态收敛
 
@@ -295,7 +295,7 @@
 
 ### 6.7 `POST /api/instances/register`
 
-用于接收 `cc-viewer` 插件上报的手动启动实例。
+用于接收 `cc-viewer` 插件上报的 logger/manual 启动实例。
 
 请求体：
 
@@ -307,7 +307,7 @@
   "url": "http://10.0.0.212:7008?token=abc",
   "port": 7008,
   "pid": 12345,
-  "source": "manual",
+  "source": "logger",
   "startedAt": "2026-04-22T10:00:00.000Z"
 }
 ```
@@ -318,11 +318,11 @@
 - 只登记已启动成功的实例
 - `projectPath` 按真实绝对路径归一；同一路径重复上报更新既有实例并保持 bridge 地址稳定
 - `url` 由上报方提供 raw upstream 地址，Hub 对页面返回 viewer 子域名公网 bridge 地址
-- `source` 默认值为 `manual`
+- `source` 默认值为 `manual`，Hub 自带插件上报 `logger`
 
 ### 6.8 `POST /api/instances/unregister`
 
-用于接收 `cc-viewer` 插件上报的手动停止事件。
+用于接收 `cc-viewer` 插件上报的 logger/manual 停止事件。
 
 请求体：
 
@@ -331,7 +331,8 @@
   "id": "/home/opc/projects/my-project:7008",
   "pid": 12345,
   "port": 7008,
-  "projectPath": "/home/opc/projects/my-project"
+  "projectPath": "/home/opc/projects/my-project",
+  "source": "logger"
 }
 ```
 
@@ -348,6 +349,7 @@
 
 约束：
 - 至少提供一个匹配字段
+- `source` 缺省按 `manual` 处理，logger 插件注销时显式传入 `logger`
 - 匹配成功后实例从运行列表移除
 - 重复注销返回 `removed: false`
 

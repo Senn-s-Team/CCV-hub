@@ -32,7 +32,7 @@ cc-viewer instances on host
 
 ### 2.2 `ccv-hub-agent`
 
-`ccv-hub-agent` 是本机能力代理，当前代码位置仍是 `apps/hub-service`。它负责读取宿主机项目目录、继承 Claude Code 用户环境、启动 `cc-viewer`、维护运行中实例注册表、停止自身启动的实例、反代动态 viewer 端口。
+`ccv-hub-agent` 是本机能力代理，当前代码位置仍是 `apps/hub-service`。它负责读取宿主机项目目录、继承 Claude Code 用户环境、启动 `cc-viewer`、在显式启用后按 `CCV_LOG_DIR` 或 `CLAUDE_CONFIG_DIR` 把带受管标记的 Hub 插件同步到 cc-viewer 用户插件目录、维护运行中实例注册表、停止自身启动的实例、反代动态 viewer 端口。
 
 它默认运行在宿主机 systemd 中，因为这些能力天然属于宿主机。
 

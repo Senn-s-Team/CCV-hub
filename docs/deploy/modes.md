@@ -20,7 +20,7 @@ local cc-viewer
 
 - 直接运行 `hub-web` 开发服务器或静态构建产物。
 - 直接运行 `ccv-hub-agent`。
-- 使用本机 `~/.claude`、项目目录和 `cc-viewer` CLI。
+- 使用本机 `~/.claude`、项目目录和 `cc-viewer` CLI；启用 `CCV_HUB_PLUGIN_AUTO_INSTALL=1` 后由 Agent 同步 Hub 插件以发现 logger 模式实例。
 
 验收：
 
@@ -65,7 +65,7 @@ Host process: cc-viewer
 
 - Web 容器无需挂载项目源码。
 - Web 容器无需挂载 `~/.claude`。
-- Agent 可以启动、停止和收敛 `cc-viewer` 实例。
+- Agent 可以启动、停止和收敛 `cc-viewer` 实例；启用 `CCV_HUB_PLUGIN_AUTO_INSTALL=1` 后也可以列出 logger 插件上报的运行中实例。
 - viewer 子域名通过 Compose Web 入口或上游边缘代理转发到 Agent bridge。
 
 ## 3. Dokploy Mode

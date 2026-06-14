@@ -29,6 +29,7 @@ describe('shared contracts', () => {
     });
 
     expect(instance.projectName).toBe('my-project');
+    expect(() => instanceSchema.parse({ ...instance, source: 'unknown' })).toThrow();
   });
 
   it('parses health response', () => {

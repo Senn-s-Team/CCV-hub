@@ -17,7 +17,7 @@ export const internalInstanceStatusSchema = z.enum([
   'exited',
 ]);
 
-export const instanceSourceSchema = z.string().min(1);
+export const instanceSourceSchema = z.enum(['launcher', 'logger', 'manual']);
 
 export const isoDatetimeSchema = z.iso.datetime({ offset: true });
 

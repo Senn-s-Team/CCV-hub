@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 FastifyInstance 路由能力、共享注销契约、实例注册表与错误归一
  * [OUTPUT]: 对外提供 registerUnregisterInstanceRoute，用于挂载 /api/instances/unregister POST
- * [POS]: hub-service 的外部实例注销面，负责接收 cc-viewer 插件上报的手动停止事件
+ * [POS]: hub-service 的外部实例注销面，负责按来源接收 cc-viewer 插件上报的 logger/manual 停止事件
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import type { FastifyInstance } from 'fastify';
@@ -15,10 +15,11 @@ export function registerUnregisterInstanceRoute(app: FastifyInstance, registry: 
     try {
       const payload = unregisterInstanceRequestSchema.parse(request.body);
       const projectPath = payload.projectPath ? assertProjectPath(payload.projectPath) : undefined;
+      const source = payload.source === 'logger' ? 'logger' : 'manual';
       return {
         ok: true,
         data: {
-          removed: registry.removeMatching({ ...payload, projectPath, source: 'manual' }),
+          removed: registry.removeMatching({ ...payload, projectPath, source }),
         },
       };
     } catch (error) {

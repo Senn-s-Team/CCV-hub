@@ -1,11 +1,11 @@
 /**
- * [INPUT]: 依赖 vitest、node:http、node:net、hub-service 服务装配与 launcher 参数/环境构造函数
- * [OUTPUT]: 对外提供 hub-service 路由、启动 URL、外部注册、viewer bridge、存活清理与启动参数/环境回归测试
- * [POS]: hub-service 的测试入口，负责验证健康接口、实例列表、创建/注册流程、URL 投影、HTTP/multipart/WebSocket 桥接与启动环境收敛
+ * [INPUT]: 依赖 vitest、node:http、node:net、hub-service 服务装配、Hub 插件安装器与 launcher 参数/环境构造函数
+ * [OUTPUT]: 对外提供 hub-service 路由、启动 URL、外部注册、logger 注销、Hub 插件安装、viewer bridge、存活清理与启动参数/环境回归测试
+ * [POS]: hub-service 的测试入口，负责验证健康接口、实例列表、创建/注册流程、URL 投影、HTTP/multipart/WebSocket 桥接、插件播种与启动环境收敛
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { EventEmitter } from 'node:events';
-import { mkdtemp, mkdir, symlink, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, symlink, rm, readFile, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -17,6 +17,7 @@ import { HostPathBrowser } from '../src/domain/host-path-browser.js';
 import { InstanceRegistry } from '../src/domain/instance-registry.js';
 import { buildLaunchArgs, buildLaunchEnv, parseViewerUrl, resolveViewerUrl } from '../src/launcher/ccv-launcher.js';
 import { createStopHandle } from '../src/launcher/process-supervisor.js';
+import { installHubPlugin } from '../src/domain/hub-plugin-installer.js';
 
 function listen(server: ReturnType<typeof createServer>): Promise<number> {
   return new Promise((resolve) => {
@@ -1088,13 +1089,13 @@ describe('hub-service routes', () => {
         method: 'POST',
         url: '/api/instances/register',
         payload: {
-          id: 'manual-shadow',
+          id: 'logger-shadow',
           projectName: 'alpha',
           projectPath: project,
           url: 'http://127.0.0.1:7008?token=abc',
           port: 7008,
           pid: 4321,
-          source: 'manual',
+          source: 'logger',
           startedAt: '2026-04-22T11:00:00.000Z',
         },
       });
@@ -1153,6 +1154,139 @@ describe('hub-service routes', () => {
     expect(launch).not.toHaveBeenCalled();
 
     await app.close();
+  });
+
+  it('normalizes external launcher source claims to manual', async () => {
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    const registerResponse = await app.inject({
+      method: 'POST',
+      url: '/api/instances/register',
+      payload: {
+        id: 'external-launcher-claim',
+        projectName: 'cc-viewer',
+        projectPath: '/home/opc/projects/ccvs/cc-viewer',
+        url: 'http://10.0.0.212:7010?token=abc',
+        port: 7010,
+        pid: 4323,
+        source: 'launcher',
+        startedAt: '2026-04-22T10:00:00.000Z',
+      },
+    });
+    const unregisterResponse = await app.inject({
+      method: 'POST',
+      url: '/api/instances/unregister',
+      payload: { port: 7010, projectPath: '/home/opc/projects/ccvs/cc-viewer', source: 'launcher' },
+    });
+
+    expect(registerResponse.statusCode).toBe(200);
+    expect(registerResponse.json().data.instance.source).toBe('manual');
+    expect(unregisterResponse.statusCode).toBe(200);
+    expect(unregisterResponse.json()).toEqual({ ok: true, data: { removed: true } });
+
+    await app.close();
+  });
+
+  it('registers logger instances and removes them by source on unregister', async () => {
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    const registerResponse = await app.inject({
+      method: 'POST',
+      url: '/api/instances/register',
+      payload: {
+        id: 'logger-7009',
+        projectName: 'cc-viewer',
+        projectPath: '/home/opc/projects/ccvs/cc-viewer',
+        url: 'http://10.0.0.212:7009?token=abc',
+        port: 7009,
+        pid: 4322,
+        source: 'logger',
+        startedAt: '2026-04-22T10:00:00.000Z',
+      },
+    });
+    const wrongSourceUnregisterResponse = await app.inject({
+      method: 'POST',
+      url: '/api/instances/unregister',
+      payload: { port: 7009, projectPath: '/home/opc/projects/ccvs/cc-viewer' },
+    });
+    const unregisterResponse = await app.inject({
+      method: 'POST',
+      url: '/api/instances/unregister',
+      payload: { port: 7009, projectPath: '/home/opc/projects/ccvs/cc-viewer', source: 'logger' },
+    });
+
+    expect(registerResponse.statusCode).toBe(200);
+    expect(registerResponse.json().data.instance.source).toBe('logger');
+    expect(wrongSourceUnregisterResponse.statusCode).toBe(200);
+    expect(wrongSourceUnregisterResponse.json()).toEqual({ ok: true, data: { removed: false } });
+    expect(unregisterResponse.statusCode).toBe(200);
+    expect(unregisterResponse.json()).toEqual({ ok: true, data: { removed: true } });
+
+    await app.close();
+  });
+
+  it('installs the hub plugin into the cc-viewer user plugin directory', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'ccv-hub-plugin-install-'));
+    const source = join(root, 'ccv-hub-plugin.mjs');
+    await writeFile(source, '/** [CCV_HUB_MANAGED_PLUGIN] */\nexport default { name: "ccv-hub" };\n');
+
+    try {
+      const result = await installHubPlugin({ sourcePath: source, claudeConfigDir: root, logDir: '', allowSourceOverride: true });
+      const target = join(root, 'cc-viewer', 'plugins', 'ccv-hub-plugin.mjs');
+
+      expect(result).toEqual({ targetPath: target, installed: true, reason: 'created' });
+      await expect(readFile(target, 'utf8')).resolves.toBe('/** [CCV_HUB_MANAGED_PLUGIN] */\nexport default { name: "ccv-hub" };\n');
+      await expect(installHubPlugin({ sourcePath: source, claudeConfigDir: root, logDir: '', allowSourceOverride: true })).resolves.toEqual({
+        targetPath: target,
+        installed: false,
+        reason: 'current',
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects symlink plugin targets during install', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'ccv-hub-plugin-symlink-'));
+    const source = join(root, 'source.mjs');
+    const outside = join(root, 'outside.mjs');
+    const targetDir = join(root, 'cc-viewer', 'plugins');
+    const target = join(targetDir, 'ccv-hub-plugin.mjs');
+    await mkdir(targetDir, { recursive: true });
+    await writeFile(source, '/** [CCV_HUB_MANAGED_PLUGIN] */\nexport default {};\n');
+    await writeFile(outside, '/** [CCV_HUB_MANAGED_PLUGIN] */\nexport default { name: "outside" };\n');
+    await symlink(outside, target);
+
+    try {
+      await expect(installHubPlugin({ sourcePath: source, claudeConfigDir: root, logDir: '', allowSourceOverride: true })).rejects.toThrow('Expected regular file');
+      await expect(readFile(outside, 'utf8')).resolves.toBe('/** [CCV_HUB_MANAGED_PLUGIN] */\nexport default { name: "outside" };\n');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps custom same-name hub plugin files untouched', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'ccv-hub-plugin-custom-'));
+    const source = join(root, 'source.mjs');
+    const target = join(root, 'cc-viewer', 'plugins', 'ccv-hub-plugin.mjs');
+    await mkdir(join(root, 'cc-viewer', 'plugins'), { recursive: true });
+    await writeFile(source, '/** [CCV_HUB_MANAGED_PLUGIN] */\nexport default {};\n');
+    await writeFile(target, 'export default { name: "custom" };\n');
+
+    try {
+      const result = await installHubPlugin({ sourcePath: source, claudeConfigDir: root, logDir: '', allowSourceOverride: true });
+
+      expect(result).toEqual({ targetPath: target, installed: false, reason: 'custom' });
+      await expect(readFile(target, 'utf8')).resolves.toBe('export default { name: "custom" };\n');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it('registers external instances and removes them on unregister', async () => {

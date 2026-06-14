@@ -23,8 +23,7 @@ environment templates
 ```text
 ghcr.io/<owner>/ccv-hub-web:vX.Y.Z
 ccv-hub-web-vX.Y.Z.tar.gz
-ccv-hub-agent-vX.Y.Z-linux-x64.tar.gz
-ccv-hub-agent-vX.Y.Z-linux-arm64.tar.gz
+ccv-hub-agent-vX.Y.Z.tar.gz
 deploy-templates-vX.Y.Z.zip
 checksums.txt
 ```
@@ -33,7 +32,7 @@ checksums.txt
 
 - Web image：给 Docker Compose、Dokploy、Kubernetes 使用。
 - Web tarball：给 Nginx/Caddy 静态部署使用。
-- Agent tarball：给宿主机 systemd 安装使用。
+- Agent tarball：给宿主机 systemd 安装使用，内含 `deploy/ccv-hub-plugin.mjs` 供 Agent 按 `CCV_LOG_DIR` 或 `CLAUDE_CONFIG_DIR` 同步到 cc-viewer 用户插件目录。
 - deploy templates：提供 `docker-compose.hub.yml`、`docker-compose.standalone.yml`、`Caddyfile.example`、`nginx.hub.conf.example`、`kubernetes-web.yaml` 和 systemd/env 样例。
 - checksums：用于下载校验。
 
@@ -78,6 +77,7 @@ CCV_HUB_PUBLIC_HOST=hub.example.com
 CCV_HUB_PUBLIC_DOMAIN=example.com
 CCV_HUB_VIEWER_SUBDOMAIN_PREFIX=ccv-
 CCV_HUB_URL=http://127.0.0.1:4318
+CCV_HUB_PLUGIN_AUTO_INSTALL=0
 
 CCV_HUB_AGENT_PROXY_TOKEN=change-me-to-a-random-secret
 CCV_HUB_AUTH_PASSWORD=change-me
@@ -138,7 +138,7 @@ docker save ccv-hub-web:vX.Y.Z | gzip > build/ccv-hub-web-vX.Y.Z.image.tar.gz
 
 ```text
 apps/hub-web/dist + apps/hub-web/nginx.conf -> ccv-hub-web-vX.Y.Z.tar.gz
-apps/hub-service/dist + package metadata + deploy/ccv-hub-agent.service + deploy/.env.agent.example + scripts/install-agent-release.sh -> ccv-hub-agent-vX.Y.Z.tar.gz
+apps/hub-service/dist + package metadata + deploy/ccv-hub-agent.service + deploy/.env.agent.example + deploy/ccv-hub-plugin.mjs + scripts/install-agent-release.sh -> ccv-hub-agent-vX.Y.Z.tar.gz
 deploy/docker-compose.hub.yml + deploy/docker-compose.standalone.yml + deploy/Caddyfile.example + deploy/nginx.hub.conf.example + deploy/kubernetes-web.yaml + systemd/env templates -> deploy-templates-vX.Y.Z.zip
 ```
 

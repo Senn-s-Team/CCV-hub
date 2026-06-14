@@ -9,7 +9,7 @@ nginx.hub.conf.example: Nginx 平台适配模板，定义 Hub 静态站点、/ap
 kubernetes-web.yaml: Kubernetes Web 控制面模板，定义 ccv-hub-web Deployment、Service、Ingress 与节点可达 Agent upstream
 ccv-hub-agent.service: ccv-hub-agent 的宿主机 systemd release 单元，负责以 opc 用户真实系统环境从 /opt/ccv-hub-agent/current/apps/hub-service 运行 dist/server.js，并通过 /etc/ccv-hub/.env.agent 覆盖端口、域名、路径、CLI 与 Claude 配置目录
 ccv-hub-service.service: ccv-hub-agent.service 的过渡同内容别名，保留旧文件名引用期间的本地部署入口
-.env.agent.example: ccv-hub-agent 的 release 环境变量模板，定义公网域名、viewer 前缀、Hub 插件回连地址、鉴权密钥、路径 allowlist、cc-viewer CLI 与 Claude 配置目录
-ccv-hub-plugin.mjs: cc-viewer 生命周期插件，负责把手动启动/停止事件注册到宿主机 hub-service
+.env.agent.example: ccv-hub-agent 的 release 环境变量模板，定义公网域名、viewer 前缀、Hub 插件回连地址、显式插件安装开关、鉴权密钥、路径 allowlist、cc-viewer CLI 与 Claude 配置目录
+ccv-hub-plugin.mjs: cc-viewer 受管生命周期插件，默认以 logger 来源把启动与停止事件注册到宿主机 hub-service
 
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md

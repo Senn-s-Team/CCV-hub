@@ -20,9 +20,10 @@ export function registerExternalInstanceRoute(app: FastifyInstance, registry: In
         throw createAppError('REGISTER_FAILED', 'Instance URL token is required');
       }
       const projectPath = assertProjectPath(payload.projectPath);
+      const source = payload.source === 'logger' ? 'logger' : 'manual';
       const now = new Date().toISOString();
       const existing = registry.findActiveByProjectPath(projectPath);
-      if (existing && existing.instance.source !== 'manual') {
+      if (existing?.instance.source === 'launcher') {
         return {
           ok: true,
           data: {
@@ -41,7 +42,7 @@ export function registerExternalInstanceRoute(app: FastifyInstance, registry: In
           bridgeId,
           port: payload.port,
           pid: payload.pid,
-          source: payload.source,
+          source,
           startedAt: existing.instance.startedAt,
           lastSeen: now,
           stop: existing.stop,
@@ -55,7 +56,7 @@ export function registerExternalInstanceRoute(app: FastifyInstance, registry: In
           bridgeId,
           port: payload.port,
           pid: payload.pid,
-          source: payload.source,
+          source,
           startedAt: payload.startedAt ?? now,
           lastSeen: now,
         });

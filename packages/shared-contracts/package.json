@@ -11,7 +11,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json --noEmit false",
+    "build": "rm -rf dist && tsc -p tsconfig.json --noEmit false",
     "test": "vitest run",
     "lint": "tsc -p tsconfig.json"
   },

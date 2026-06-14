@@ -6,7 +6,7 @@
  */
 import { z } from 'zod';
 import { errorCodeSchema } from './errors.js';
-import { instanceSchema, isoDatetimeSchema } from './instance.js';
+import { instanceSchema, instanceSourceSchema, isoDatetimeSchema } from './instance.js';
 
 export const apiSuccessSchema = <TSchema extends z.ZodTypeAny>(dataSchema: TSchema) => z.object({
   ok: z.literal(true),
@@ -105,7 +105,7 @@ export const registerInstanceRequestSchema = z.object({
   url: z.string().url(),
   port: z.number().int().positive(),
   pid: z.number().int().positive(),
-  source: z.string().min(1).default('manual'),
+  source: instanceSourceSchema.default('manual'),
   startedAt: isoDatetimeSchema.optional(),
 });
 
@@ -120,6 +120,7 @@ export const unregisterInstanceRequestSchema = z.object({
   pid: z.number().int().positive().optional(),
   port: z.number().int().positive().optional(),
   projectPath: z.string().min(1).optional(),
+  source: instanceSourceSchema.optional(),
 });
 
 export const unregisterInstanceDataSchema = z.object({
