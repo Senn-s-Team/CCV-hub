@@ -357,7 +357,7 @@ ccv-hub/
 
 2026-04-25 已完成以下公网 viewer 链路实机验证：
 
-- Hub 首页与 `/api/instances` 可通过 `ccv-hub-dev.paas.996667.xyz` 访问
+- Hub 首页与 `/api/instances` 可通过 `ccv-hub-dev.paas.s3n.top` 访问
 - Dokploy / Traefik viewer 子域名可路由到 Hub bridge
 - Web 容器可通过 `host.docker.internal:4318` 回连宿主机 Hub service
 - Dokploy 只管理 Web 容器公网入口，Hub service 保持宿主机 systemd 运行

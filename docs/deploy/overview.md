@@ -69,7 +69,7 @@ cc-viewer per project process
 
 当前 dev 部署已经验证了 Dokploy + Traefik + nginx + host service 的公网链路，但仍带有私有环境假设：
 
-- `ccv-hub-dev.paas.996667.xyz` 与 `paas.996667.xyz` 写入 compose、systemd 与 nginx 配置。
+- Web 与 Agent 域名绑定来自 `.env`、`.env.dev`、`/etc/ccv-hub/.env.agent` 或平台环境变量面板。
 - `4317`、`4318`、`/home/opc/projects/ccvs`、`/home/opc/.claude`、`/etc/ccv-hub` 与 `dokploy-network` 绑定当前机器。
 - `hub-service` 当前 systemd 以 `tsx src/server.ts` 运行源码。
 - `hub-web` 当前 release 入口仍偏向现场 build 与 dev 域名。

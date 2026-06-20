@@ -15,33 +15,36 @@ services:
     environment:
       CCV_HUB_AGENT_UPSTREAM: ${CCV_HUB_AGENT_UPSTREAM:-http://host.docker.internal:4318}
       CCV_HUB_PROXY_TARGET: ${CCV_HUB_AGENT_UPSTREAM:-http://host.docker.internal:4318}
-      CCV_HUB_PUBLIC_HOST: ${CCV_HUB_PUBLIC_HOST:-ccv-hub-dev.paas.996667.xyz}
-      CCV_HUB_PUBLIC_DOMAIN: ${CCV_HUB_PUBLIC_DOMAIN:-paas.996667.xyz}
-      CCV_HUB_PUBLIC_DOMAIN_REGEX: ${CCV_HUB_PUBLIC_DOMAIN_REGEX:-paas\.996667\.xyz}
+      CCV_HUB_PUBLIC_HOST: ${CCV_HUB_PUBLIC_HOST:?Set CCV_HUB_PUBLIC_HOST}
+      CCV_HUB_PUBLIC_DOMAIN: ${CCV_HUB_PUBLIC_DOMAIN:?Set CCV_HUB_PUBLIC_DOMAIN}
       CCV_HUB_VIEWER_SUBDOMAIN_PREFIX: ${CCV_HUB_VIEWER_SUBDOMAIN_PREFIX:-ccv-}
       CCV_HUB_PUBLIC_PROTOCOL: ${CCV_HUB_PUBLIC_PROTOCOL:-https}
     labels:
       - traefik.enable=true
       - traefik.docker.network=${CCV_HUB_DOCKER_NETWORK:-dokploy-network}
-      - traefik.http.routers.ccv-hub.rule=Host(`${CCV_HUB_PUBLIC_HOST:-ccv-hub-dev.paas.996667.xyz}`)
+      - traefik.http.routers.ccv-hub.rule=Host(`${CCV_HUB_PUBLIC_HOST:?Set CCV_HUB_PUBLIC_HOST}`)
       - traefik.http.routers.ccv-hub.entrypoints=web
       - traefik.http.routers.ccv-hub.priority=100
+      - traefik.http.routers.ccv-hub.middlewares=ccv-hub-https-redirect
       - traefik.http.routers.ccv-hub.service=ccv-hub-web
-      - traefik.http.routers.ccv-hub-secure.rule=Host(`${CCV_HUB_PUBLIC_HOST:-ccv-hub-dev.paas.996667.xyz}`)
+      - traefik.http.routers.ccv-hub-secure.rule=Host(`${CCV_HUB_PUBLIC_HOST:?Set CCV_HUB_PUBLIC_HOST}`)
       - traefik.http.routers.ccv-hub-secure.entrypoints=websecure
       - traefik.http.routers.ccv-hub-secure.priority=100
       - traefik.http.routers.ccv-hub-secure.tls=true
       - traefik.http.routers.ccv-hub-secure.service=ccv-hub-web
       - traefik.http.services.ccv-hub-web.loadbalancer.server.port=80
-      - traefik.http.routers.ccv-viewer.rule=HostRegexp(`^${CCV_HUB_VIEWER_SUBDOMAIN_PREFIX:-ccv-}[a-f0-9]{32}\.${CCV_HUB_PUBLIC_DOMAIN_REGEX:-paas\.996667\.xyz}$$`)
+      - traefik.http.routers.ccv-viewer.rule=HostRegexp(`{viewer:${CCV_HUB_VIEWER_SUBDOMAIN_PREFIX:-ccv-}[a-f0-9]{32}}.${CCV_HUB_PUBLIC_DOMAIN:?Set CCV_HUB_PUBLIC_DOMAIN}`)
       - traefik.http.routers.ccv-viewer.entrypoints=web
       - traefik.http.routers.ccv-viewer.priority=10
+      - traefik.http.routers.ccv-viewer.middlewares=ccv-hub-https-redirect
       - traefik.http.routers.ccv-viewer.service=ccv-hub-web
-      - traefik.http.routers.ccv-viewer-secure.rule=HostRegexp(`^${CCV_HUB_VIEWER_SUBDOMAIN_PREFIX:-ccv-}[a-f0-9]{32}\.${CCV_HUB_PUBLIC_DOMAIN_REGEX:-paas\.996667\.xyz}$$`)
+      - traefik.http.routers.ccv-viewer-secure.rule=HostRegexp(`{viewer:${CCV_HUB_VIEWER_SUBDOMAIN_PREFIX:-ccv-}[a-f0-9]{32}}.${CCV_HUB_PUBLIC_DOMAIN:?Set CCV_HUB_PUBLIC_DOMAIN}`)
       - traefik.http.routers.ccv-viewer-secure.entrypoints=websecure
       - traefik.http.routers.ccv-viewer-secure.priority=10
       - traefik.http.routers.ccv-viewer-secure.tls=true
       - traefik.http.routers.ccv-viewer-secure.service=ccv-hub-web
+      - traefik.http.middlewares.ccv-hub-https-redirect.redirectscheme.scheme=https
+      - traefik.http.middlewares.ccv-hub-https-redirect.redirectscheme.permanent=true
     networks:
       - dokploy
       - default

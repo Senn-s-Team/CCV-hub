@@ -17,7 +17,7 @@
 ## 3. 模板验证
 
 ```bash
-docker compose -f deploy/docker-compose.hub.yml config
+docker compose --env-file .env.example -f deploy/docker-compose.hub.yml config
 docker compose --env-file .env.example -f deploy/docker-compose.standalone.yml config
 caddy adapt --config deploy/Caddyfile.example
 nginx -t

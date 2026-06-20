@@ -34,7 +34,6 @@ spec:
               value: hub.example.com
             - name: CCV_HUB_PUBLIC_DOMAIN
               value: example.com
-            - name: CCV_HUB_PUBLIC_DOMAIN_REGEX
               value: example\\.com
             - name: CCV_HUB_VIEWER_SUBDOMAIN_PREFIX
               value: ccv-

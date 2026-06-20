@@ -13,28 +13,28 @@ import {
 
 describe('vite proxy routing', () => {
   it('keeps hub page requests in the Vite SPA', () => {
-    expect(isViewerHost('ccv-hub.paas.996667.xyz')).toBe(false);
-    expect(shouldProxyToHubService('ccv-hub.paas.996667.xyz', '/')).toBe(false);
+    expect(isViewerHost('ccv-hub.example.com')).toBe(false);
+    expect(shouldProxyToHubService('ccv-hub.example.com', '/')).toBe(false);
   });
 
   it('keeps configured hub page requests in the Vite SPA', () => {
     const config = {
-      hubHost: 'ccv-hub-dev.paas.996667.xyz',
-      publicDomain: 'paas.996667.xyz',
+      hubHost: 'ccv-hub-dev.example.com',
+      publicDomain: 'example.com',
       viewerPrefix: 'ccv-',
     };
 
-    expect(shouldProxyToHubServiceForConfig(config, 'ccv-hub-dev.paas.996667.xyz', '/')).toBe(false);
-    expect(shouldProxyToHubServiceForConfig(config, 'ccv-hub-dev.paas.996667.xyz', '/api/instances')).toBe(true);
-    expect(shouldProxyToHubServiceForConfig(config, 'ccv-manual-7008.paas.996667.xyz', '/')).toBe(false);
+    expect(shouldProxyToHubServiceForConfig(config, 'ccv-hub-dev.example.com', '/')).toBe(false);
+    expect(shouldProxyToHubServiceForConfig(config, 'ccv-hub-dev.example.com', '/api/instances')).toBe(true);
+    expect(shouldProxyToHubServiceForConfig(config, 'ccv-manual-7008.example.com', '/')).toBe(false);
   });
 
   it('proxies hub API requests to hub-service', () => {
-    expect(shouldProxyToHubService('ccv-hub.paas.996667.xyz', '/api/instances')).toBe(true);
+    expect(shouldProxyToHubService('ccv-hub.example.com', '/api/instances')).toBe(true);
   });
 
   it('proxies viewer subdomain requests to hub-service bridge', () => {
-    const viewerHost = 'ccv-31b9745c782f47df97a90a3a226a9390.paas.996667.xyz';
+    const viewerHost = 'ccv-31b9745c782f47df97a90a3a226a9390.example.com';
 
     expect(isViewerHost(viewerHost)).toBe(true);
     expect(shouldProxyToHubService(viewerHost, '/api/events')).toBe(true);
@@ -42,8 +42,8 @@ describe('vite proxy routing', () => {
   });
 
   it('keeps malformed viewer-like hosts in the Vite SPA', () => {
-    expect(isViewerHost('ccv-manual-7008.paas.996667.xyz')).toBe(false);
-    expect(isViewerHost('ccv-31b9745c782f47df97a90a3a226a939z.paas.996667.xyz')).toBe(false);
-    expect(isViewerHost('ccv-31b9745c782f47df97a90a3a226a9390.example.com')).toBe(false);
+    expect(isViewerHost('ccv-manual-7008.example.com')).toBe(false);
+    expect(isViewerHost('ccv-31b9745c782f47df97a90a3a226a939z.example.com')).toBe(false);
+    expect(isViewerHost('ccv-31b9745c782f47df97a90a3a226a9390.other.test')).toBe(false);
   });
 });

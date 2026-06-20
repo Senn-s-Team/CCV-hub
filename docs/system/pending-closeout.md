@@ -16,8 +16,8 @@
 - `docs/system/system.md` 已把 viewer 子域名公网地址定义为当前最佳打开地址。
 
 **收口标准**
-1. `ccv-hub-dev.paas.996667.xyz` 首页与 `/api/instances` 可用。
-2. `https://ccv-<bridgeId>.paas.996667.xyz/?token=<token>` 可稳定打开 viewer 页面。
+1. `ccv-hub-dev.paas.s3n.top` 首页与 `/api/instances` 可用。
+2. `https://ccv-<bridgeId>.paas.s3n.top/?token=<token>` 可稳定打开 viewer 页面。
 3. 页面静态资源、SSE、WebSocket 全部通过 bridge 正常工作。
 4. Hub 启动的新 viewer 继承宿主机 `opc` 用户环境、`PATH` 与 `CLAUDE_CONFIG_DIR`。
 5. 验证结果回写到文档，形成可复用排障基线。
@@ -26,8 +26,8 @@
 
 **仓库证据**
 - `apps/hub-web/vite.config.ts` 只要满足 `ccv-` 前缀 + `.<publicDomain>` 就判定为 viewer host。
-- `apps/hub-web/src/test/vite-config.test.ts` 允许 `ccv-manual-7008.paas.996667.xyz` 走 viewer 代理。
-- `apps/hub-web/nginx.conf` 与 `deploy/docker-compose.hub.yml` 只接受 `^ccv-[a-f0-9]{32}\.paas\.996667\.xyz$`。
+- `apps/hub-web/src/test/vite-config.test.ts` 拒绝 `ccv-manual-7008.<publicDomain>` 进入 viewer 代理。
+- `apps/hub-web/nginx.conf` 先按 `*.publicDomain` 粗分流，`deploy/docker-compose.hub.yml` 按 `{viewer:ccv-[a-f0-9]{32}}.<publicDomain>` 分流，最终由 hub-service 校验 32 位 bridge id。
 
 **风险**
 开发态、测试态、生产态的 host 语义已经分叉，桥接问题会在不同环境出现不同结论。

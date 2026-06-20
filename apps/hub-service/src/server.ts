@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 Fastify、鉴权路由、宿主机路径路由、本地/外部实例路由、viewer bridge 路由、Hub 插件安装器、实例注册表与统一入口启动器
+ * [INPUT]: 依赖 Fastify、鉴权路由、宿主机路径路由、本地/外部实例路由、viewer bridge 路由、Hub 插件安装器、bridge 配置校验、实例注册表与统一入口启动器
  * [OUTPUT]: 对外提供 buildServer、startServer 与默认 CLI 启动入口
  * [POS]: hub-service 的装配根，把鉴权、显式启用的 logger 插件播种、领域、路由与基础设施收敛为可运行本地服务
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
@@ -11,6 +11,7 @@ import { InstanceRegistry } from './domain/instance-registry.js';
 import { installHubPlugin } from './domain/hub-plugin-installer.js';
 import { CcvLauncher, type ViewerLauncher } from './launcher/ccv-launcher.js';
 import { resolveAuthConfig, type AuthConfig } from './domain/auth-session.js';
+import { createBridgeConfig } from './domain/bridge-url.js';
 import { HostPathBrowser } from './domain/host-path-browser.js';
 import { registerAuthRoutes, registerPanelAuthGuard } from './routes/auth.js';
 import { registerHealthRoute } from './routes/health.js';
@@ -34,6 +35,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   const app = Fastify({ logger: false });
   const registry = options.registry ?? new InstanceRegistry();
   const launcher = options.launcher ?? new CcvLauncher();
+  createBridgeConfig();
   const auth = options.auth ?? resolveAuthConfig();
   const pathBrowser = options.pathBrowser ?? new HostPathBrowser(['/home/opc/projects']);
 

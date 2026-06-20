@@ -14,7 +14,7 @@ type HubRoutingConfig = {
 };
 
 const proxyTarget = process.env.CCV_HUB_PROXY_TARGET ?? 'http://127.0.0.1:4318';
-const publicDomain = process.env.CCV_HUB_PUBLIC_DOMAIN ?? 'paas.996667.xyz';
+const publicDomain = process.env.CCV_HUB_PUBLIC_DOMAIN ?? 'example.com';
 const viewerPrefix = process.env.CCV_HUB_VIEWER_SUBDOMAIN_PREFIX ?? 'ccv-';
 const hubHost = process.env.CCV_HUB_PUBLIC_HOST ?? `ccv-hub.${publicDomain}`;
 const allowedHosts = [hubHost, `.${publicDomain}`];

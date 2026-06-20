@@ -39,7 +39,7 @@
 - 完成 Task B 端到端验证：tarball 内容检查、解包后 `bun install --production`、携带宿主机 `CCV_CLI_PATH` 启动 `dist/server.js`、`/api/health`、Docker build、systemd verify、workspace test/build 均通过。
 - 完成 Task C Web release 化：`deploy/docker-compose.hub.yml` 改为 image-only 部署，移除 Web 容器源码挂载，新增 `scripts/package-web-release.mjs` 与 `release:web`，Web tarball 固定包含 `dist/` 与 nginx 模板；`bun run --filter hub-web build`、`bun run release:web -- v0.0.0-test`、tarball 内容检查、`docker build`、`docker compose config`、容器首页/API/mounts smoke 均通过。
 - 完成 Task D 平台适配补齐：新增 `compose.md`、`dokploy.md`、`caddy.md`、`nginx.md`、`kubernetes.md` 五个平台文档，新增 `docker-compose.standalone.yml`、`Caddyfile.example`、`nginx.hub.conf.example`、`kubernetes-web.yaml` 四个部署模板；Compose/Dokploy/Caddy/Nginx/Kubernetes 均给出宿主机 Agent 主路径和 smoke path。
-- 完成 Task D 模板验证：`docker compose -f deploy/docker-compose.hub.yml config` 与 `docker compose --env-file .env.example -f deploy/docker-compose.standalone.yml config` 通过；当前环境未安装 `caddy`、`nginx`、`kubectl`，对应模板保留文档化验证命令。
+- 完成 Task D 模板验证：`docker compose --env-file .env.example -f deploy/docker-compose.hub.yml config` 与 `docker compose --env-file .env.example -f deploy/docker-compose.standalone.yml config` 通过；当前环境未安装 `caddy`、`nginx`、`kubectl`，对应模板保留文档化验证命令。
 
 ### 2026-04-28
 
@@ -51,7 +51,7 @@
 - 完成 Task F 本机 Agent rehearsal：`CCV_HUB_SMOKE_BASE_URL=http://127.0.0.1:4318`、正式 `.env` 鉴权口令与 `CCV_HUB_SMOKE_CHECK_INVALID_PATH=1` 下执行 `bun run release:rehearsal -- v0.0.0-rehearsal` 通过，生成 `build/checksums-v0.0.0-rehearsal.txt` 与 `build/release-rehearsal-v0.0.0-rehearsal.json`。
 - 完成 Task F 真实项目 deep smoke：以 `/home/opc/projects/ccvs/cc-viewer` 为 `CCV_HUB_SMOKE_PROJECT_PATH` 执行 `bun run smoke:release`，health、auth、instances、invalid-path、launch、viewer HTTP、viewer SSE 与 stop 均通过。
 - 完成 Task F HTTPS WebSocket 自动验证：`scripts/smoke-release.mjs` 已用 TLS socket 对 HTTPS viewer URL 执行 WebSocket upgrade handshake，公网 deep smoke 中 viewer-websocket 通过。
-- 完成 Task F 公网 Web entry 验证：`CCV_HUB_SMOKE_BASE_URL=https://ccv-hub-dev.paas.996667.xyz`、`CCV_HUB_SMOKE_CHECK_HOME=1`、真实项目路径与 stop 收敛启用时，home、health、auth、instances、invalid-path、launch、viewer HTTP、viewer SSE、viewer WebSocket 与 stop 均通过。
+- 完成 Task F 公网 Web entry 验证：`CCV_HUB_SMOKE_BASE_URL=https://ccv-hub-dev.paas.s3n.top`、`CCV_HUB_SMOKE_CHECK_HOME=1`、真实项目路径与 stop 收敛启用时，home、health、auth、instances、invalid-path、launch、viewer HTTP、viewer SSE、viewer WebSocket 与 stop 均通过。
 - 完成 Task F 非破坏性 rollback rehearsal：使用 `build/ccv-hub-agent-v0.0.0-test.tar.gz` 与 `build/ccv-hub-agent-v0.0.0-rehearsal.tar.gz` 在临时目录解包，切换 `current` symlink 前进与回滚，执行 `bun install --production --frozen-lockfile`，并在临时端口 `4520` 启动回滚版本通过 `/api/health`。
 - 修复 dev 部署入口：`deploy:service` 改为 `release:agent` tarball 打包后调用 `scripts/install-agent-release.sh` 完整安装，避免 systemd 指向缺 production 依赖的 release 目录。
 - 固化 dev 验证入口：`dev:web` 加载 `.env.dev`，`dev:service` 与 `smoke:dev` 加载 `deploy/.env.agent.dev`，`smoke:dev` 在 dev wrapper 中派生登录口令，开发态变量链与 release 变量链分离。

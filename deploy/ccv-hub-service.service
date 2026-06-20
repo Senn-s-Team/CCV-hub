@@ -13,10 +13,6 @@ User=opc
 WorkingDirectory=/opt/ccv-hub-agent/current/apps/hub-service
 Environment=CCV_HUB_HOST=0.0.0.0
 Environment=CCV_HUB_PORT=4318
-Environment=CCV_HUB_PUBLIC_HOST=ccv-hub-dev.paas.996667.xyz
-Environment=CCV_HUB_PUBLIC_DOMAIN=paas.996667.xyz
-Environment=CCV_HUB_VIEWER_SUBDOMAIN_PREFIX=ccv-
-Environment=CCV_HUB_PUBLIC_PROTOCOL=https
 Environment=CCV_CLI_PATH=/home/opc/projects/ccvs/cc-viewer/cli.js
 Environment=HOME=/home/opc
 Environment=PATH=/home/linuxbrew/.linuxbrew/bin:/home/opc/.local/bin:/home/opc/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin

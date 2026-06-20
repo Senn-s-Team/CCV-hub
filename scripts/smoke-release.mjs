@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * [INPUT]: 依赖 Node fetch、net Socket、ccv-hub Agent HTTP API、Agent/Smoke 环境变量与可选 viewer bridge 地址
- * [OUTPUT]: 对外提供 release smoke test CLI，用于验证 health、auth、instances、launch、viewer bridge 与 stop 收敛
+ * [OUTPUT]: 对外提供 release smoke test CLI，用于验证 public domain、health、auth、instances、launch、viewer bridge 与 stop 收敛
  * [POS]: scripts 的发布验证入口，连接 release 文档中的验收项与真实部署环境
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -25,6 +25,7 @@ const state = {
 };
 
 async function main() {
+  await step('domain-config', checkDomainConfig);
   if (checkHome) await step('home', checkHubHome);
   await step('health', checkHealth);
   await step('auth', checkAuth);
@@ -45,6 +46,13 @@ async function main() {
   } else {
     report('skip', 'launch/viewer/stop', 'set CCV_HUB_SMOKE_PROJECT_PATH or CCV_HUB_SMOKE_VIEWER_URL for deep checks');
   }
+}
+
+async function checkDomainConfig() {
+  const domain = process.env.CCV_HUB_PUBLIC_DOMAIN;
+  if (!domain) return;
+  const viewerHost = `ccv-1234567890abcdef1234567890abcdef.${domain}`;
+  assert(viewerHost.endsWith(`.${domain}`), 'viewer host must derive from CCV_HUB_PUBLIC_DOMAIN');
 }
 
 async function checkHubHome() {

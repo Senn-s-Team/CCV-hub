@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 node:crypto 的 HMAC、哈希与安全比较能力
  * [OUTPUT]: 对外提供 AuthConfig、resolveAuthConfig、createSessionToken、verifySessionToken 与 verifyPassword
- * [POS]: hub-service 的面板会话核心，负责把管理员口令转换成可校验 HttpOnly cookie token 并覆盖 viewer 子域名
+ * [POS]: hub-service 的面板会话核心，负责把管理员口令转换成可校验 HttpOnly cookie token，并通过显式 cookie domain 控制跨子域范围
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { createHmac, createHash, timingSafeEqual } from 'node:crypto';
@@ -18,10 +18,7 @@ export type AuthConfig = {
 const defaultSessionTtlSeconds = 60 * 60 * 24 * 7;
 
 function resolveCookieDomain(env: NodeJS.ProcessEnv): string | undefined {
-  const explicitDomain = env.CCV_HUB_COOKIE_DOMAIN;
-  if (explicitDomain) return explicitDomain;
-  const publicDomain = env.CCV_HUB_PUBLIC_DOMAIN;
-  return publicDomain ? `.${publicDomain}` : undefined;
+  return env.CCV_HUB_COOKIE_DOMAIN;
 }
 
 export function resolveAuthConfig(env: NodeJS.ProcessEnv = process.env): AuthConfig {

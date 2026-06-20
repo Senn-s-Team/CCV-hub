@@ -49,6 +49,7 @@ curl -i -H 'content-type: application/json' -d '{"password":"change-me"}' https:
 - `CCV_HUB_AUTH_PASSWORD` 与 smoke/login 使用的密码保持一致。
 - `CCV_HUB_SESSION_SECRET` 在 Agent 重启前后保持稳定。
 - HTTPS 部署中 cookie 带 `Secure`，本地 HTTP smoke 使用 `CCV_HUB_PUBLIC_PROTOCOL=http`。
+- 管理员 session 默认使用 host-only cookie；只有专用父域需要跨子域面板会话时才设置 `CCV_HUB_COOKIE_DOMAIN`。
 
 ## 4. Hub 首页可打开，API 失败
 

@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 node:http、node:net、node:tls、FastifyInstance、bridge Host 解析、multipart raw parser、实例级 viewer token 与实例注册表 upstream 记录
+ * [INPUT]: 依赖 node:http、node:net、node:tls、FastifyInstance、bridge Host 解析、multipart raw parser、实例级 viewer token、公网协议环境变量与实例注册表 upstream 记录
  * [OUTPUT]: 对外提供 registerViewerBridgeRoute，用于按 viewer 子域名反代已鉴权 HTTP/SSE、multipart 上传与 WebSocket 请求
  * [POS]: hub-service 的公网 viewer 桥接面，把 Dokploy 子域名流量转发到对应 cc-viewer 内网实例
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
@@ -77,7 +77,8 @@ function hasViewerAccess(record: ManagedInstanceRecord, requestUrl: string | und
 function viewerSessionHeader(record: ManagedInstanceRecord): string | undefined {
   const token = upstreamToken(record);
   if (!token) return undefined;
-  const secure = new URL(record.instance.url).protocol === 'https:' ? '; Secure' : '';
+  const publicProtocol = process.env.CCV_HUB_PUBLIC_PROTOCOL ?? new URL(record.instance.url).protocol.slice(0, -1);
+  const secure = publicProtocol === 'https' ? '; Secure' : '';
   return `${viewerSessionCookie}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800${secure}`;
 }
 

@@ -35,7 +35,7 @@ Accepted — implementation entered current scope on 2026-04-24 and completed pu
 该方案会让 MVP 依赖 Dokploy 网络、Traefik 路由、bridge 服务、宿主机端口转发和 hook 集成的整体可用性。当前阶段这条链路过长，收益与风险不平衡。
 
 ## Implementation notes
-- 当前 `Instance.url` 使用 `https://ccv-<bridgeId>.paas.996667.xyz/?token=<token>` 形式的公网 viewer 子域名。
+- 当前 `Instance.url` 使用 `https://ccv-<bridgeId>.<CCV_HUB_PUBLIC_DOMAIN>/?token=<token>` 形式的公网 viewer 子域名。
 - registry 内部保留 raw upstream URL，用于反代和存活探测。
 - `hub-service` 在宿主机 systemd 中运行，Web/Dokploy 容器只负责入口代理并通过 `host.docker.internal:4318` 回连；该边界用于保留单一宿主机 Claude 环境。
 - `port` 保持真实 viewer 监听端口语义。

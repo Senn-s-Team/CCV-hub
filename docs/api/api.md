@@ -41,7 +41,7 @@
   "id": "ins_01HXYZ...",
   "projectName": "my-project",
   "projectPath": "/home/opc/projects/my-project",
-  "url": "https://ccv-ins-01hxyz.paas.996667.xyz/?token=abc",
+  "url": "https://ccv-ins-01hxyz.example.com/?token=abc",
   "port": 4321,
   "pid": 12345,
   "status": "running",
@@ -131,7 +131,7 @@
         "id": "ins_01HXYZ...",
         "projectName": "my-project",
         "projectPath": "/home/opc/projects/my-project",
-        "url": "https://ccv-ins-01hxyz.paas.996667.xyz/?token=abc",
+        "url": "https://ccv-ins-01hxyz.example.com/?token=abc",
         "port": 4321,
         "pid": 12345,
         "status": "running",
@@ -228,7 +228,7 @@
       "id": "ins_01HXYZ...",
       "projectName": "my-project",
       "projectPath": "/home/opc/projects/my-project",
-      "url": "https://ccv-ins-01hxyz.paas.996667.xyz/?token=abc",
+      "url": "https://ccv-ins-01hxyz.example.com/?token=abc",
       "port": 4321,
       "pid": 12345,
       "status": "running",
@@ -390,7 +390,7 @@
 - 过滤非运行中实例
 - 按启动时间排序
 - 返回统一错误结构
-- 提供可覆盖 Hub 主域名和 viewer 子域名的管理员 session cookie
+- 提供默认 host-only 的管理员 session cookie，并只在显式配置 `CCV_HUB_COOKIE_DOMAIN` 时扩大 cookie domain
 
 ### 8.2 前端负责
 

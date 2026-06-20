@@ -17,11 +17,21 @@ export type BridgeIdentity = {
   host: string;
 };
 
+const dnsNamePattern = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])$/u;
+const prefixPattern = /^[a-z0-9-]+$/u;
+
 export function createBridgeConfig(env: NodeJS.ProcessEnv = process.env): BridgeConfig {
+  if (env.CCV_HUB_ENV === 'production' && !env.CCV_HUB_PUBLIC_DOMAIN) {
+    throw new Error('CCV_HUB_PUBLIC_DOMAIN is required in production');
+  }
+  const domain = env.CCV_HUB_PUBLIC_DOMAIN ?? 'example.com';
+  const subdomainPrefix = env.CCV_HUB_VIEWER_SUBDOMAIN_PREFIX ?? 'ccv-';
+  if (!dnsNamePattern.test(domain)) throw new Error('CCV_HUB_PUBLIC_DOMAIN must be a DNS domain');
+  if (!prefixPattern.test(subdomainPrefix)) throw new Error('CCV_HUB_VIEWER_SUBDOMAIN_PREFIX must be DNS-safe');
   return {
     protocol: env.CCV_HUB_PUBLIC_PROTOCOL ?? 'https',
-    domain: env.CCV_HUB_PUBLIC_DOMAIN ?? 'paas.996667.xyz',
-    subdomainPrefix: env.CCV_HUB_VIEWER_SUBDOMAIN_PREFIX ?? 'ccv-',
+    domain,
+    subdomainPrefix,
   };
 }
 

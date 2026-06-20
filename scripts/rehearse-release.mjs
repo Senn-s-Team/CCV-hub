@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * [INPUT]: 依赖 node:child_process、node:crypto、node:fs 与既有 release/smoke 脚本
- * [OUTPUT]: 对外提供 release rehearsal CLI，产出 tarball、checksums 与 evidence report
+ * [OUTPUT]: 对外提供 release rehearsal CLI，产出 tarball、env-backed Compose 校验、checksums 与 evidence report
  * [POS]: scripts 的真实环境发布演练编排器，复用打包、模板验证与 smoke 验证入口
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -31,7 +31,7 @@ try {
   if (process.env.CCV_HUB_REHEARSAL_DOCKER_IMAGE === '1') {
     run('docker', ['build', '-f', 'apps/hub-web/Dockerfile', '-t', `ccv-hub-web:${version}`, '.']);
   }
-  run('docker', ['compose', '-f', 'deploy/docker-compose.hub.yml', 'config']);
+  run('docker', ['compose', '--env-file', '.env.example', '-f', 'deploy/docker-compose.hub.yml', 'config']);
   run('docker', ['compose', '--env-file', '.env.example', '-f', 'deploy/docker-compose.standalone.yml', 'config']);
   run('bun', ['run', 'smoke:release']);
   writeChecksums();

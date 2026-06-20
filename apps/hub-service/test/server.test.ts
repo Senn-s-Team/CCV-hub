@@ -13,6 +13,7 @@ import { createConnection } from 'node:net';
 import { describe, expect, it, vi } from 'vitest';
 import { buildServer } from '../src/server.js';
 import type { AuthConfig } from '../src/domain/auth-session.js';
+import { createBridgeConfig } from '../src/domain/bridge-url.js';
 import { HostPathBrowser } from '../src/domain/host-path-browser.js';
 import { InstanceRegistry } from '../src/domain/instance-registry.js';
 import { buildLaunchArgs, buildLaunchEnv, parseViewerUrl, resolveViewerUrl } from '../src/launcher/ccv-launcher.js';
@@ -154,6 +155,7 @@ describe('hub-service routes', () => {
     expect(loginResponse.statusCode).toBe(200);
     expect(loginResponse.json()).toEqual({ ok: true, data: { authenticated: true, configured: true } });
     expect(cookie).toContain('ccv_hub_session=');
+    expect(cookie).not.toContain('Domain=');
 
     const listResponse = await app.inject({
       method: 'GET',
@@ -383,6 +385,12 @@ describe('hub-service routes', () => {
     }
   });
 
+  it('requires a valid public domain and DNS-safe viewer prefix', () => {
+    expect(() => createBridgeConfig({ CCV_HUB_ENV: 'production' })).toThrow('CCV_HUB_PUBLIC_DOMAIN is required in production');
+    expect(() => createBridgeConfig({ CCV_HUB_PUBLIC_DOMAIN: 'bad domain' })).toThrow('CCV_HUB_PUBLIC_DOMAIN must be a DNS domain');
+    expect(() => createBridgeConfig({ CCV_HUB_PUBLIC_DOMAIN: 'example.com', CCV_HUB_VIEWER_SUBDOMAIN_PREFIX: 'ccv-.*' })).toThrow('CCV_HUB_VIEWER_SUBDOMAIN_PREFIX must be DNS-safe');
+  });
+
   it('protects hub host api even when hub host starts with the viewer prefix', async () => {
     const app = buildServer({
       launcher: { launch: vi.fn() },
@@ -392,7 +400,7 @@ describe('hub-service routes', () => {
     const response = await app.inject({
       method: 'GET',
       url: '/api/instances',
-      headers: { host: 'ccv-hub-dev.paas.996667.xyz' },
+      headers: { host: 'ccv-hub-dev.example.com' },
     });
 
     expect(response.statusCode).toBe(401);
@@ -413,7 +421,7 @@ describe('hub-service routes', () => {
       id: 'bridge-auth',
       projectName: 'alpha',
       projectPath: '/tmp/alpha',
-      url: 'https://ccv-1234567890abcdef1234567890abcdef.paas.996667.xyz/?token=abc',
+      url: 'https://ccv-1234567890abcdef1234567890abcdef.example.com/?token=abc',
       upstreamUrl: 'http://127.0.0.1:4321?token=abc',
       bridgeId: '1234567890abcdef1234567890abcdef',
       port: 4321,
@@ -432,7 +440,7 @@ describe('hub-service routes', () => {
     const response = await app.inject({
       method: 'GET',
       url: '/',
-      headers: { host: 'ccv-1234567890abcdef1234567890abcdef.paas.996667.xyz' },
+      headers: { host: 'ccv-1234567890abcdef1234567890abcdef.example.com' },
     });
 
     expect(response.statusCode).toBe(401);
@@ -1033,7 +1041,7 @@ describe('hub-service routes', () => {
       id: 'bridge-owned',
       projectName: 'alpha',
       projectPath: '/tmp/alpha',
-      url: 'https://ccv-1234567890abcdef1234567890abcdef.paas.996667.xyz/?token=abc',
+      url: 'https://ccv-1234567890abcdef1234567890abcdef.example.com/?token=abc',
       upstreamUrl: 'http://127.0.0.1:4321?token=abc',
       bridgeId: '1234567890abcdef1234567890abcdef',
       port: 4321,
@@ -1052,7 +1060,7 @@ describe('hub-service routes', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/instances/bridge-owned/actions/stop',
-      headers: { host: 'ccv-1234567890abcdef1234567890abcdef.paas.996667.xyz' },
+      headers: { host: 'ccv-1234567890abcdef1234567890abcdef.example.com' },
     });
 
     expect(response.statusCode).toBe(401);
@@ -1316,7 +1324,7 @@ describe('hub-service routes', () => {
       id: 'manual-7008',
       source: 'manual',
     });
-    expect(registeredInstance.url).toMatch(/^https:\/\/ccv-[a-f0-9]{32}\.paas\.996667\.xyz\/\?token=abc$/u);
+    expect(registeredInstance.url).toMatch(/^https:\/\/ccv-[a-f0-9]{32}\.example\.com\/\?token=abc$/u);
 
     const unregisterResponse = await app.inject({
       method: 'POST',

@@ -197,8 +197,8 @@ build/release-rehearsal-vX.Y.Z.json
 
 平台模板验证：
 
-- Compose：`docker compose -f deploy/docker-compose.standalone.yml config`。
-- Dokploy：`docker compose -f deploy/docker-compose.hub.yml config`，并复核 Traefik Hub/router 与 viewer/router HostRegexp。
+- Compose：`docker compose --env-file .env.example -f deploy/docker-compose.standalone.yml config`。
+- Dokploy：`docker compose --env-file .env.example -f deploy/docker-compose.hub.yml config`，并复核 Traefik Hub/router 与 viewer/router HostRegexp。
 - Caddy：`caddy adapt --config deploy/Caddyfile.example`。
 - Nginx：`nginx -t` 使用 `deploy/nginx.hub.conf.example` 生成的站点配置。
 - Kubernetes：`kubectl apply --dry-run=client -f deploy/kubernetes-web.yaml`。

@@ -6,15 +6,15 @@
 
 ### 验证对象
 
-- Hub 首页：`https://ccv-hub-dev.paas.996667.xyz/`
-- Hub API：`https://ccv-hub-dev.paas.996667.xyz/api/instances`
-- viewer 子域名：`https://ccv-31b9745c782f47df97a90a3a226a9390.paas.996667.xyz/?token=<redacted>`
+- Hub 首页：`https://ccv-hub-dev.paas.s3n.top/`
+- Hub API：`https://ccv-hub-dev.paas.s3n.top/api/instances`
+- viewer 子域名：`https://ccv-31b9745c782f47df97a90a3a226a9390.paas.s3n.top/?token=<redacted>`
 - 当前实例：`ccv-hub`，项目路径 `/home/opc/projects/ccvs/ccv-hub`，来源 `launcher`
 
 ### 验证结果
 
-1. `GET https://ccv-hub-dev.paas.996667.xyz/api/health` 返回 HTTP 200，响应为 `{"ok":true,"data":{"status":"ok"}}`。
-2. `GET https://ccv-hub-dev.paas.996667.xyz/api/instances` 返回 HTTP 200，并返回 1 个运行中实例。
+1. `GET https://ccv-hub-dev.paas.s3n.top/api/health` 返回 HTTP 200，响应为 `{"ok":true,"data":{"status":"ok"}}`。
+2. `GET https://ccv-hub-dev.paas.s3n.top/api/instances` 返回 HTTP 200，并返回 1 个运行中实例。
 3. 浏览器打开 Hub 首页成功，页面标题为 `CCV Hub`，实例列表展示 `ccv-hub`，并提供“打开”“复制链接”动作。
 4. 浏览器打开 viewer 子域名成功，页面标题为 `Claude Code Viewer`，页面内容展示 `Project:ccv-hub`、Terminal、Network Packets、File Explorer 等核心区域。
 5. viewer 子域名下静态资源加载正常：HTML、JS、CSS、SVG 请求均返回 HTTP 200。
@@ -42,8 +42,8 @@
 
 ### 变更结果
 
-1. Vite 开发代理的 viewer host 判定已收敛为 `^ccv-[a-f0-9]{32}\.paas\.996667\.xyz$` 同构语义。
-2. `ccv-manual-7008.paas.996667.xyz`、非十六进制 bridge id 与非目标 public domain 均不再进入 viewer bridge 代理。
+1. Vite 开发代理的 viewer host 判定已收敛为 `^ccv-[a-f0-9]{32}\.paas\.s3n\.top$` 同构语义。
+2. `ccv-manual-7008.paas.s3n.top`、非十六进制 bridge id 与非目标 public domain 均不再进入 viewer bridge 代理。
 3. nginx 与 Traefik 原有 32 位十六进制 bridge id 规则保持不变，开发态、测试态、生产态共享同一合法 host 格式。
 
 ### 自测
