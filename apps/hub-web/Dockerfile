@@ -17,6 +17,7 @@ RUN bun run --filter hub-web build
 
 FROM nginx:1.27-alpine
 ENV CCV_HUB_AGENT_UPSTREAM=http://host.docker.internal:4318 \
+    CCV_HUB_PUBLIC_HOST=hub.example.com \
     CCV_HUB_PUBLIC_DOMAIN=example.com \
     CCV_HUB_VIEWER_SUBDOMAIN_PREFIX=ccv-
 COPY apps/hub-web/nginx.conf /etc/nginx/templates/default.conf.template

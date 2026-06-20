@@ -66,7 +66,7 @@ Traefik router 规则：
 
 ```text
 Host(`hub.example.com`)
-HostRegexp(`{viewer:ccv-[a-f0-9]{32}}.example.com`)
+HostRegexp(`^ccv-[a-f0-9]{32}[.]example.com$`)
 ```
 
 ## 5. 验证

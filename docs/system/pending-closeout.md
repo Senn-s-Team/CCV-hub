@@ -27,7 +27,7 @@
 **仓库证据**
 - `apps/hub-web/vite.config.ts` 只要满足 `ccv-` 前缀 + `.<publicDomain>` 就判定为 viewer host。
 - `apps/hub-web/src/test/vite-config.test.ts` 拒绝 `ccv-manual-7008.<publicDomain>` 进入 viewer 代理。
-- `apps/hub-web/nginx.conf` 先按 `*.publicDomain` 粗分流，`deploy/docker-compose.hub.yml` 按 `{viewer:ccv-[a-f0-9]{32}}.<publicDomain>` 分流，最终由 hub-service 校验 32 位 bridge id。
+- `apps/hub-web/nginx.conf` 先按 `*.publicDomain` 粗分流，`deploy/docker-compose.hub.yml` 按 `^ccv-[a-f0-9]{32}[.]<publicDomain>$` 分流，最终由 hub-service 校验 32 位 bridge id 与 public domain。
 
 **风险**
 开发态、测试态、生产态的 host 语义已经分叉，桥接问题会在不同环境出现不同结论。
