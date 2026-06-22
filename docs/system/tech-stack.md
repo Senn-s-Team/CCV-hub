@@ -19,7 +19,7 @@
 
 - 让前后端共享同一份实例契约
 - 让状态流转清晰，减少半状态泄漏
-- 让本地服务保持轻量，同时承接已进入当前实现的公网 viewer 子域名桥接
+- 让本地服务保持轻量，同时承接已进入当前实现的公网 viewer path 桥接
 - 让依赖组合尽量采用最新稳定生态，减少后续大版本迁移成本
 
 ## 3. 版本策略
@@ -236,7 +236,7 @@ ccv-hub/
 
 - 首版选择轮询作为实例同步主路径，SSE 列表同步后置
 - 首版使用内存注册表作为运行态真相源，数据库持久化后置
-- 公网 bridge 经 2026-04-24 明确触发进入当前实现，viewer 子域名链路已完成 2026-04-25 实机验证
+- 公网 bridge 经 2026-04-24 明确触发进入当前实现，viewer path 链路已完成 2026-04-25 实机验证
 
 ## 9. 状态模型落地建议
 
@@ -309,7 +309,7 @@ ccv-hub/
 
 ## 12. 与现有 cc-viewer 复用点的关系
 
-以下能力是当前公网 viewer 子域名桥接的复用锚点：
+以下能力是当前公网 viewer path 桥接的复用锚点：
 
 - `cc-viewer/server.js:2474` 的 `/api/local-url`
 - `cc-viewer/server.js:2938` 的 `serverStarted` hook 调用点
@@ -318,7 +318,7 @@ ccv-hub/
 - `cc-viewer/lib/plugin-loader.js:14`
 - `cc-viewer/lib/plugin-loader.js:15`
 
-这些点支撑插件层把 raw upstream 上报给 Hub，再由 Hub 生成公网 viewer 子域名地址。
+这些点支撑插件层把 raw upstream 上报给 Hub，再由 Hub 生成公网 viewer path 地址。
 
 ## 13. 后续增强技术项
 
@@ -358,12 +358,12 @@ ccv-hub/
 2026-04-25 已完成以下公网 viewer 链路实机验证：
 
 - Hub 首页与 `/api/instances` 可通过 `ccv-hub-dev.paas.s3n.top` 访问
-- Dokploy / Traefik viewer 子域名可路由到 Hub bridge
+- Dokploy / Traefik viewer path 可路由到 Hub bridge
 - Web 容器可通过 `host.docker.internal:4318` 回连宿主机 Hub service
 - Dokploy 只管理 Web 容器公网入口，Hub service 保持宿主机 systemd 运行
 - Hub bridge 可访问 upstream 动态端口
 - Hub 页面启动的 `cc-viewer` 继承宿主机 `opc` 用户环境、`PATH` 与 `CLAUDE_CONFIG_DIR`
-- viewer 子域名下 HTML、静态资源、业务 API、SSE、WebSocket 均正常
+- viewer path 下 HTML、静态资源、业务 API、SSE、WebSocket 均正常
 
 ## 15. 分阶段实施建议
 
@@ -397,9 +397,9 @@ ccv-hub/
 
 以下内容已由 2026-04-24 明确触发进入当前实现，并在 2026-04-25 完成实机验证：
 
-- Dokploy / Traefik / nginx / Hub bridge viewer 子域名链路
+- Dokploy / Traefik / nginx / Hub bridge viewer path 链路
 - `localUrl / serverStarted / serverStopping` 复用点接入
-- `url` 升级为公网 viewer 子域名优先地址
+- `url` 升级为公网 viewer path 优先地址
 
 后续公网相关工作聚焦 token 暴露收口、重复 token 参数处理、结构化日志、健康信息与路由变更回归。
 
@@ -410,7 +410,7 @@ ccv-hub/
 - `POST /api/instances` 对合法路径返回完整实例
 - 非法路径返回统一错误结构
 - 页面完整覆盖 loading / list-ready / empty / launch-failed / discovery-error
-- viewer 子域名公网地址可加载页面、静态资源、业务 API、SSE 与 WebSocket
+- viewer path 公网地址可加载页面、静态资源、业务 API、SSE 与 WebSocket
 - Hub 页面启动的新 viewer 继承宿主机 `opc` 用户环境、`PATH` 与 `CLAUDE_CONFIG_DIR`
 - 桌面、平板、手机视口均可读、可点、可理解
 

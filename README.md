@@ -103,9 +103,8 @@ cp deploy/.env.agent.example /etc/ccv-hub/.env.agent
 
 关键变量：
 
-- `CCV_HUB_PUBLIC_HOST`：Hub 对外主域名。
-- `CCV_HUB_PUBLIC_DOMAIN`：viewer 子域名所在根域名。
-- `CCV_HUB_VIEWER_SUBDOMAIN_PREFIX`：viewer 子域名前缀，默认 `ccv-`。
+- `CCV_HUB_PUBLIC_HOST`：Hub 对外主域名，也是 viewer path 的稳定 host。
+- `CCV_HUB_VIEWER_PATH_PREFIX`：viewer path 前缀，默认 `/viewer`。
 - `CCV_HUB_AGENT_UPSTREAM`：Web 容器或入口访问 Agent 的 upstream。
 - `CCV_HUB_AGENT_PROXY_TOKEN`：Web 到 Agent 的代理令牌。
 - `CCV_HUB_AUTH_PASSWORD`：Hub 登录密码。
@@ -138,7 +137,7 @@ cc-viewer per project process
 - **Local Mode**：本机开发和试用。
 - **Docker Compose Mode**：通用自托管主路径，Web 运行在容器，Agent 运行在宿主机 systemd。
 - **Dokploy Mode**：基于 Dokploy / Traefik 的 Compose 适配。
-- **Caddy Mode**：自动 HTTPS 与 wildcard 路由。
+- **Caddy Mode**：自动 HTTPS 与同 host `/viewer/*` 路由。
 - **Nginx Mode**：传统 VPS、已有 Nginx 和 Certbot 场景。
 - **Kubernetes Mode**：团队和高级用户场景，Web 进入集群，Agent 保留在目标节点宿主机。
 
@@ -190,7 +189,7 @@ User -> Viewer: per-instance viewer token
 - Agent 端口只开放给受控入口访问。
 - `/etc/ccv-hub/.env.agent` 使用 `0600` 权限。
 - `CCV_HUB_PATH_ROOTS` 只包含明确授权的项目根目录。
-- viewer 子域名通过 bridge id 与 token 进入具体实例。
+- viewer path 通过 bridge id 与 token 进入具体实例。
 - `~/.claude`、项目源码和 Claude 登录态保留在宿主机。
 
 ## 文档导航

@@ -14,7 +14,7 @@ Host systemd: ccv-hub-agent
 Host process: cc-viewer
 ```
 
-Web 容器只承载静态页面、`/api` 代理和 viewer 子域名入口。Agent 保持宿主机 systemd 运行，继续使用宿主机 Claude 配置、项目目录和 `cc-viewer` CLI。
+Web 容器只承载静态页面、`/api` 代理和 viewer path 入口。Agent 保持宿主机 systemd 运行，继续使用宿主机 Claude 配置、项目目录和 `cc-viewer` CLI。
 
 ## 2. 产物
 
@@ -41,9 +41,8 @@ sudo systemctl enable --now ccv-hub-agent
 CCV_HUB_HOST=0.0.0.0
 CCV_HUB_PORT=4318
 CCV_HUB_PUBLIC_PROTOCOL=https
-CCV_HUB_PUBLIC_HOST=hub.example.com
-CCV_HUB_PUBLIC_DOMAIN=example.com
-CCV_HUB_VIEWER_SUBDOMAIN_PREFIX=ccv-
+CCV_HUB_PUBLIC_HOST=<CCV_HUB_PUBLIC_HOST>
+CCV_HUB_VIEWER_PATH_PREFIX=/viewer
 CCV_HUB_URL=http://127.0.0.1:4318
 CCV_HUB_AGENT_PROXY_TOKEN=change-me-to-a-random-secret
 CCV_HUB_AUTH_PASSWORD=change-me
@@ -72,12 +71,11 @@ CCV_HUB_WEB_IMAGE=ccv-hub-web:vX.Y.Z
 CCV_HUB_WEB_PORT=4317
 CCV_HUB_AGENT_UPSTREAM=http://host.docker.internal:4318
 CCV_HUB_PUBLIC_PROTOCOL=https
-CCV_HUB_PUBLIC_HOST=hub.example.com
-CCV_HUB_PUBLIC_DOMAIN=example.com
-CCV_HUB_VIEWER_SUBDOMAIN_PREFIX=ccv-
+CCV_HUB_PUBLIC_HOST=<CCV_HUB_PUBLIC_HOST>
+CCV_HUB_VIEWER_PATH_PREFIX=/viewer
 ```
 
-上游反代把 `https://hub.example.com` 和 `https://ccv-*.example.com` 转发到宿主机 `${CCV_HUB_WEB_PORT}`。
+上游反代把 `https://<CCV_HUB_PUBLIC_HOST>` 转发到宿主机 `${CCV_HUB_WEB_PORT}`，`/viewer/*` 由 Web nginx 转发到 Agent。
 
 ## 5. 验证
 
@@ -94,6 +92,6 @@ Smoke path：
 2. `/api/health` 返回成功。
 3. `/api/instances` 返回统一结构。
 4. 合法路径启动 `cc-viewer`。
-5. viewer 子域名加载 HTML、JS、CSS。
+5. viewer path 加载 HTML、JS、CSS。
 6. viewer API、SSE、WebSocket 可用。
 7. stop 后实例列表收敛。

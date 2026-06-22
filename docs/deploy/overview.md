@@ -26,7 +26,7 @@ cc-viewer instances on host
 
 ### 2.1 `ccv-hub-web`
 
-`ccv-hub-web` 是公网控制面，负责静态页面、同域 API 入口、viewer 子域名入口与边缘反代配置。
+`ccv-hub-web` 是公网控制面，负责静态页面、同域 API 入口、viewer path 入口与边缘反代配置。
 
 它可以运行在 Docker、Dokploy、Kubernetes、传统 Nginx/Caddy 静态站或本地开发服务器中。它不持有宿主机 Claude 配置、不读取项目源码、不直接启动 `cc-viewer`。
 
@@ -52,7 +52,7 @@ Traefik / Nginx / Caddy
   |
   v
 ccv-hub-web container or static site
-  |  /api and ccv-* hosts
+  |  /api and /viewer/* paths
   v
 127.0.0.1:4318 or host.docker.internal:4318
   |
@@ -80,7 +80,7 @@ cc-viewer per project process
 - Web 层可替换，Agent 层稳定掌握宿主机能力。
 - 平台适配可以增加，Agent 协议保持统一。
 - 正式 release 使用 tag 化镜像、tag 化 agent artifact、固定配置模板和可回滚部署目录。
-- 所有域名、端口、路径、token、viewer 前缀都来自环境变量或模板。
+- 所有域名、端口、路径、token、viewer path 前缀都来自环境变量或模板。
 - `ccv-hub-agent` 对公网只暴露经过反代保护的 API 与 viewer bridge。
 - `~/.claude`、项目源码和 Claude 登录态只留在宿主机。
 
@@ -99,7 +99,7 @@ User -> Viewer: per-instance viewer token
 - agent 监听端口默认按部署模式收口：本机反代使用 `127.0.0.1`，Dokploy/Compose 容器回连使用 `0.0.0.0` 与受控 host gateway。
 - 防火墙阻止公网直连 agent 端口。
 - `/etc/ccv-hub/.env.agent` 使用 `0600` 权限。
-- viewer 子域名只通过 bridge id 与 token 访问具体 upstream。
+- viewer path 通过 bridge id 与 token 访问具体 upstream。
 - 路径浏览严格受 `CCV_HUB_PATH_ROOTS` 限制。
 
 ## 7. 命名策略

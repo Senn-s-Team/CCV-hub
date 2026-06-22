@@ -32,7 +32,7 @@
 - 新增 `docs/deploy/` L2 文档目录。
 - 新增部署总览、部署模式拆分、release 方案和进度文档。
 - 完成 Task A 配置模板化：compose、nginx、systemd 与 `.env.example` 统一使用可覆盖的域名、端口、路径和 viewer 前缀变量。
-- 完成 Task A 命令复核：Traefik HostRegexp、nginx server_name、Agent viewer URL 与 `.env.example` 使用同一组域名、domain regex、viewer 前缀和 upstream 变量。
+- 完成 Task A 命令复核：Traefik Hub router、nginx /viewer/ location、Agent viewer URL 与 `.env.example` 使用同一组 host、viewer path 前缀和 upstream 变量。
 - 完成 Task B release baseline：`shared-contracts` 和 `hub-service` 改为 `src -> dist` 构建，`node apps/hub-service/dist/server.js` 可启动并返回 `/api/health`。
 - systemd 单元已指向 `/opt/ccv-hub-agent/current/apps/hub-service` 与 `/etc/ccv-hub/.env.agent`，Docker Agent 镜像已改为构建后运行 `dist/server.js`。
 - 完成 Task B Agent release 打包：新增 `deploy/ccv-hub-agent.service`、`deploy/.env.agent.example`、`scripts/package-agent-release.mjs`、`scripts/install-agent-release.sh`，`bun run release:agent -- v0.0.0-test` 可产出 tarball。
@@ -45,7 +45,7 @@
 
 - 完成 Task E 发布验证自动化：新增 `scripts/smoke-release.mjs` 与根脚本 `smoke:release`，基础 smoke 覆盖 `/api/health`、`/api/auth/me`、`/api/instances`，可选启用 Hub 首页、非法路径、launch、viewer HTTP/SSE/WebSocket 与 stop 收敛。
 - 完成 release 验证文档：新增 `docs/deploy/release-checklist.md`，固化构建、打包、模板验证、Agent/Web 验证、smoke test、手工深度验证、Agent/Web/Kubernetes 回滚演练与发布判定。
-- 完成故障排查文档：新增 `docs/deploy/troubleshooting.md`，覆盖 Agent 启动、health、鉴权、API 代理、启动实例、viewer 子域名、SSE、WebSocket、停止收敛与回滚异常。
+- 完成故障排查文档：新增 `docs/deploy/troubleshooting.md`，覆盖 Agent 启动、health、鉴权、API 代理、启动实例、viewer path、SSE、WebSocket、停止收敛与回滚异常。
 - 完成 Task E 验证：`node --check scripts/smoke-release.mjs`、`bun run lint`、`bun run test`、临时 Agent 鉴权 smoke 均通过；未提供真实 viewer 环境，深度 viewer 与 stop 检查保留为部署环境 smoke path。
 - 启动 Task F 真实环境 release rehearsal：新增 `scripts/rehearse-release.mjs` 与根脚本 `release:rehearsal`，串联现有 lint/test/build、Web/Agent 打包、Compose 模板验证、release smoke、checksums 与 evidence report。
 - 完成 Task F 本机 Agent rehearsal：`CCV_HUB_SMOKE_BASE_URL=http://127.0.0.1:4318`、正式 `.env` 鉴权口令与 `CCV_HUB_SMOKE_CHECK_INVALID_PATH=1` 下执行 `bun run release:rehearsal -- v0.0.0-rehearsal` 通过，生成 `build/checksums-v0.0.0-rehearsal.txt` 与 `build/release-rehearsal-v0.0.0-rehearsal.json`。
@@ -74,7 +74,7 @@
 
 - dev 配置仍可表达当前环境。
 - release 配置可以替换域名、端口和 viewer 前缀。
-- nginx viewer wildcard 不再绑定单一私有域名。
+- nginx viewer path 绑定 Hub 主域名。
 
 ### Task B：Agent release 化
 
@@ -193,7 +193,7 @@
 
 - Agent 容器化会扩大权限面，需要保留为高级模式。
 - Kubernetes 只能先承载 Web 控制面，Agent 需要节点级宿主机能力。
-- Task A 的变量模板要求 Traefik HostRegexp、nginx server_name 与 Agent viewer URL 使用同一组域名和 viewer 前缀变量。
+- Task A 的变量模板要求 Traefik Hub router、nginx /viewer/ location 与 Agent viewer URL 使用同一组 host 和 viewer path 前缀变量。
 - `shared-contracts` 到 dist 导出会要求消费者先构建共享契约，当前已在 hub-web/hub-service 脚本中显式预构建。
 
 ## 8. Subagent 分工建议

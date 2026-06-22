@@ -6,12 +6,12 @@ Nginx 适合已有 VPS、已有证书和传统静态站点部署。
 
 ```text
 Nginx
-  |-- hub.example.com -> /var/www/ccv-hub/current
-  |-- hub.example.com/api -> 127.0.0.1:4318
-  |-- ccv-*.example.com -> 127.0.0.1:4318
+  |-- <CCV_HUB_PUBLIC_HOST> -> /var/www/ccv-hub/current
+  |-- <CCV_HUB_PUBLIC_HOST>/api -> 127.0.0.1:4318
+  |-- <CCV_HUB_PUBLIC_HOST>/viewer/* -> 127.0.0.1:4318
 ```
 
-Nginx 提供静态 Web、API 反代和 viewer wildcard bridge。Agent 运行在宿主机 systemd。
+Nginx 提供静态 Web、API 反代和同 host viewer path bridge。Agent 运行在宿主机 systemd。
 
 ## 2. 使用的模板
 
@@ -31,9 +31,8 @@ Web tarball 解压建议目录：
 CCV_HUB_HOST=127.0.0.1
 CCV_HUB_PORT=4318
 CCV_HUB_PUBLIC_PROTOCOL=https
-CCV_HUB_PUBLIC_HOST=hub.example.com
-CCV_HUB_PUBLIC_DOMAIN=example.com
-CCV_HUB_VIEWER_SUBDOMAIN_PREFIX=ccv-
+CCV_HUB_PUBLIC_HOST=<CCV_HUB_PUBLIC_HOST>
+CCV_HUB_VIEWER_PATH_PREFIX=/viewer
 CCV_HUB_URL=http://127.0.0.1:4318
 CCV_HUB_AGENT_PROXY_TOKEN=change-me-to-a-random-secret
 ```
@@ -48,8 +47,8 @@ sudo systemctl reload nginx
 
 配置需要替换：
 
-- `hub.example.com`
-- `~^ccv-[a-f0-9]{32}\.example\.com$`
+- `<CCV_HUB_PUBLIC_HOST>`
+- `/viewer/` location
 - `/var/www/ccv-hub/current`
 - `http://127.0.0.1:4318`
 
@@ -64,14 +63,14 @@ viewer bridge 必须保留：
 
 ```bash
 sudo nginx -t
-curl -fsS https://hub.example.com/api/health
-curl -fsS https://hub.example.com/api/instances
+curl -fsS https://<CCV_HUB_PUBLIC_HOST>/api/health
+curl -fsS https://<CCV_HUB_PUBLIC_HOST>/api/instances
 ```
 
 Smoke path：
 
 1. Hub 首页从静态目录加载。
 2. `/api/health` 和 `/api/instances` 经 Nginx 到达 Agent。
-3. viewer 子域名匹配 wildcard server。
+3. viewer path 匹配 `/viewer/` location。
 4. viewer HTML、API、SSE、WebSocket 保持可用。
 5. stop 后实例列表收敛。

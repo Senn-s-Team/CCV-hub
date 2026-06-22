@@ -9,15 +9,15 @@
 
 **仓库证据**
 - `docs/system/tech-stack.md` 的“14.4 公网能力验证”仍保留 5 个验证点。
-- `deploy/docker-compose.hub.yml` 已接入 Traefik viewer 子域名规则与 `host.docker.internal:4318`。
-- `apps/hub-web/nginx.conf` 已把 `/api` 与 viewer 子域名流量回连到宿主机 Hub service。
+- `deploy/docker-compose.hub.yml` 已接入 Traefik Hub host path 规则与 `host.docker.internal:4318`。
+- `apps/hub-web/nginx.conf` 已把 `/api` 与 viewer path 流量回连到宿主机 Hub service。
 - `deploy/docker-compose.hub.yml` 是 Dokploy Web-only 入口，刻意不托管 Hub service 容器。
 - `deploy/ccv-hub-service.service` 已把 Hub service 固定为宿主机 `opc` 用户的 systemd 服务。
-- `docs/system/system.md` 已把 viewer 子域名公网地址定义为当前最佳打开地址。
+- `docs/system/system.md` 已把 viewer path 公网地址定义为当前最佳打开地址。
 
 **收口标准**
 1. `ccv-hub-dev.paas.s3n.top` 首页与 `/api/instances` 可用。
-2. `https://ccv-<bridgeId>.paas.s3n.top/?token=<token>` 可稳定打开 viewer 页面。
+2. `https://ccv-hub-dev.paas.s3n.top/viewer/<bridgeId>/?token=<token>` 可稳定打开 viewer 页面。
 3. 页面静态资源、SSE、WebSocket 全部通过 bridge 正常工作。
 4. Hub 启动的新 viewer 继承宿主机 `opc` 用户环境、`PATH` 与 `CLAUDE_CONFIG_DIR`。
 5. 验证结果回写到文档，形成可复用排障基线。
@@ -25,9 +25,9 @@
 ### 2. 统一 viewer host 匹配规则
 
 **仓库证据**
-- `apps/hub-web/vite.config.ts` 只要满足 `ccv-` 前缀 + `.<publicDomain>` 就判定为 viewer host。
-- `apps/hub-web/src/test/vite-config.test.ts` 拒绝 `ccv-manual-7008.<publicDomain>` 进入 viewer 代理。
-- `apps/hub-web/nginx.conf` 先按 `*.publicDomain` 粗分流，`deploy/docker-compose.hub.yml` 按 `^ccv-[a-f0-9]{32}[.]<publicDomain>$` 分流，最终由 hub-service 校验 32 位 bridge id 与 public domain。
+- `apps/hub-web/vite.config.ts` 只按 `/viewer` path 判定 viewer 代理。
+- `apps/hub-web/src/test/vite-config.test.ts` 拒绝 `/viewerish/*` 进入 viewer 代理。
+- `apps/hub-web/nginx.conf` 和 `deploy/docker-compose.hub.yml` 只保留 Hub host，最终由 hub-service 校验 `/viewer/<bridgeId>`。
 
 **风险**
 开发态、测试态、生产态的 host 语义已经分叉，桥接问题会在不同环境出现不同结论。

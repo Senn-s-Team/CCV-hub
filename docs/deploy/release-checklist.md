@@ -46,7 +46,7 @@ Docker/Dokploy：
 
 ```bash
 CCV_HUB_WEB_IMAGE=ccv-hub-web:vX.Y.Z docker compose --env-file .env -f deploy/docker-compose.standalone.yml up -d
-curl -fsS https://hub.example.com/
+curl -fsS https://<CCV_HUB_PUBLIC_HOST>/
 ```
 
 Docker Compose 使用正式 `.env`；Dokploy 使用同一组变量写入环境变量面板。
@@ -63,7 +63,7 @@ Nginx/Caddy 静态部署：
 真实环境 rehearsal 使用同一个入口完成构建、打包、模板验证、smoke 与证据记录：
 
 ```bash
-CCV_HUB_SMOKE_BASE_URL=https://hub.example.com \
+CCV_HUB_SMOKE_BASE_URL=https://<CCV_HUB_PUBLIC_HOST> \
 CCV_HUB_SMOKE_PASSWORD='change-me' \
 CCV_HUB_SMOKE_CHECK_HOME=1 \
 CCV_HUB_SMOKE_CHECK_INVALID_PATH=1 \
@@ -92,7 +92,7 @@ bun run smoke:release
 带鉴权检查：
 
 ```bash
-CCV_HUB_SMOKE_BASE_URL=https://hub.example.com \
+CCV_HUB_SMOKE_BASE_URL=https://<CCV_HUB_PUBLIC_HOST> \
 CCV_HUB_SMOKE_PASSWORD='change-me' \
 CCV_HUB_SMOKE_CHECK_HOME=1 \
 CCV_HUB_SMOKE_CHECK_INVALID_PATH=1 \
@@ -102,7 +102,7 @@ bun run smoke:release
 带 launch、viewer 和 stop 检查：
 
 ```bash
-CCV_HUB_SMOKE_BASE_URL=https://hub.example.com \
+CCV_HUB_SMOKE_BASE_URL=https://<CCV_HUB_PUBLIC_HOST> \
 CCV_HUB_SMOKE_PASSWORD='change-me' \
 CCV_HUB_SMOKE_PROJECT_PATH=/home/user/projects/my-project \
 CCV_HUB_SMOKE_STOP_AFTER_LAUNCH=1 \
@@ -112,9 +112,9 @@ bun run smoke:release
 已有 viewer 地址检查：
 
 ```bash
-CCV_HUB_SMOKE_BASE_URL=https://hub.example.com \
+CCV_HUB_SMOKE_BASE_URL=https://<CCV_HUB_PUBLIC_HOST> \
 CCV_HUB_SMOKE_PASSWORD='change-me' \
-CCV_HUB_SMOKE_VIEWER_URL='https://ccv-xxxx.example.com/?token=...' \
+CCV_HUB_SMOKE_VIEWER_URL='https://<CCV_HUB_PUBLIC_HOST>/viewer/<bridgeId>/?token=...' \
 bun run smoke:release
 ```
 
@@ -126,7 +126,7 @@ bun run smoke:release
 2. 登录面板。
 3. 访问 `/api/instances`，确认只返回 `running`。
 4. 从启动弹窗选择 allowlist 内项目。
-5. 打开返回的 viewer 子域名。
+5. 打开返回的 viewer path。
 6. 刷新 viewer 页面，确认 HTML、JS、CSS 加载。
 7. 观察 viewer API 请求返回 2xx。
 8. 观察 `/api/events` SSE 长连接保持。

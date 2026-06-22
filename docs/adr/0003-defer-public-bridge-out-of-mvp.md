@@ -9,7 +9,7 @@ Accepted — implementation entered current scope on 2026-04-24 and completed pu
 文档同时指出一个关键前提：必须先验证 Dokploy bridge 能稳定访问宿主机上的动态端口。这意味着公网能力成立依赖额外网络条件、路由桥接与运行时验证。
 
 ## Decision
-首版先完成本地闭环。2026-04-24 用户明确要求安装推荐公网方案后，Dokploy + Traefik + Hub bridge 路由桥接进入当前实现。`url` 字段表示“当前最佳可打开地址”，在 bridge 可用时优先返回 viewer 子域名公网地址。
+首版先完成本地闭环。2026-04-24 用户明确要求安装推荐公网方案后，Dokploy + Traefik + Hub bridge 路由桥接进入当前实现。`url` 字段表示“当前最佳可打开地址”，在 bridge 可用时优先返回公网 viewer bridge 地址；ADR 0004 已把新 URL 形态迁移到稳定 Hub host path。
 
 ## Why
 - 当前 PRD 验收项全部可以在本地单机环境中完成，不依赖公网链路。
@@ -26,7 +26,7 @@ Accepted — implementation entered current scope on 2026-04-24 and completed pu
 
 ### Tradeoffs
 - 首版复制链接默认给出本地地址，跨机器访问收益后置。
-- 当前实现需要验证 Dokploy HostRegexp、nginx wildcard、host.docker.internal 回连与 WebSocket upgrade 链路。
+- 当前实现需要验证公网入口、nginx/Caddy path 反代、host.docker.internal 回连与 WebSocket upgrade 链路。
 - `url` 的公网优先语义依赖 Hub registry 内部保留 raw upstream。
 - Hub 页面启动 viewer 的路径依赖宿主机 systemd 服务继承 `opc` 用户环境。
 
@@ -35,7 +35,7 @@ Accepted — implementation entered current scope on 2026-04-24 and completed pu
 该方案会让 MVP 依赖 Dokploy 网络、Traefik 路由、bridge 服务、宿主机端口转发和 hook 集成的整体可用性。当前阶段这条链路过长，收益与风险不平衡。
 
 ## Implementation notes
-- 当前 `Instance.url` 使用 `https://ccv-<bridgeId>.<CCV_HUB_PUBLIC_DOMAIN>/?token=<token>` 形式的公网 viewer 子域名。
+- 当前 `Instance.url` 使用 `https://<CCV_HUB_PUBLIC_HOST>/viewer/<bridgeId>/?token=<token>` 形式的公网 viewer path。
 - registry 内部保留 raw upstream URL，用于反代和存活探测。
 - `hub-service` 在宿主机 systemd 中运行，Web/Dokploy 容器只负责入口代理并通过 `host.docker.internal:4318` 回连；该边界用于保留单一宿主机 Claude 环境。
 - `port` 保持真实 viewer 监听端口语义。
@@ -46,12 +46,12 @@ Accepted — implementation entered current scope on 2026-04-24 and completed pu
   - `cc-viewer/lib/plugin-loader.js:13`
   - `cc-viewer/lib/plugin-loader.js:14`
   - `cc-viewer/lib/plugin-loader.js:15`
-- Dokploy bridge PoC 已进入当前实现并完成实机验证：Hub 首页、`/api/instances`、viewer HTML/JS/CSS、业务 API、SSE 与 WebSocket 均可通过公网 viewer 子域名访问。
+- Dokploy bridge PoC 已进入当前实现并完成实机验证：Hub 首页、`/api/instances`、viewer HTML/JS/CSS、业务 API、SSE 与 WebSocket 均可通过公网 viewer bridge 访问。
 - 后续增强聚焦安全与运维收口，包括 token 暴露面、重复 token 参数、结构化日志、健康细节与更完整的观测基线。
 
 ## Review trigger
 出现以下任一条件时，重新评估此决策：
 
-- viewer 子域名的 token 暴露策略需要收口
+- viewer bridge 的 token 暴露策略需要收口
 - Dokploy / Traefik / nginx 路由结构发生调整
 - Hub bridge 需要支持更多域名、协议或多机部署

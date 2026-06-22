@@ -3,7 +3,7 @@
 > L1 | 父级: ../CLAUDE.md
 
 <directory>
-docs/ - 产品、架构、设计与部署文档（7 子目录: prd, ia, system, api, design, adr, deploy；deploy 含 release 验证与故障排查）
+docs/ - 产品、架构、设计与部署文档（7 子目录: prd, ia, system, api, design, adr, deploy；adr 记录 viewer path 入口迁移）
 prototype/ - 高保真静态原型目录（4 文件: index.html, styles.css, app.js, docker-compose.yml）
 apps/ - 运行时应用目录（2 子目录: hub-web, hub-service）
 packages/ - 共享模块目录（1 子目录: shared-contracts）
@@ -17,7 +17,7 @@ CLAUDE.md - ccv-hub 模块地图、职责边界与文档协议
 package.json - workspace 根配置，定义 Bun 脚本、工作区、根级类型依赖、Agent/Web release 打包命令、release smoke/rehearsal 验证命令、会先停旧 service 与按 `.env.dev` Web 端口收敛旧容器的 dev 部署命令
 tsconfig.json - ccv-hub 根 TypeScript 基线配置
 .gitignore - 本地依赖、锁文件、构建产物、release 打包产物、正式 `.env` 与开发 `.env.dev` 忽略规则
-.env.example - 可提交 Web/adapter 环境变量模板，覆盖 release Web image、Agent upstream、Dokploy 网络和公网域名；真实 `.env` 用于正式 Web 环境，`.env.dev` 用于开发环境，宿主机 Agent 使用 `deploy/.env.agent.example`
+.env.example - 可提交 Web/adapter 环境变量模板，覆盖 release Web image、Agent upstream、Dokploy 网络、公网域名、稳定 viewer path 前缀；真实 `.env` 用于正式 Web 环境，`.env.dev` 用于开发环境，宿主机 Agent 使用 `deploy/.env.agent.example`
 bun.lock - Bun 锁文件，固定 workspace 依赖解析结果
 </config>
 
@@ -29,21 +29,22 @@ bun.lock - Bun 锁文件，固定 workspace 依赖解析结果
 
 - `docs/prd/` - 存放产品需求文档，定义目标用户、范围、交互与验收标准。
 - `docs/ia/` - 存放信息架构文档，定义页面清单、结构层级、主流程与状态边界。
-- `docs/system/` - 存放系统设计与阶段性收口文档，定义组件职责、数据流、状态流转与异常处理。
-- `docs/api/` - 存放接口契约文档，定义本地服务接口、请求响应结构与实例对象格式。
+- `docs/system/` - 存放系统设计与阶段性收口文档，定义组件职责、数据流、viewer path bridge、状态流转与异常处理。
+- `docs/api/` - 存放接口契约文档，定义本地服务接口、请求响应结构、viewer bridge 与实例对象格式。
 - `docs/design/` - 存放 UI/UX 设计文档，定义视觉语言、页面原型规则、状态表达与跨端体验基线。
-- `docs/adr/` - 存放架构决策记录，固定关键技术取舍、阶段边界与实现原则。
-- `docs/deploy/` - 存放开源部署文档，定义 Web 控制面、宿主机 Agent、平台适配文档、release 产物、验证清单、故障排查与开发进度。
-- `apps/hub-service/` - 本地常驻服务实现，负责健康检查、实例查询、统一入口启动与状态收敛。
-- `apps/hub-web/` - 总览页实现，负责实例展示、项目名筛选、启动弹窗、复制与轮询刷新。
+- `docs/adr/` - 存放架构决策记录，固定关键技术取舍、阶段边界、viewer bridge 与 path 入口迁移原则。
+- `docs/deploy/` - 存放开源部署文档，定义 Web 控制面、宿主机 Agent、同 host `/viewer/*` 平台适配文档、release 产物、验证清单、故障排查与开发进度。
+- `apps/hub-service/` - 本地常驻服务实现，负责健康检查、实例查询、统一入口启动、viewer path bridge 与状态收敛。
+- `apps/hub-web/` - 总览页实现，负责实例展示、项目名筛选、启动弹窗、复制、轮询刷新与 `/viewer/*` dev/prod 分流。
 - `packages/shared-contracts/` - 前后端共享契约实现，负责 Instance schema、响应结构与错误码。
-- `deploy/` - 部署资产目录，负责 Web image-only 公网入口、Compose/Caddy/Nginx/Kubernetes 平台模板、宿主机 `ccv-hub-agent` release systemd 单元、含 Hub 插件回连地址的 .env.agent 模板与 cc-viewer logger 插件安装源。
-- `scripts/` - 存放 release 打包、演练与安装脚本，负责 Web/Agent tarball 产物、checksums、rehearsal evidence 和宿主机安装流程。
+- `deploy/` - 部署资产目录，负责 Web image-only 公网入口、Compose/Caddy/Nginx/Kubernetes 同 host viewer path 平台模板、宿主机 `ccv-hub-agent` release systemd 单元、含 Hub 插件回连地址的 .env.agent 模板与 cc-viewer logger 插件安装源。
+- `scripts/` - 存放 release 打包、演练与安装脚本，负责 Web/Agent tarball 产物、checksums、rehearsal evidence、path viewer smoke 和宿主机安装流程。
 
 ## 设计法则
 
 - `cc-viewer/` 继续负责单实例运行与内容展示。
 - `ccv-hub/` 只负责实例发现、实例目录和统一入口。
+- 新 viewer URL 使用 `CCV_HUB_PUBLIC_HOST + CCV_HUB_VIEWER_PATH_PREFIX + bridgeId`。
 - Dokploy 是 Web 控制面部署适配器之一，`hub-service` 对外演进为宿主机 `ccv-hub-agent` 以保留单一宿主机 Claude 环境。
 - 文档优先表达实例模型、发现机制与页面边界。
 - 变更目录结构或新增模块时，立即回写本文件。

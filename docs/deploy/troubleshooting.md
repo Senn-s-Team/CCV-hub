@@ -40,8 +40,8 @@ ss -ltnp | grep 4318
 检查：
 
 ```bash
-curl -i https://hub.example.com/api/auth/me
-curl -i -H 'content-type: application/json' -d '{"password":"change-me"}' https://hub.example.com/api/auth/login
+curl -i https://<CCV_HUB_PUBLIC_HOST>/api/auth/me
+curl -i -H 'content-type: application/json' -d '{"password":"change-me"}' https://<CCV_HUB_PUBLIC_HOST>/api/auth/login
 ```
 
 处理：
@@ -56,8 +56,8 @@ curl -i -H 'content-type: application/json' -d '{"password":"change-me"}' https:
 检查：
 
 ```bash
-curl -i https://hub.example.com/api/health
-curl -i https://hub.example.com/api/instances
+curl -i https://<CCV_HUB_PUBLIC_HOST>/api/health
+curl -i https://<CCV_HUB_PUBLIC_HOST>/api/instances
 ```
 
 处理：
@@ -72,7 +72,7 @@ curl -i https://hub.example.com/api/instances
 
 ```bash
 journalctl -u ccv-hub-agent -n 200 --no-pager
-curl -i -H 'content-type: application/json' -d '{"projectPath":"/home/user/projects/my-project"}' https://hub.example.com/api/instances
+curl -i -H 'content-type: application/json' -d '{"projectPath":"/home/user/projects/my-project"}' https://<CCV_HUB_PUBLIC_HOST>/api/instances
 ```
 
 处理：
@@ -82,19 +82,19 @@ curl -i -H 'content-type: application/json' -d '{"projectPath":"/home/user/proje
 - `CCV_CLI_PATH` 可由 systemd 环境执行。
 - Agent 运行用户拥有项目目录读取权限。
 
-## 6. viewer 子域名 404
+## 6. viewer path 404
 
 检查：
 
 ```bash
-curl -i https://ccv-xxxx.example.com/
+curl -i https://<CCV_HUB_PUBLIC_HOST>/viewer/<bridgeId>/
 ```
 
 处理：
 
-- DNS wildcard 指向 Web 入口。
-- Caddy/Nginx/Traefik 已配置 viewer wildcard host。
-- `CCV_HUB_PUBLIC_DOMAIN` 与 `CCV_HUB_VIEWER_SUBDOMAIN_PREFIX` 和代理规则一致。
+- Hub 主域名指向 Web 入口。
+- Caddy/Nginx/Traefik 已配置 `/viewer/` path 反代。
+- `CCV_HUB_PUBLIC_HOST` 与 `CCV_HUB_VIEWER_PATH_PREFIX` 和代理规则一致。
 - 实例仍在 `/api/instances` 返回列表中。
 
 ## 7. viewer API 或 SSE 断开
@@ -102,7 +102,7 @@ curl -i https://ccv-xxxx.example.com/
 检查：
 
 ```bash
-curl -N https://ccv-xxxx.example.com/api/events
+curl -N https://<CCV_HUB_PUBLIC_HOST>/viewer/<bridgeId>/api/events
 ```
 
 处理：
@@ -110,14 +110,14 @@ curl -N https://ccv-xxxx.example.com/api/events
 - 代理关闭 SSE buffering。
 - 代理超时时间覆盖长连接。
 - bridge upstream 指向的 cc-viewer 端口仍在监听。
-- `Location` rewrite 后仍停留在 viewer 子域名。
+- `Location` rewrite 后仍停留在 `/viewer/<bridgeId>` base。
 
 ## 8. viewer WebSocket 失败
 
 检查：
 
 ```bash
-wscat -c 'wss://ccv-xxxx.example.com/ws/terminal?session=smoke'
+wscat -c 'wss://<CCV_HUB_PUBLIC_HOST>/viewer/<bridgeId>/ws/terminal?session=smoke'
 ```
 
 处理：
@@ -132,7 +132,7 @@ wscat -c 'wss://ccv-xxxx.example.com/ws/terminal?session=smoke'
 检查：
 
 ```bash
-curl -s https://hub.example.com/api/instances
+curl -s https://<CCV_HUB_PUBLIC_HOST>/api/instances
 journalctl -u ccv-hub-agent -n 200 --no-pager
 ```
 

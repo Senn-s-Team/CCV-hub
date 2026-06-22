@@ -8,7 +8,7 @@
 
 - Hub 首页：`https://ccv-hub-dev.paas.s3n.top/`
 - Hub API：`https://ccv-hub-dev.paas.s3n.top/api/instances`
-- viewer 子域名：`https://ccv-31b9745c782f47df97a90a3a226a9390.paas.s3n.top/?token=<redacted>`
+- viewer path：`https://ccv-hub-dev.paas.s3n.top/viewer/31b9745c782f47df97a90a3a226a9390/?token=<redacted>`
 - 当前实例：`ccv-hub`，项目路径 `/home/opc/projects/ccvs/ccv-hub`，来源 `launcher`
 
 ### 验证结果
@@ -16,9 +16,9 @@
 1. `GET https://ccv-hub-dev.paas.s3n.top/api/health` 返回 HTTP 200，响应为 `{"ok":true,"data":{"status":"ok"}}`。
 2. `GET https://ccv-hub-dev.paas.s3n.top/api/instances` 返回 HTTP 200，并返回 1 个运行中实例。
 3. 浏览器打开 Hub 首页成功，页面标题为 `CCV Hub`，实例列表展示 `ccv-hub`，并提供“打开”“复制链接”动作。
-4. 浏览器打开 viewer 子域名成功，页面标题为 `Claude Code Viewer`，页面内容展示 `Project:ccv-hub`、Terminal、Network Packets、File Explorer 等核心区域。
-5. viewer 子域名下静态资源加载正常：HTML、JS、CSS、SVG 请求均返回 HTTP 200。
-6. viewer 子域名下业务 API 加载正常：`/api/local-url`、`/api/claude-settings`、`/api/git-repos`、`/api/preferences`、`/api/user-profile`、`/api/proxy-profiles`、`/api/project-name`、`/api/cli-mode`、`/api/files` 均返回 HTTP 200。
+4. 浏览器打开 viewer path 成功，页面标题为 `Claude Code Viewer`，页面内容展示 `Project:ccv-hub`、Terminal、Network Packets、File Explorer 等核心区域。
+5. viewer path 下静态资源加载正常：HTML、JS、CSS、SVG 请求均返回 HTTP 200。
+6. viewer path 下业务 API 加载正常：`/api/local-url`、`/api/claude-settings`、`/api/git-repos`、`/api/preferences`、`/api/user-profile`、`/api/proxy-profiles`、`/api/project-name`、`/api/cli-mode`、`/api/files` 均返回 HTTP 200。
 7. SSE 正常：`/events?token=<redacted>` 返回 HTTP 200，`Content-Type` 为 `text/event-stream`，连接保持打开。
 8. WebSocket 正常：`/ws/terminal?token=<redacted>` 的 HTTP Upgrade 握手返回 `101 Switching Protocols`。
 9. Hub 启动的新 viewer 继承宿主机用户环境：`USER=opc`、`LOGNAME=opc`、`HOME=/home/opc`、`SHELL=/usr/bin/zsh`、`CLAUDE_CONFIG_DIR=/home/opc/.claude`，`PATH` 包含 `/home/opc/.bun/bin`、`/home/opc/.local/bin`、`/home/opc/.cargo/bin`、`/home/opc/.npm-global/bin` 等宿主机用户路径。
@@ -98,7 +98,7 @@
 1. ADR 0003 已统一为“2026-04-24 进入当前实现，2026-04-25 完成公网 viewer 链路验证”。
 2. `system.md` 的公网暴露章节已从实现前提改为已验证基线与后续观察。
 3. `tech-stack.md` 已把 Phase 4 公网访问增强标记为已并入当前实现，并将后续公网工作收敛到 token、安全、日志、健康信息与路由回归。
-4. 验证清单已与实际部署结构同构：Hub 域名、viewer 子域名、Dokploy / Traefik、nginx、Dokploy Web-only 容器、`host.docker.internal:4318`、宿主机 Hub service、upstream viewer、SSE 与 WebSocket。Dokploy raw compose 使用仓库绝对 build context，避免从 `/etc/dokploy/compose/.../code` 错误解析相对路径。
+4. 验证清单已与实际部署结构同构：Hub 域名、viewer path、Dokploy / Traefik、nginx、Dokploy Web-only 容器、`host.docker.internal:4318`、宿主机 Hub service、upstream viewer、SSE 与 WebSocket。Dokploy raw compose 使用仓库绝对 build context，避免从 `/etc/dokploy/compose/.../code` 错误解析相对路径。
 
 ### 自测
 
