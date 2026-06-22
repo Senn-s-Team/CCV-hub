@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 FastifyInstance 路由能力、共享注册契约、bridge URL 生成、实例注册表与错误归一
  * [OUTPUT]: 对外提供 registerExternalInstanceRoute，用于挂载 /api/instances/register POST
- * [POS]: hub-service 的外部实例登记面，负责接收带 token 的 cc-viewer 插件实例，并保持 launcher 实例的路径所有权
+ * [POS]: hub-service 的外部实例登记面，负责接收带 token 的 cc-viewer 插件实例、生成稳定 path viewer URL，并保持 launcher 实例的路径所有权
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { randomUUID } from 'node:crypto';

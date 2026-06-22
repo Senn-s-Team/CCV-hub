@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 vitest、node:http、node:net、hub-service 服务装配、Hub 插件安装器与 launcher 参数/环境构造函数
- * [OUTPUT]: 对外提供 hub-service 路由、启动 URL、外部注册、logger 注销、Hub 插件安装、viewer bridge、存活清理与启动参数/环境回归测试
- * [POS]: hub-service 的测试入口，负责验证健康接口、实例列表、创建/注册流程、URL 投影、HTTP/multipart/WebSocket 桥接、插件播种与启动环境收敛
+ * [OUTPUT]: 对外提供 hub-service 路由、稳定 path 启动 URL、外部注册、logger 注销、Hub 插件安装、viewer bridge、存活清理与启动参数/环境回归测试
+ * [POS]: hub-service 的测试入口，负责验证健康接口、实例列表、创建/注册流程、URL 投影、HTTP/multipart/WebSocket path 桥接、插件播种与启动环境收敛
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { EventEmitter } from 'node:events';
@@ -10,10 +10,10 @@ import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createConnection } from 'node:net';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildServer } from '../src/server.js';
 import type { AuthConfig } from '../src/domain/auth-session.js';
-import { createBridgeConfig } from '../src/domain/bridge-url.js';
+import { buildBridgeBasePath, createBridgeConfig } from '../src/domain/bridge-url.js';
 import { HostPathBrowser } from '../src/domain/host-path-browser.js';
 import { InstanceRegistry } from '../src/domain/instance-registry.js';
 import { buildLaunchArgs, buildLaunchEnv, parseViewerUrl, resolveViewerUrl } from '../src/launcher/ccv-launcher.js';
@@ -65,6 +65,10 @@ async function authHeaders(app: ReturnType<typeof buildServer>): Promise<{ cooki
   return { cookie: String(response.headers['set-cookie']).split(';')[0]! };
 }
 
+async function proxiedAuthHeaders(app: ReturnType<typeof buildServer>, token = 'proxy-secret'): Promise<{ cookie: string; 'x-ccv-hub-agent-token': string }> {
+  return { ...(await authHeaders(app)), 'x-ccv-hub-agent-token': token };
+}
+
 function readSocketUntil(port: number, request: string, marker: string): Promise<string> {
   return new Promise((resolve, reject) => {
     let data = '';
@@ -85,6 +89,13 @@ function readSocketUntil(port: number, request: string, marker: string): Promise
 }
 
 describe('hub-service routes', () => {
+  beforeEach(() => {
+    process.env.CCV_HUB_PUBLIC_PROTOCOL = 'https';
+    process.env.CCV_HUB_PUBLIC_HOST = 'ccv-hub.test';
+    process.env.CCV_HUB_VIEWER_PATH_PREFIX = '/viewer';
+    delete process.env.CCV_HUB_AGENT_PROXY_TOKEN;
+  });
+
   it('returns health response', async () => {
     const app = buildServer({
       launcher: { launch: vi.fn() },
@@ -201,6 +212,52 @@ describe('hub-service routes', () => {
       code: 'REGISTER_FAILED',
       message: 'Instance URL token is required',
     });
+
+    await app.close();
+  });
+
+  it('requires agent proxy token for forwarded panel APIs and viewer bridge requests', async () => {
+    process.env.CCV_HUB_AGENT_PROXY_TOKEN = 'proxy-secret';
+    const registry = new InstanceRegistry();
+    registry.createRunning({
+      id: 'proxy-token-bridge',
+      projectName: 'alpha',
+      projectPath: '/tmp/alpha',
+      url: 'https://ccv-hub.test/viewer/1234567890abcdef1234567890abcdef/?token=abc',
+      upstreamUrl: 'http://127.0.0.1:4321?token=abc',
+      bridgeId: '1234567890abcdef1234567890abcdef',
+      port: 4321,
+      pid: 1001,
+      source: 'launcher',
+      startedAt: '2026-04-22T10:00:00.000Z',
+      lastSeen: '2026-04-22T10:00:01.000Z',
+      stop: vi.fn(),
+    });
+    const app = buildServer({
+      registry,
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    const panelWithoutProxyToken = await app.inject({
+      method: 'GET',
+      url: '/api/instances',
+      headers: await authHeaders(app),
+    });
+    const panelWithProxyToken = await app.inject({
+      method: 'GET',
+      url: '/api/instances',
+      headers: await proxiedAuthHeaders(app),
+    });
+    const viewerWithoutProxyToken = await app.inject({
+      method: 'GET',
+      url: '/viewer/1234567890abcdef1234567890abcdef/?token=abc',
+      headers: { host: 'ccv-hub.test' },
+    });
+
+    expect(panelWithoutProxyToken.statusCode).toBe(401);
+    expect(panelWithProxyToken.statusCode).toBe(200);
+    expect(viewerWithoutProxyToken.statusCode).toBe(401);
 
     await app.close();
   });
@@ -385,10 +442,18 @@ describe('hub-service routes', () => {
     }
   });
 
-  it('requires a valid public domain and DNS-safe viewer prefix', () => {
-    expect(() => createBridgeConfig({ CCV_HUB_ENV: 'production' })).toThrow('CCV_HUB_PUBLIC_DOMAIN is required in production');
-    expect(() => createBridgeConfig({ CCV_HUB_PUBLIC_DOMAIN: 'bad domain' })).toThrow('CCV_HUB_PUBLIC_DOMAIN must be a DNS domain');
-    expect(() => createBridgeConfig({ CCV_HUB_PUBLIC_DOMAIN: 'example.com', CCV_HUB_VIEWER_SUBDOMAIN_PREFIX: 'ccv-.*' })).toThrow('CCV_HUB_VIEWER_SUBDOMAIN_PREFIX must be DNS-safe');
+  it('requires a valid public host and viewer path prefix', () => {
+    expect(() => createBridgeConfig({ CCV_HUB_ENV: 'production' })).toThrow('CCV_HUB_PUBLIC_HOST is required in production');
+    expect(() => createBridgeConfig({ CCV_HUB_PUBLIC_HOST: 'bad host' })).toThrow('CCV_HUB_PUBLIC_HOST must be a DNS host');
+    expect(() => createBridgeConfig({ CCV_HUB_PUBLIC_HOST: 'ccv-hub.test', CCV_HUB_VIEWER_PATH_PREFIX: '/api' })).toThrow('CCV_HUB_VIEWER_PATH_PREFIX conflicts with reserved Hub paths');
+    expect(() => createBridgeConfig({ CCV_HUB_PUBLIC_HOST: 'ccv-hub.test', CCV_HUB_VIEWER_PATH_PREFIX: '/../viewer' })).toThrow('CCV_HUB_VIEWER_PATH_PREFIX must be a safe absolute path prefix');
+    expect(createBridgeConfig({
+      CCV_HUB_PUBLIC_HOST: 'ccv-hub.test',
+      CCV_HUB_VIEWER_PATH_PREFIX: 'viewer/',
+    })).toMatchObject({
+      publicHost: 'ccv-hub.test',
+      viewerPathPrefix: '/viewer',
+    });
   });
 
   it('protects hub host api even when hub host starts with the viewer prefix', async () => {
@@ -400,7 +465,7 @@ describe('hub-service routes', () => {
     const response = await app.inject({
       method: 'GET',
       url: '/api/instances',
-      headers: { host: 'ccv-hub-dev.example.com' },
+      headers: { host: 'ccv-hub-dev.test' },
     });
 
     expect(response.statusCode).toBe(401);
@@ -421,7 +486,7 @@ describe('hub-service routes', () => {
       id: 'bridge-auth',
       projectName: 'alpha',
       projectPath: '/tmp/alpha',
-      url: 'https://ccv-1234567890abcdef1234567890abcdef.example.com/?token=abc',
+      url: 'https://ccv-hub.test/viewer/1234567890abcdef1234567890abcdef/?token=abc',
       upstreamUrl: 'http://127.0.0.1:4321?token=abc',
       bridgeId: '1234567890abcdef1234567890abcdef',
       port: 4321,
@@ -439,8 +504,8 @@ describe('hub-service routes', () => {
 
     const response = await app.inject({
       method: 'GET',
-      url: '/',
-      headers: { host: 'ccv-1234567890abcdef1234567890abcdef.example.com' },
+      url: '/viewer/1234567890abcdef1234567890abcdef/',
+      headers: { host: 'ccv-hub.test' },
     });
 
     expect(response.statusCode).toBe(401);
@@ -452,6 +517,7 @@ describe('hub-service routes', () => {
   it('bridges viewer pages with the URL token and sets an instance session cookie', async () => {
     const upstream = createServer((request, response) => {
       response.setHeader('content-type', 'text/html');
+      response.setHeader('set-cookie', 'ccv_hub_session=evil; Path=/');
       response.end(`page:${request.url}`);
     });
     const upstreamPort = await listen(upstream);
@@ -475,24 +541,28 @@ describe('hub-service routes', () => {
           startedAt: '2026-04-22T10:00:00.000Z',
         },
       });
-      const bridgeHost = new URL(registerResponse.json().data.instance.url).host;
+      const viewerUrl = new URL(registerResponse.json().data.instance.url);
+      const bridgeId = viewerUrl.pathname.split('/')[2]!;
+      const bridgePath = buildBridgeBasePath(bridgeId);
 
       const firstResponse = await app.inject({
         method: 'GET',
-        url: '/?token=abc',
-        headers: { host: bridgeHost },
+        url: `${bridgePath}/?token=abc`,
+        headers: { host: viewerUrl.host },
       });
       const cookie = String(firstResponse.headers['set-cookie']).split(';')[0]!;
       const nextResponse = await app.inject({
         method: 'GET',
-        url: '/assets/app.js',
-        headers: { host: bridgeHost, cookie },
+        url: `${bridgePath}/assets/app.js`,
+        headers: { host: viewerUrl.host, cookie },
       });
 
       expect(firstResponse.statusCode).toBe(200);
       expect(firstResponse.body).toBe('page:/?token=abc');
-      expect(cookie).toBe('ccv_viewer_session=abc');
+      expect(cookie).toBe(`ccv_viewer_session_${bridgeId}=abc`);
+      expect(String(firstResponse.headers['set-cookie'])).toContain(`Path=${bridgePath}`);
       expect(String(firstResponse.headers['set-cookie'])).toContain('Secure');
+      expect(String(firstResponse.headers['set-cookie'])).not.toContain('ccv_hub_session=evil');
       expect(nextResponse.statusCode).toBe(200);
       expect(nextResponse.body).toBe('page:/assets/app.js?token=abc');
     } finally {
@@ -500,7 +570,7 @@ describe('hub-service routes', () => {
       await close(upstream);
     }
   });
-  it('bridges viewer subdomain requests to the registered upstream with token', async () => {
+  it('bridges viewer path requests to the registered upstream with token', async () => {
     const upstream = createServer((request, response) => {
       response.setHeader('content-type', 'application/json');
       response.end(JSON.stringify({ url: request.url, host: request.headers.host }));
@@ -526,12 +596,14 @@ describe('hub-service routes', () => {
           startedAt: '2026-04-22T10:00:00.000Z',
         },
       });
-      const bridgeHost = new URL(registerResponse.json().data.instance.url).host;
+      const viewerUrl = new URL(registerResponse.json().data.instance.url);
+      const bridgeId = viewerUrl.pathname.split('/')[2]!;
+      const bridgePath = buildBridgeBasePath(bridgeId);
 
       const response = await app.inject({
         method: 'GET',
-        url: '/api/events?cursor=1&token=evil',
-        headers: { host: bridgeHost, cookie: 'ccv_viewer_session=abc' },
+        url: `${bridgePath}/api/events?cursor=1&token=evil`,
+        headers: { host: viewerUrl.host, cookie: `ccv_viewer_session_${bridgeId}=abc` },
       });
 
       expect(response.statusCode).toBe(200);
@@ -545,13 +617,106 @@ describe('hub-service routes', () => {
     }
   });
 
-  it('strips viewer cookies and hop-by-hop headers before proxying viewer requests', async () => {
+  it('keeps protocol-relative viewer paths on the registered upstream', async () => {
+    const upstream = createServer((request, response) => {
+      response.setHeader('content-type', 'application/json');
+      response.end(JSON.stringify({ url: request.url, host: request.headers.host }));
+    });
+    const upstreamPort = await listen(upstream);
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    try {
+      const registerResponse = await app.inject({
+        method: 'POST',
+        url: '/api/instances/register',
+        payload: {
+          id: 'manual-bridge-protocol-relative',
+          projectName: 'cc-viewer',
+          projectPath: '/home/opc/projects/ccvs/cc-viewer',
+          url: `http://127.0.0.1:${upstreamPort}?token=abc`,
+          port: upstreamPort,
+          pid: 4321,
+          source: 'manual',
+          startedAt: '2026-04-22T10:00:00.000Z',
+        },
+      });
+      const viewerUrl = new URL(registerResponse.json().data.instance.url);
+      const bridgeId = viewerUrl.pathname.split('/')[2]!;
+      const bridgePath = buildBridgeBasePath(bridgeId);
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `${bridgePath}//evil.example/path?token=abc`,
+        headers: { host: viewerUrl.host },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({
+        url: '/evil.example/path?token=abc',
+        host: `127.0.0.1:${upstreamPort}`,
+      });
+    } finally {
+      await app.close();
+      await close(upstream);
+    }
+  });
+
+  it('rewrites upstream redirects to the public viewer path', async () => {
+    const upstream = createServer((_, response) => {
+      response.statusCode = 302;
+      response.setHeader('location', '/api/events?cursor=1');
+      response.end('redirect');
+    });
+    const upstreamPort = await listen(upstream);
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    try {
+      const registerResponse = await app.inject({
+        method: 'POST',
+        url: '/api/instances/register',
+        payload: {
+          id: 'manual-bridge-redirect',
+          projectName: 'cc-viewer',
+          projectPath: '/home/opc/projects/ccvs/cc-viewer',
+          url: `http://127.0.0.1:${upstreamPort}?token=abc`,
+          port: upstreamPort,
+          pid: 4321,
+          source: 'manual',
+          startedAt: '2026-04-22T10:00:00.000Z',
+        },
+      });
+      const viewerUrl = new URL(registerResponse.json().data.instance.url);
+      const bridgeId = viewerUrl.pathname.split('/')[2]!;
+      const bridgePath = buildBridgeBasePath(bridgeId);
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `${bridgePath}/redirect?token=abc`,
+        headers: { host: viewerUrl.host },
+      });
+
+      expect(response.statusCode).toBe(302);
+      expect(response.headers.location).toBe(`https://ccv-hub.test${bridgePath}/api/events?cursor=1`);
+    } finally {
+      await app.close();
+      await close(upstream);
+    }
+  });
+
+  it('strips viewer cookies, hop-by-hop headers, and hub internals before proxying viewer requests', async () => {
     const upstream = createServer((request, response) => {
       response.setHeader('content-type', 'application/json');
       response.end(JSON.stringify({
         cookie: request.headers.cookie ?? null,
         proxyAuthorization: request.headers['proxy-authorization'] ?? null,
         transferEncoding: request.headers['transfer-encoding'] ?? null,
+        xCcvHubAgentToken: request.headers['x-ccv-hub-agent-token'] ?? null,
       }));
     });
     const upstreamPort = await listen(upstream);
@@ -575,16 +740,19 @@ describe('hub-service routes', () => {
           startedAt: '2026-04-22T10:00:00.000Z',
         },
       });
-      const bridgeHost = new URL(registerResponse.json().data.instance.url).host;
+      const viewerUrl = new URL(registerResponse.json().data.instance.url);
+      const bridgeId = viewerUrl.pathname.split('/')[2]!;
+      const bridgePath = buildBridgeBasePath(bridgeId);
 
       const response = await app.inject({
         method: 'GET',
-        url: '/api/events',
+        url: `${bridgePath}/api/events`,
         headers: {
-          host: bridgeHost,
-          cookie: 'ccv_viewer_session=abc; other=value',
+          host: viewerUrl.host,
+          cookie: `ccv_viewer_session_${bridgeId}=abc; other=value`,
           'proxy-authorization': 'Basic abc',
           'transfer-encoding': 'chunked',
+          'x-ccv-hub-agent-token': 'proxy-secret',
         },
       });
 
@@ -593,6 +761,7 @@ describe('hub-service routes', () => {
         cookie: null,
         proxyAuthorization: null,
         transferEncoding: null,
+        xCcvHubAgentToken: null,
       });
     } finally {
       await app.close();
@@ -629,12 +798,14 @@ describe('hub-service routes', () => {
           startedAt: '2026-04-22T10:00:00.000Z',
         },
       });
-      const bridgeHost = new URL(registerResponse.json().data.instance.url).host;
+      const viewerUrl = new URL(registerResponse.json().data.instance.url);
+      const bridgeId = viewerUrl.pathname.split('/')[2]!;
+      const bridgePath = buildBridgeBasePath(bridgeId);
 
       const response = await app.inject({
         method: 'POST',
-        url: '/api/resume-choice?token=abc&token=abc',
-        headers: { host: bridgeHost, cookie: 'ccv_viewer_session=abc' },
+        url: `${bridgePath}/api/resume-choice?token=abc&token=abc`,
+        headers: { host: viewerUrl.host, cookie: `ccv_viewer_session_${bridgeId}=abc` },
         payload: { choice: 'continue' },
       });
 
@@ -695,14 +866,16 @@ describe('hub-service routes', () => {
           startedAt: '2026-04-22T10:00:00.000Z',
         },
       });
-      const bridgeHost = new URL(registerResponse.json().data.instance.url).host;
+      const viewerUrl = new URL(registerResponse.json().data.instance.url);
+      const bridgeId = viewerUrl.pathname.split('/')[2]!;
+      const bridgePath = buildBridgeBasePath(bridgeId);
 
       const response = await app.inject({
         method: 'POST',
-        url: '/api/upload?token=abc&token=abc',
+        url: `${bridgePath}/api/upload?token=abc&token=abc`,
         headers: {
-          host: bridgeHost,
-          cookie: 'ccv_viewer_session=abc',
+          host: viewerUrl.host,
+          cookie: `ccv_viewer_session_${bridgeId}=abc`,
           'content-type': `multipart/form-data; boundary=${boundary}`,
         },
         payload,
@@ -752,12 +925,14 @@ describe('hub-service routes', () => {
           startedAt: '2026-04-22T10:00:00.000Z',
         },
       });
-      const bridgeHost = new URL(registerResponse.json().data.instance.url).host;
+      const viewerUrl = new URL(registerResponse.json().data.instance.url);
+      const bridgeId = viewerUrl.pathname.split('/')[2]!;
+      const bridgePath = buildBridgeBasePath(bridgeId);
 
       const response = await readSocketUntil(port, [
-        'GET /ws/terminal?session=1 HTTP/1.1',
-        `Host: ${bridgeHost}`,
-        'Cookie: ccv_viewer_session=abc',
+        `GET ${bridgePath}/ws/terminal?session=1 HTTP/1.1`,
+        `Host: ${viewerUrl.host}`,
+        `Cookie: ccv_viewer_session_${bridgeId}=abc`,
         'Connection: Upgrade',
         'Upgrade: websocket',
         'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==',
@@ -805,11 +980,13 @@ describe('hub-service routes', () => {
           startedAt: '2026-04-22T10:00:00.000Z',
         },
       });
-      const bridgeHost = new URL(registerResponse.json().data.instance.url).host;
+      const viewerUrl = new URL(registerResponse.json().data.instance.url);
+      const bridgeId = viewerUrl.pathname.split('/')[2]!;
+      const bridgePath = buildBridgeBasePath(bridgeId);
 
       const response = await readSocketUntil(port, [
-        'GET /ws/terminal?session=1&token=abc HTTP/1.1',
-        `Host: ${bridgeHost}`,
+        `GET ${bridgePath}/ws/terminal?session=1&token=abc HTTP/1.1`,
+        `Host: ${viewerUrl.host}`,
         'Connection: Upgrade',
         'Upgrade: websocket',
         'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==',
@@ -853,11 +1030,12 @@ describe('hub-service routes', () => {
           startedAt: '2026-04-22T10:00:00.000Z',
         },
       });
-      const bridgeHost = new URL(registerResponse.json().data.instance.url).host;
+      const viewerUrl = new URL(registerResponse.json().data.instance.url);
+      const bridgePath = viewerUrl.pathname.replace(/\/$/u, '');
 
       const response = await readSocketUntil(port, [
-        'GET /ws/terminal?session=1 HTTP/1.1',
-        `Host: ${bridgeHost}`,
+        `GET ${bridgePath}/ws/terminal?session=1 HTTP/1.1`,
+        `Host: ${viewerUrl.host}`,
         'Connection: Upgrade',
         'Upgrade: websocket',
         'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==',
@@ -1035,13 +1213,13 @@ describe('hub-service routes', () => {
     }
   });
 
-  it('requires panel auth for hub control APIs on viewer bridge hosts', async () => {
+  it('requires panel auth for hub control APIs without a panel session', async () => {
     const registry = new InstanceRegistry();
     registry.createRunning({
       id: 'bridge-owned',
       projectName: 'alpha',
       projectPath: '/tmp/alpha',
-      url: 'https://ccv-1234567890abcdef1234567890abcdef.example.com/?token=abc',
+      url: 'https://ccv-hub.test/viewer/1234567890abcdef1234567890abcdef/?token=abc',
       upstreamUrl: 'http://127.0.0.1:4321?token=abc',
       bridgeId: '1234567890abcdef1234567890abcdef',
       port: 4321,
@@ -1060,7 +1238,7 @@ describe('hub-service routes', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/instances/bridge-owned/actions/stop',
-      headers: { host: 'ccv-1234567890abcdef1234567890abcdef.example.com' },
+      headers: { host: 'ccv-hub.test' },
     });
 
     expect(response.statusCode).toBe(401);
@@ -1324,7 +1502,7 @@ describe('hub-service routes', () => {
       id: 'manual-7008',
       source: 'manual',
     });
-    expect(registeredInstance.url).toMatch(/^https:\/\/ccv-[a-f0-9]{32}\.example\.com\/\?token=abc$/u);
+    expect(registeredInstance.url).toMatch(/^https:\/\/ccv-hub\.test\/viewer\/[a-f0-9]{32}\/\?token=abc$/u);
 
     const unregisterResponse = await app.inject({
       method: 'POST',
@@ -1546,7 +1724,7 @@ describe('hub-service routes', () => {
       expect(firstResponse.statusCode).toBe(200);
       expect(secondResponse.statusCode).toBe(200);
       expect(secondResponse.json().data.instance.id).toBe('manual-first');
-      expect(new URL(secondResponse.json().data.instance.url).host).toBe(new URL(firstResponse.json().data.instance.url).host);
+      expect(new URL(secondResponse.json().data.instance.url).pathname).toBe(new URL(firstResponse.json().data.instance.url).pathname);
       expect(secondResponse.json().data.instance.port).toBe(firstPort);
       expect(listResponse.json().data.instances).toHaveLength(1);
     } finally {

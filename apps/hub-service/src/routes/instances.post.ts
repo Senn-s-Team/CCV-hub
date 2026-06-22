@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 FastifyInstance 路由能力、路径校验、启动参数契约、bridge URL 生成、实例注册表与统一入口启动器
  * [OUTPUT]: 对外提供 registerCreateInstanceRoute，用于挂载 /api/instances POST
- * [POS]: hub-service 的实例创建面，负责启动成功后登记并回传公开实例
+ * [POS]: hub-service 的实例创建面，负责启动成功后登记、生成稳定 path viewer URL 并回传公开实例
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { randomUUID } from 'node:crypto';

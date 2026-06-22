@@ -1,54 +1,69 @@
 /**
- * [INPUT]: 依赖 node:crypto、标准 URL 能力与 ccv-hub 公网域名环境变量
- * [OUTPUT]: 对外提供 createBridgeConfig、createBridgeIdentity、buildBridgeUrl、resolveBridgeIdFromHost 与 appendUpstreamToken
- * [POS]: hub-service 的公网桥接地址模块，统一随机实例子域名生成、Host 解析与 upstream token 注入规则
+ * [INPUT]: 依赖 node:crypto、标准 URL 能力与 ccv-hub 公网 host/path 环境变量
+ * [OUTPUT]: 对外提供 createBridgeConfig、createBridgeIdentity、buildBridgeUrl、resolveBridgeIdFromPath、stripBridgePathPrefix、buildBridgeBasePath 与 appendUpstreamToken
+ * [POS]: hub-service 的公网桥接地址模块，统一稳定主机 path 生成、path 解析与 upstream token 注入规则
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { randomUUID } from 'node:crypto';
 
 export type BridgeConfig = {
   protocol: string;
-  domain: string;
-  subdomainPrefix: string;
+  publicHost: string;
+  viewerPathPrefix: string;
 };
 
 export type BridgeIdentity = {
   id: string;
-  host: string;
 };
 
-const dnsNamePattern = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])$/u;
-const prefixPattern = /^[a-z0-9-]+$/u;
+const hostPattern = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])$/u;
+const pathPrefixPattern = /^\/[a-z0-9][a-z0-9-]*(?:\/[a-z0-9][a-z0-9-]*)*$/u;
+const bridgeIdPattern = /^[a-f0-9]{32}$/u;
+const reservedPathPrefixes = ['/api', '/favicon.ico'];
+
+function normalizePathPrefix(value: string | undefined): string {
+  const raw = value?.trim() || '/viewer';
+  const prefixed = raw.startsWith('/') ? raw : `/${raw}`;
+  const normalized = prefixed.replace(/\/+$/u, '');
+  return normalized || '/viewer';
+}
+
+function assertViewerPathPrefix(value: string): void {
+  if (!pathPrefixPattern.test(value)) throw new Error('CCV_HUB_VIEWER_PATH_PREFIX must be a safe absolute path prefix');
+  if (reservedPathPrefixes.some((prefix) => value === prefix || value.startsWith(`${prefix}/`))) {
+    throw new Error('CCV_HUB_VIEWER_PATH_PREFIX conflicts with reserved Hub paths');
+  }
+}
+
+function normalizeUpstreamPath(pathname: string): string {
+  return `/${pathname.replace(/^\/+/u, '')}`;
+}
 
 export function createBridgeConfig(env: NodeJS.ProcessEnv = process.env): BridgeConfig {
-  if (env.CCV_HUB_ENV === 'production' && !env.CCV_HUB_PUBLIC_DOMAIN) {
-    throw new Error('CCV_HUB_PUBLIC_DOMAIN is required in production');
+  if (env.CCV_HUB_ENV === 'production' && !env.CCV_HUB_PUBLIC_HOST) {
+    throw new Error('CCV_HUB_PUBLIC_HOST is required in production');
   }
-  const domain = env.CCV_HUB_PUBLIC_DOMAIN ?? 'example.com';
-  const subdomainPrefix = env.CCV_HUB_VIEWER_SUBDOMAIN_PREFIX ?? 'ccv-';
-  if (!dnsNamePattern.test(domain)) throw new Error('CCV_HUB_PUBLIC_DOMAIN must be a DNS domain');
-  if (!prefixPattern.test(subdomainPrefix)) throw new Error('CCV_HUB_VIEWER_SUBDOMAIN_PREFIX must be DNS-safe');
+  const publicHost = env.CCV_HUB_PUBLIC_HOST ?? 'localhost';
+  const viewerPathPrefix = normalizePathPrefix(env.CCV_HUB_VIEWER_PATH_PREFIX);
+  if (!hostPattern.test(publicHost)) throw new Error('CCV_HUB_PUBLIC_HOST must be a DNS host');
+  assertViewerPathPrefix(viewerPathPrefix);
   return {
     protocol: env.CCV_HUB_PUBLIC_PROTOCOL ?? 'https',
-    domain,
-    subdomainPrefix,
+    publicHost,
+    viewerPathPrefix,
   };
 }
 
-export function createBridgeIdentity(config = createBridgeConfig()): BridgeIdentity {
-  const id = randomUUID().replaceAll('-', '').slice(0, 32);
-  return {
-    id,
-    host: `${config.subdomainPrefix}${id}.${config.domain}`,
-  };
+export function createBridgeIdentity(): BridgeIdentity {
+  return { id: randomUUID().replaceAll('-', '').slice(0, 32) };
+}
+
+export function buildBridgeBasePath(bridgeId: string, config = createBridgeConfig()): string {
+  return `${config.viewerPathPrefix}/${bridgeId}`;
 }
 
 export function buildBridgeUrl(bridgeId: string, upstreamUrl: string, config = createBridgeConfig()): string {
-  const identity: BridgeIdentity = {
-    id: bridgeId,
-    host: `${config.subdomainPrefix}${bridgeId}.${config.domain}`,
-  };
-  const url = new URL(`${config.protocol}://${identity.host}/`);
+  const url = new URL(`${config.protocol}://${config.publicHost}${buildBridgeBasePath(bridgeId, config)}/`);
   const token = new URL(upstreamUrl).searchParams.get('token');
   if (token) {
     url.searchParams.set('token', token);
@@ -56,14 +71,22 @@ export function buildBridgeUrl(bridgeId: string, upstreamUrl: string, config = c
   return url.toString();
 }
 
-export function resolveBridgeIdFromHost(hostHeader: string | undefined, config = createBridgeConfig()): string | null {
-  if (!hostHeader) return null;
-  const host = hostHeader.split(':')[0]?.toLowerCase() ?? '';
-  const prefix = config.subdomainPrefix.toLowerCase();
-  const suffix = `.${config.domain.toLowerCase()}`;
-  if (!host.startsWith(prefix) || !host.endsWith(suffix)) return null;
-  const bridgeId = host.slice(prefix.length, -suffix.length);
-  return /^[a-f0-9]{32}$/u.test(bridgeId) ? bridgeId : null;
+export function resolveBridgeIdFromPath(pathname: string, config = createBridgeConfig()): string | null {
+  const prefix = config.viewerPathPrefix;
+  const suffix = pathname === prefix ? '' : pathname.startsWith(`${prefix}/`) ? pathname.slice(prefix.length + 1) : '';
+  const bridgeId = suffix.split('/')[0] ?? '';
+  return bridgeIdPattern.test(bridgeId) ? bridgeId : null;
+}
+
+export function stripBridgePathPrefix(requestUrl: string, bridgeId: string, config = createBridgeConfig()): string {
+  const parsed = new URL(requestUrl, 'http://localhost');
+  const basePath = buildBridgeBasePath(bridgeId, config);
+  if (parsed.pathname === basePath || parsed.pathname === `${basePath}/`) {
+    parsed.pathname = '/';
+  } else if (parsed.pathname.startsWith(`${basePath}/`)) {
+    parsed.pathname = normalizeUpstreamPath(parsed.pathname.slice(basePath.length));
+  }
+  return `${parsed.pathname}${parsed.search}`;
 }
 
 export function appendUpstreamToken(target: URL, upstreamUrl: string): URL {

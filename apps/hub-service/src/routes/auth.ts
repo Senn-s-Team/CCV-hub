@@ -1,9 +1,10 @@
 /**
- * [INPUT]: 依赖 Fastify hook/route 能力、共享鉴权契约、auth-session 会话核心与 bridge Host 解析
- * [OUTPUT]: 对外提供 registerAuthRoutes 与 registerPanelAuthGuard，用于登录、登出、登录态查询、控制面 API 保护和 viewer bridge 保留路径保护
+ * [INPUT]: 依赖 FastifyInstance 路由能力、共享鉴权契约、auth-session 会话核心与 bridge path 解析
+ * [OUTPUT]: 对外提供 registerAuthRoutes 与 registerPanelAuthGuard，用于登录、登出、登录态查询、控制面 API 保护和 viewer bridge path 边界保护
  * [POS]: hub-service 的面板鉴权边界，允许本机插件注册流量，把 viewer bridge 实例级鉴权交给 bridge 路由
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
+import { timingSafeEqual } from 'node:crypto';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { authLoginRequestSchema, type AuthLoginRequest, type AuthStatusResponse } from '@ccv-hub/shared-contracts';
 import {
@@ -13,12 +14,12 @@ import {
   verifyPassword,
   verifySessionToken,
 } from '../domain/auth-session.js';
-import { resolveBridgeIdFromHost } from '../domain/bridge-url.js';
+import { createBridgeConfig, resolveBridgeIdFromPath } from '../domain/bridge-url.js';
 
 const localHosts = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 const publicPanelPaths = new Set(['/api/auth/login', '/api/auth/me', '/api/health']);
 const pluginPaths = new Set(['/api/instances/register', '/api/instances/unregister']);
-const bridgeBlockedPathPrefixes = ['/api/auth', '/api/host-paths', '/api/instances'];
+const agentProxyTokenHeader = 'x-ccv-hub-agent-token';
 
 function decodeCookieValue(value: string): string | undefined {
   try {
@@ -73,16 +74,37 @@ function isPublicPanelPath(pathname: string): boolean {
   return publicPanelPaths.has(pathname);
 }
 
-function isBridgeBlockedPath(pathname: string): boolean {
-  return bridgeBlockedPathPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
-}
-
-function isBridgeHost(request: FastifyRequest): boolean {
-  return Boolean(resolveBridgeIdFromHost(request.headers.host));
+function isBridgePath(pathname: string): boolean {
+  return Boolean(resolveBridgeIdFromPath(pathname, createBridgeConfig()));
 }
 
 function isAuthenticated(request: FastifyRequest, config: AuthConfig): boolean {
   return hasValidSessionCookie(request.headers.cookie, config);
+}
+
+function headerValue(request: FastifyRequest, name: string): string | undefined {
+  const value = request.headers[name];
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function safeEqual(left: string, right: string): boolean {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function hasValidAgentProxyToken(request: FastifyRequest): boolean {
+  const token = process.env.CCV_HUB_AGENT_PROXY_TOKEN;
+  if (!token) return true;
+  return safeEqual(headerValue(request, agentProxyTokenHeader) ?? '', token);
+}
+
+function isForwardedRequest(request: FastifyRequest): boolean {
+  return Boolean(request.headers['x-forwarded-for'] || request.headers['x-real-ip']);
+}
+
+function isLocalPluginRequest(request: FastifyRequest, pathname: string): boolean {
+  return isPluginPath(pathname) && isLocalRequest(request) && !isForwardedRequest(request);
 }
 
 function authStatus(request: FastifyRequest, config: AuthConfig): AuthStatusResponse {
@@ -118,13 +140,14 @@ export function registerAuthRoutes(app: FastifyInstance, config: AuthConfig): vo
 export function registerPanelAuthGuard(app: FastifyInstance, config: AuthConfig): void {
   app.addHook('preHandler', async (request, reply) => {
     const pathname = new URL(request.url, 'http://localhost').pathname;
-    if (isBridgeHost(request)) {
-      if (!isBridgeBlockedPath(pathname)) return;
-      if (isAuthenticated(request, config)) return;
-    } else {
-      if (!pathname.startsWith('/api/') || isPublicPanelPath(pathname)) return;
-      if (isPluginPath(pathname) && isLocalRequest(request)) return;
-      if (isAuthenticated(request, config)) return;
+    if (isBridgePath(pathname)) {
+      if (hasValidAgentProxyToken(request)) return;
+    } else if (!pathname.startsWith('/api/') || isPublicPanelPath(pathname)) {
+      return;
+    } else if (isLocalPluginRequest(request, pathname)) {
+      return;
+    } else if (hasValidAgentProxyToken(request) && isAuthenticated(request, config)) {
+      return;
     }
 
     reply.code(401).send({
