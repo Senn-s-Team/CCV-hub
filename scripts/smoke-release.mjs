@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * [INPUT]: 依赖 Node fetch、net Socket、ccv-hub Agent HTTP API、Agent/Smoke 环境变量与可选 viewer bridge 地址
- * [OUTPUT]: 对外提供 release smoke test CLI，用于验证 public domain、health、auth、instances、launch、viewer bridge 与 stop 收敛
+ * [OUTPUT]: 对外提供 release smoke test CLI，用于验证 public host/path、health、auth、instances、launch、viewer bridge 与 stop 收敛
  * [POS]: scripts 的发布验证入口，连接 release 文档中的验收项与真实部署环境
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -18,6 +18,7 @@ const checkInvalidPath = process.env.CCV_HUB_SMOKE_CHECK_INVALID_PATH === '1';
 const stopAfterLaunch = process.env.CCV_HUB_SMOKE_STOP_AFTER_LAUNCH === '1';
 const timeoutMs = Number(process.env.CCV_HUB_SMOKE_TIMEOUT_MS ?? '10000');
 const pollMs = Number(process.env.CCV_HUB_SMOKE_POLL_MS ?? '500');
+const viewerPathPrefix = normalizeViewerPathPrefix(process.env.CCV_HUB_VIEWER_PATH_PREFIX);
 
 const state = {
   cookie: '',
@@ -49,10 +50,11 @@ async function main() {
 }
 
 async function checkDomainConfig() {
-  const domain = process.env.CCV_HUB_PUBLIC_DOMAIN;
-  if (!domain) return;
-  const viewerHost = `ccv-1234567890abcdef1234567890abcdef.${domain}`;
-  assert(viewerHost.endsWith(`.${domain}`), 'viewer host must derive from CCV_HUB_PUBLIC_DOMAIN');
+  const publicHost = process.env.CCV_HUB_PUBLIC_HOST;
+  if (!publicHost) return;
+  const hubUrl = new URL(baseUrl);
+  assert(hubUrl.hostname === publicHost || hubUrl.hostname === '127.0.0.1' || hubUrl.hostname === 'localhost', 'smoke base host must match CCV_HUB_PUBLIC_HOST for public checks');
+  assert(viewerPathPrefix === '/viewer' || viewerPathPrefix.startsWith('/'), 'viewer path prefix must start with /');
 }
 
 async function checkHubHome() {
@@ -126,6 +128,7 @@ async function launchInstance() {
   assert(instance?.id, 'launch must return an instance id');
   assert(instance.status === 'running', 'launched instance must be running');
   assert(instance.url, 'launched instance must include viewer url');
+  assert(viewerBasePath(instance.url).startsWith(`${viewerPathPrefix}/`), 'launched viewer url must use the configured path prefix');
   state.launchedInstance = instance;
 }
 
@@ -138,8 +141,7 @@ async function checkViewerHttp() {
 }
 
 async function checkViewerSse() {
-  const sseUrl = new URL('/api/events', requireViewerUrl());
-  copyToken(requireViewerUrl(), sseUrl);
+  const sseUrl = viewerChildUrl(requireViewerUrl(), '/api/events');
   const response = await fetchWithTimeout(sseUrl, { headers: { accept: 'text/event-stream' } });
   assert(response.status < 500, `viewer SSE returned ${response.status}`);
   await response.body?.cancel();
@@ -148,8 +150,7 @@ async function checkViewerSse() {
 async function checkViewerWebSocket() {
   const viewerUrl = new URL(requireViewerUrl());
   const port = Number(viewerUrl.port || (viewerUrl.protocol === 'https:' ? 443 : 80));
-  const target = new URL('/ws/terminal?smoke=1', viewerUrl);
-  copyToken(viewerUrl, target);
+  const target = viewerChildUrl(viewerUrl, '/ws/terminal?smoke=1');
   const request = [
     `GET ${target.pathname}${target.search} HTTP/1.1`,
     `Host: ${viewerUrl.host}`,
@@ -240,10 +241,32 @@ function requireViewerUrl() {
   return url;
 }
 
+function viewerBasePath(viewerUrl) {
+  const url = new URL(viewerUrl);
+  return url.pathname.replace(/\/$/u, '');
+}
+
+function viewerChildUrl(viewerUrl, childPath) {
+  const base = new URL(viewerUrl);
+  const child = new URL(base);
+  const suffix = childPath.startsWith('/') ? childPath : `/${childPath}`;
+  const parsedSuffix = new URL(suffix, 'http://localhost');
+  child.pathname = `${viewerBasePath(base)}${parsedSuffix.pathname}`;
+  child.search = parsedSuffix.search;
+  copyToken(base, child);
+  return child;
+}
+
 function copyToken(fromUrl, toUrl) {
   const source = new URL(fromUrl);
   const token = source.searchParams.get('token');
   if (token) toUrl.searchParams.set('token', token);
+}
+
+function normalizeViewerPathPrefix(value) {
+  const raw = value?.trim() || '/viewer';
+  const prefixed = raw.startsWith('/') ? raw : `/${raw}`;
+  return prefixed.replace(/\/+$/u, '') || '/viewer';
 }
 
 function readSocket(host, port, request) {

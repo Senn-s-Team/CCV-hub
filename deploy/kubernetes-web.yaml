@@ -1,6 +1,6 @@
-# [INPUT]: 依赖已发布的 ccv-hub-web image、集群 Ingress 控制器与节点可达的宿主机 ccv-hub-agent
-# [OUTPUT]: 对外提供仅承载 Web 控制面的 Kubernetes Deployment、Service 与 Ingress 示例
-# [POS]: deploy 目录的 Kubernetes Web 模板，负责声明控制面容器边界并把 Agent endpoint 保留在节点侧
+# [INPUT]: 依赖已发布的 ccv-hub-web image、集群 Ingress 控制器、环境变量 CCV_HUB_PUBLIC_HOST/CCV_HUB_AGENT_UPSTREAM 与节点可达的宿主机 ccv-hub-agent
+# [OUTPUT]: 对外提供承载 Web 控制面与同 host /viewer/* bridge 的 Kubernetes Deployment、Service 与 Ingress 模板
+# [POS]: deploy 目录的 Kubernetes Web 模板，负责声明控制面容器边界并把 Agent endpoint 保留在节点侧；应用前用 envsubst 注入环境变量
 # [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 apiVersion: apps/v1
 kind: Deployment
@@ -20,23 +20,22 @@ spec:
     spec:
       containers:
         - name: ccv-hub-web
-          image: ccv-hub-web:v0.0.0-dev
+          image: ${CCV_HUB_WEB_IMAGE}
           ports:
             - containerPort: 80
           env:
             - name: CCV_HUB_AGENT_UPSTREAM
-              value: http://node-agent.example.internal:4318
+              value: ${CCV_HUB_AGENT_UPSTREAM}
+            - name: CCV_HUB_AGENT_PROXY_TOKEN
+              value: ${CCV_HUB_AGENT_PROXY_TOKEN}
             - name: CCV_HUB_PROXY_TARGET
-              value: http://node-agent.example.internal:4318
+              value: ${CCV_HUB_AGENT_UPSTREAM}
             - name: CCV_HUB_PUBLIC_PROTOCOL
-              value: https
+              value: ${CCV_HUB_PUBLIC_PROTOCOL}
             - name: CCV_HUB_PUBLIC_HOST
-              value: hub.example.com
-            - name: CCV_HUB_PUBLIC_DOMAIN
-              value: example.com
-              value: example\\.com
-            - name: CCV_HUB_VIEWER_SUBDOMAIN_PREFIX
-              value: ccv-
+              value: ${CCV_HUB_PUBLIC_HOST}
+            - name: CCV_HUB_VIEWER_PATH_PREFIX
+              value: ${CCV_HUB_VIEWER_PATH_PREFIX}
 ---
 apiVersion: v1
 kind: Service
@@ -59,17 +58,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
 spec:
   rules:
-    - host: hub.example.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: ccv-hub-web
-                port:
-                  number: 80
-    - host: "*.example.com"
+    - host: ${CCV_HUB_PUBLIC_HOST}
       http:
         paths:
           - path: /
