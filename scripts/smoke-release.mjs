@@ -19,6 +19,7 @@ const stopAfterLaunch = process.env.CCV_HUB_SMOKE_STOP_AFTER_LAUNCH === '1';
 const timeoutMs = Number(process.env.CCV_HUB_SMOKE_TIMEOUT_MS ?? '10000');
 const pollMs = Number(process.env.CCV_HUB_SMOKE_POLL_MS ?? '500');
 const viewerPathPrefix = normalizeViewerPathPrefix(process.env.CCV_HUB_VIEWER_PATH_PREFIX);
+const agentProxyToken = process.env.CCV_HUB_AGENT_PROXY_TOKEN;
 
 const state = {
   cookie: '',
@@ -154,6 +155,7 @@ async function checkViewerWebSocket() {
   const request = [
     `GET ${target.pathname}${target.search} HTTP/1.1`,
     `Host: ${viewerUrl.host}`,
+    ...proxyHeaderLines(),
     'Connection: Upgrade',
     'Upgrade: websocket',
     'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==',
@@ -216,10 +218,29 @@ async function fetchWithTimeout(url, init = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, { ...init, signal: controller.signal });
+    return await fetch(url, withSmokeHeaders(init, controller.signal));
   } finally {
     clearTimeout(timer);
   }
+}
+
+function withSmokeHeaders(init, signal) {
+  return {
+    ...init,
+    signal,
+    headers: {
+      ...proxyHeaders(),
+      ...(init.headers ?? {}),
+    },
+  };
+}
+
+function proxyHeaders() {
+  return agentProxyToken ? { 'x-ccv-hub-agent-token': agentProxyToken } : {};
+}
+
+function proxyHeaderLines() {
+  return agentProxyToken ? [`X-CCV-Hub-Agent-Token: ${agentProxyToken}`] : [];
 }
 
 async function parseJson(response) {
