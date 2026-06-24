@@ -19,7 +19,7 @@ export type BridgeIdentity = {
 const hostPattern = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])$/u;
 const pathPrefixPattern = /^\/[a-z0-9][a-z0-9-]*(?:\/[a-z0-9][a-z0-9-]*)*$/u;
 const bridgeIdPattern = /^[a-f0-9]{32}$/u;
-const reservedPathPrefixes = ['/api', '/favicon.ico'];
+const reservedPathPrefixes = ['/api', '/assets', '/favicon.ico'];
 
 function normalizePathPrefix(value: string | undefined): string {
   const raw = value?.trim() || '/viewer';

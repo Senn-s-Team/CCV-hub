@@ -85,6 +85,7 @@ bun run release:agent     # 打包宿主机 Agent release
 bun run release:web       # 打包 Web release
 bun run release:rehearsal # 执行 release 演练
 bun run smoke:release     # 执行 release smoke 验证
+bun run deploy:dev        # 稳定 dev/public 重新部署 SOP
 ```
 
 ## 配置
@@ -150,6 +151,24 @@ cc-viewer per project process
 - `docs/deploy/caddy.md`
 - `docs/deploy/nginx.md`
 - `docs/deploy/kubernetes.md`
+
+## Dev/public 重新部署 SOP
+
+dev 公网环境使用单入口重新部署：
+
+```bash
+bun run deploy:dev
+```
+
+该命令固定执行预检、Agent release 安装、Web release 打包、`deploy/docker-compose.hub.yml` 重建、Traefik label 验证与公网 smoke。`CCV_HUB_DEPLOY_VERSION` 可覆盖默认版本 `v0.0.0-dev`，`CCV_HUB_SMOKE_BASE_URL` 可覆盖默认 `https://${CCV_HUB_PUBLIC_HOST}`。
+
+public dev 域名 `ccv-hub-dev.paas.s3n.top` 必须走 `deploy/docker-compose.hub.yml`，因为该清单提供 Dokploy/Traefik labels。发现 `/etc/ccv-hub/.env.agent` 的 Agent proxy token 与 `.env.dev` 漂移时，脚本会在部署前停止；确认要同步宿主机 dev env 时执行：
+
+```bash
+CCV_HUB_SYNC_AGENT_ENV=1 bun run deploy:dev
+```
+
+同步模式会先创建 `/etc/ccv-hub/.env.agent.backup-YYYYMMDD-HHMMSS`，再同步 dev redeploy 所需键。
 
 ## Release
 

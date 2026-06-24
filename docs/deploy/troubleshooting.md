@@ -97,7 +97,25 @@ curl -i https://<CCV_HUB_PUBLIC_HOST>/viewer/<bridgeId>/
 - `CCV_HUB_PUBLIC_HOST` 与 `CCV_HUB_VIEWER_PATH_PREFIX` 和代理规则一致。
 - 实例仍在 `/api/instances` 返回列表中。
 
-## 7. viewer API 或 SSE 断开
+## 7. 公网返回 OpenResty/Traefik 默认 404
+
+检查：
+
+```bash
+docker compose --env-file .env.dev -f deploy/docker-compose.hub.yml ps ccv-hub-web
+docker inspect -f '{{json .Config.Labels}}' $(docker compose --env-file .env.dev -f deploy/docker-compose.hub.yml ps -q ccv-hub-web)
+curl -i https://<CCV_HUB_PUBLIC_HOST>/api/health
+```
+
+处理：
+
+- public dev、Dokploy 与 Traefik 场景使用 `deploy/docker-compose.hub.yml`。
+- `traefik.enable=true`、`traefik.http.routers.ccv-hub-secure.rule=Host(...)` 与 `traefik.http.services.ccv-hub-web.loadbalancer.server.port=80` 必须出现在 active container labels 中。
+- `CCV_HUB_PUBLIC_HOST` 与实际公网域名保持一致。
+- `CCV_HUB_DOCKER_NETWORK` 指向 Traefik 所在 Docker network。
+- 执行 `bun run deploy:dev` 让脚本清理遗留 standalone 容器并输出 label evidence。
+
+## 8. viewer API 或 SSE 断开
 
 检查：
 
@@ -112,7 +130,7 @@ curl -N https://<CCV_HUB_PUBLIC_HOST>/viewer/<bridgeId>/api/events
 - bridge upstream 指向的 cc-viewer 端口仍在监听。
 - `Location` rewrite 后仍停留在 `/viewer/<bridgeId>` base。
 
-## 8. viewer WebSocket 失败
+## 9. viewer WebSocket 失败
 
 检查：
 
@@ -127,7 +145,7 @@ wscat -c 'wss://<CCV_HUB_PUBLIC_HOST>/viewer/<bridgeId>/ws/terminal?session=smok
 - HTTPS 部署使用 `wss://`。
 - Agent bridge 能访问 cc-viewer upstream 端口。
 
-## 9. 停止实例后列表仍显示
+## 10. 停止实例后列表仍显示
 
 检查：
 
@@ -143,7 +161,7 @@ journalctl -u ccv-hub-agent -n 200 --no-pager
 - 进程退出事件到达后，registry 才完全释放 active path。
 
 
-## 10. 回滚后异常
+## 11. 回滚后异常
 
 检查：
 
@@ -160,19 +178,38 @@ bun run smoke:release
 - Web 回滚只切换 image tag 或静态目录 symlink。
 - 回滚后立即运行 health、instances、viewer bridge smoke。
 
-## 11. dev 部署流程失败
+## 12. Agent proxy token drift
 
 检查：
 
 ```bash
-bun run deploy:service
-bun run smoke:dev
-bun run dev:web
+bun --env-file=.env.dev -e 'console.log(process.env.CCV_HUB_AGENT_PROXY_TOKEN ? "web-token-set" : "web-token-missing")'
+bun --env-file=deploy/.env.agent.dev -e 'console.log(process.env.CCV_HUB_AGENT_PROXY_TOKEN ? "agent-dev-token-set" : "agent-dev-token-missing")'
+sudo grep '^CCV_HUB_AGENT_PROXY_TOKEN=' /etc/ccv-hub/.env.agent >/dev/null && echo installed-token-set
+bun run deploy:dev
 ```
 
 处理：
 
-- `deploy:service` 固定执行 Agent 打包、tarball 安装、production 依赖安装、`current` symlink 切换与 systemd 重启。
+- `.env.dev`、`deploy/.env.agent.dev` 与 `/etc/ccv-hub/.env.agent` 的 `CCV_HUB_AGENT_PROXY_TOKEN` 保持一致。
+- `bun run deploy:dev` 在 preflight 阶段输出脱敏 hash 对比。
+- 明确同步 dev env 到 systemd Agent 时执行 `CCV_HUB_SYNC_AGENT_ENV=1 bun run deploy:dev`。
+- 同步模式会创建 `/etc/ccv-hub/.env.agent.backup-YYYYMMDD-HHMMSS`，只写入 dev redeploy 必需键并保留其他宿主机差异。
+
+## 13. dev 部署流程失败
+
+检查：
+
+```bash
+node --check scripts/deploy-dev-release.mjs
+docker compose --env-file .env.dev -f deploy/docker-compose.hub.yml config
+bun run deploy:dev
+```
+
+处理：
+
+- `deploy:dev` 是 dev/public 稳定重新部署入口，固定执行预检、Agent 安装、显式 systemd 重启、Web image 重建、hub compose 发布、Traefik label evidence 与公网 smoke。
+- `deploy:dev:service` 与 `deploy:dev:web` 作为低层兼容命令保留；service 安装阶段用 `CCV_HUB_AGENT_RESTART=0` 跳过脚本内重启，再由调用命令显式执行 `systemctl restart`。
 - `dev:service` 固定加载 `deploy/.env.agent.dev`，用于源码 watch 调试。
 - `dev:web` 固定加载 `.env.dev`，用于 Vite 开发代理。
 - `smoke:dev` 固定加载 `deploy/.env.agent.dev`，默认验证本机 `http://127.0.0.1:4318` 的 health、auth 与 instances，并只在 dev wrapper 中从 `CCV_HUB_AUTH_PASSWORD` 派生 smoke 登录口令。

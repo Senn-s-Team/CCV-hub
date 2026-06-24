@@ -75,7 +75,18 @@ cc-viewer per project process
 - `hub-web` 当前 release 入口仍偏向现场 build 与 dev 域名。
 - Docker 化 `hub-service` 会引入 Claude 配置挂载、项目路径一致性、host network、PID 可见性和信号控制问题。
 
-## 5. 设计原则
+## 5. 环境变量来源矩阵
+
+| 文件 | 角色 | 关键变量 | 使用者 |
+| --- | --- | --- | --- |
+| `.env.dev` | dev/public Web 与 Docker Compose 环境 | `CCV_HUB_WEB_IMAGE`、`CCV_HUB_WEB_PORT`、`CCV_HUB_AGENT_UPSTREAM`、`CCV_HUB_AGENT_PROXY_TOKEN`、`CCV_HUB_PUBLIC_HOST`、`CCV_HUB_DOCKER_NETWORK` | `bun run deploy:dev`、`docker compose --env-file .env.dev -f deploy/docker-compose.hub.yml` |
+| `deploy/.env.agent.dev` | dev Agent 源配置与 smoke 密码来源 | `CCV_HUB_HOST`、`CCV_HUB_PORT`、`CCV_HUB_PUBLIC_HOST`、`CCV_HUB_AGENT_PROXY_TOKEN`、`CCV_HUB_AUTH_PASSWORD`、`CCV_HUB_SESSION_SECRET` | `dev:service`、`smoke:dev`、`deploy-dev-release.mjs` 预检 |
+| `/etc/ccv-hub/.env.agent` | systemd Agent 真实运行配置 | Agent 监听地址、public host、viewer path、proxy token、登录密码、session secret、path roots、CLI 与 Claude 配置目录 | `ccv-hub-agent.service` |
+| `.env` | 正式 Web release 环境 | release image tag、public host、Agent upstream、proxy token、viewer path | 正式 Compose、Caddy、Nginx 或平台环境面板 |
+
+`CCV_HUB_AGENT_PROXY_TOKEN` 是 Web proxy 到 Agent 的内部信任头，dev/public redeploy 前必须在 `.env.dev`、`deploy/.env.agent.dev` 与 `/etc/ccv-hub/.env.agent` 三处一致。`CCV_HUB_SYNC_AGENT_ENV=1 bun run deploy:dev` 会备份并同步宿主机 Agent env 中 dev redeploy 必需键。
+
+## 6. 设计原则
 
 - Web 层可替换，Agent 层稳定掌握宿主机能力。
 - 平台适配可以增加，Agent 协议保持统一。
@@ -84,7 +95,7 @@ cc-viewer per project process
 - `ccv-hub-agent` 对公网只暴露经过反代保护的 API 与 viewer bridge。
 - `~/.claude`、项目源码和 Claude 登录态只留在宿主机。
 
-## 6. 安全边界
+## 7. 安全边界
 
 入口分三层令牌或会话：
 
@@ -102,7 +113,7 @@ User -> Viewer: per-instance viewer token
 - viewer path 通过 bridge id 与 token 访问具体 upstream。
 - 路径浏览严格受 `CCV_HUB_PATH_ROOTS` 限制。
 
-## 7. 命名策略
+## 8. 命名策略
 
 对外产品命名采用：
 
@@ -114,7 +125,7 @@ cc-viewer      = per-project viewer
 
 代码可以逐步从 `hub-service` 过渡到 `agent` 命名。文档优先使用 `agent` 表达真实职责。
 
-## 8. 成功标准
+## 9. 成功标准
 
 - 用户可以不使用 Dokploy 完成部署。
 - Docker Compose + systemd Agent 成为通用自托管主路径。

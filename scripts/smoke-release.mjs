@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
  * [INPUT]: 依赖 Node fetch、net Socket、ccv-hub Agent HTTP API、Agent/Smoke 环境变量与可选 viewer bridge 地址
- * [OUTPUT]: 对外提供 release smoke test CLI，用于验证 public host/path、health、auth、instances、launch、viewer bridge 与 stop 收敛
- * [POS]: scripts 的发布验证入口，连接 release 文档中的验收项与真实部署环境
+ * [OUTPUT]: 对外提供 release smoke test CLI，用于严格验证 public host/path、health、auth、instances、launch、viewer HTML/SSE/WebSocket bridge 与 stop 收敛
+ * [POS]: scripts 的发布验证入口，连接 release 文档中的验收项与真实部署环境，避免错误页或断路代理被误判为成功
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
+import { connect as connectHttp2 } from 'node:http2';
 import { Socket } from 'node:net';
 import { connect as connectTls } from 'node:tls';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -61,6 +62,28 @@ async function checkDomainConfig() {
 async function checkHubHome() {
   const response = await fetchWithTimeout(`${baseUrl}/`);
   assert(response.status < 500, `Hub home returned ${response.status}`);
+  const html = await response.text();
+  await checkHubAssets(html);
+  await checkMissingHubAsset();
+}
+
+async function checkHubAssets(html) {
+  const assetPaths = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/gu)].map((match) => match[1]);
+  assert(assetPaths.length > 0, 'Hub home must reference built assets');
+  for (const path of assetPaths) {
+    const response = await fetchWithTimeout(`${baseUrl}${path}`);
+    assert(response.status === 200, `${path} returned ${response.status}`);
+    const contentType = response.headers.get('content-type') ?? '';
+    if (path.endsWith('.js')) assert(contentType.includes('javascript'), `${path} returned ${contentType}`);
+    if (path.endsWith('.css')) assert(contentType.includes('text/css'), `${path} returned ${contentType}`);
+    await response.body?.cancel();
+  }
+}
+
+async function checkMissingHubAsset() {
+  const response = await fetchWithTimeout(`${baseUrl}/assets/__ccv_hub_missing_asset__.js`);
+  assert(response.status === 404, `missing Hub asset returned ${response.status}`);
+  await response.body?.cancel();
 }
 
 async function checkHealth() {
@@ -135,17 +158,38 @@ async function launchInstance() {
 
 async function checkViewerHttp() {
   const viewerUrl = requireViewerUrl();
-  const response = await fetchWithTimeout(viewerUrl);
-  assert(response.status < 500, `viewer HTML returned ${response.status}`);
+  const response = await fetchWithTimeout(viewerUrl, { redirect: 'manual' });
+  assert(response.status === 200, `viewer HTML returned ${response.status}`);
   const contentType = response.headers.get('content-type') ?? '';
-  assert(contentType.includes('text/html') || contentType.includes('application/json') || response.status < 400, 'viewer HTTP must return usable content');
+  assert(contentType.includes('text/html'), `viewer HTTP must return text/html, got ${contentType || 'empty content-type'}`);
+  const html = await response.text();
+  assert(/<html|<script|<div[^>]+id=["']root["']/iu.test(html), 'viewer HTTP must return viewer HTML');
 }
 
 async function checkViewerSse() {
-  const sseUrl = viewerChildUrl(requireViewerUrl(), '/api/events');
-  const response = await fetchWithTimeout(sseUrl, { headers: { accept: 'text/event-stream' } });
-  assert(response.status < 500, `viewer SSE returned ${response.status}`);
-  await response.body?.cancel();
+  const viewerUrl = new URL(requireViewerUrl());
+  const port = Number(viewerUrl.port || (viewerUrl.protocol === 'https:' ? 443 : 80));
+  const target = viewerChildUrl(viewerUrl, '/events');
+  const request = [
+    `GET ${target.pathname}${target.search} HTTP/1.1`,
+    `Host: ${viewerUrl.host}`,
+    ...proxyHeaderLines(),
+    'Accept: text/event-stream',
+    'Connection: close',
+    '',
+    '',
+  ].join('\r\n');
+  const response = viewerUrl.protocol === 'https:'
+    ? await readHttp2Headers(viewerUrl.origin, target)
+    : await readSocket(viewerUrl.hostname, port, request);
+  if (typeof response === 'string') {
+    const statusLine = response.split('\r\n')[0] ?? '';
+    assert(statusLine.includes(' 200 '), `viewer SSE returned ${statusLine || 'empty response'}`);
+    assert(/content-type:\s*text\/event-stream/iu.test(response), 'viewer SSE must return text/event-stream');
+    return;
+  }
+  assert(response.status === 200, `viewer SSE returned HTTP/2 ${response.status ?? 'empty status'}`);
+  assert(String(response.contentType ?? '').includes('text/event-stream'), `viewer SSE must return text/event-stream, got ${response.contentType || 'empty content-type'}`);
 }
 
 async function checkViewerWebSocket() {
@@ -166,7 +210,7 @@ async function checkViewerWebSocket() {
   const response = viewerUrl.protocol === 'https:'
     ? await readTlsSocket(viewerUrl.hostname, port, request)
     : await readSocket(viewerUrl.hostname, port, request);
-  assert(response.includes('HTTP/1.1 101') || response.includes('HTTP/1.1 404') || response.includes('HTTP/1.1 400'), 'viewer websocket path must return an HTTP upgrade response');
+  assert(response.includes('HTTP/1.1 101'), `viewer websocket must complete a 101 upgrade, got ${response.split('\r\n')[0] ?? 'empty response'}`);
 }
 
 async function stopInstance() {
@@ -288,6 +332,38 @@ function normalizeViewerPathPrefix(value) {
   const raw = value?.trim() || '/viewer';
   const prefixed = raw.startsWith('/') ? raw : `/${raw}`;
   return prefixed.replace(/\/+$/u, '') || '/viewer';
+}
+
+function readHttp2Headers(origin, target) {
+  return new Promise((resolve, reject) => {
+    const client = connectHttp2(origin);
+    const timer = setTimeout(() => {
+      client.close();
+      reject(new Error('viewer SSE HTTP/2 smoke timed out'));
+    }, timeoutMs);
+    client.on('error', (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    const stream = client.request({
+      ':method': 'GET',
+      ':path': `${target.pathname}${target.search}`,
+      accept: 'text/event-stream',
+      ...proxyHeaders(),
+    });
+    stream.on('response', (headers) => {
+      clearTimeout(timer);
+      stream.close();
+      client.close();
+      resolve({ status: headers[':status'], contentType: headers['content-type'] });
+    });
+    stream.on('error', (error) => {
+      clearTimeout(timer);
+      client.close();
+      reject(error);
+    });
+    stream.end();
+  });
 }
 
 function readSocket(host, port, request) {

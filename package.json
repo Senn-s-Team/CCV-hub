@@ -22,9 +22,9 @@
     "smoke:release": "node scripts/smoke-release.mjs",
     "deploy:service": "bun run deploy:dev:service",
     "deploy:web": "bun run deploy:dev:web",
-    "deploy:dev:service": "bun run release:agent -- v0.0.0-dev && { sudo systemctl stop ccv-hub-agent.service || true; } && sudo ./scripts/install-agent-release.sh build/ccv-hub-agent-v0.0.0-dev.tar.gz",
+    "deploy:dev:service": "bun run release:agent -- v0.0.0-dev && sudo env CCV_HUB_AGENT_RESTART=0 ./scripts/install-agent-release.sh build/ccv-hub-agent-v0.0.0-dev.tar.gz && sudo systemctl restart ccv-hub-agent.service && systemctl is-active ccv-hub-agent.service",
     "deploy:dev:web": "bun run release:web -- v0.0.0-dev && docker build -t ccv-hub-web:v0.0.0-dev -f apps/hub-web/Dockerfile . && WEB_PORT=$(bun --env-file=.env.dev -e \"console.log(process.env.CCV_HUB_WEB_PORT ?? '4317')\") && { docker ps --filter \"publish=$WEB_PORT\" --format '{{.ID}} {{.Names}}' | awk '$2 ~ /ccv-hub-web/ {print $1}' | xargs -r docker stop || true; } && { docker compose --env-file .env.dev -f deploy/docker-compose.standalone.yml stop ccv-hub-web || true; } && { docker compose --env-file .env.dev -f deploy/docker-compose.standalone.yml rm -f ccv-hub-web || true; } && docker compose --env-file .env.dev -f deploy/docker-compose.standalone.yml up -d --force-recreate",
-    "deploy:dev": "bun run deploy:dev:service && bun run deploy:dev:web"
+    "deploy:dev": "node scripts/deploy-dev-release.mjs"
   },
   "devDependencies": {
     "@types/node": "24.7.2"

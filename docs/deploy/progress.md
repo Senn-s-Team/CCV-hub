@@ -54,6 +54,7 @@
 - 完成 Task F 公网 Web entry 验证：`CCV_HUB_SMOKE_BASE_URL=https://ccv-hub-dev.paas.s3n.top`、`CCV_HUB_SMOKE_CHECK_HOME=1`、真实项目路径与 stop 收敛启用时，home、health、auth、instances、invalid-path、launch、viewer HTTP、viewer SSE、viewer WebSocket 与 stop 均通过。
 - 完成 Task F 非破坏性 rollback rehearsal：使用 `build/ccv-hub-agent-v0.0.0-test.tar.gz` 与 `build/ccv-hub-agent-v0.0.0-rehearsal.tar.gz` 在临时目录解包，切换 `current` symlink 前进与回滚，执行 `bun install --production --frozen-lockfile`，并在临时端口 `4520` 启动回滚版本通过 `/api/health`。
 - 修复 dev 部署入口：`deploy:service` 改为 `release:agent` tarball 打包后调用 `scripts/install-agent-release.sh` 完整安装，避免 systemd 指向缺 production 依赖的 release 目录。
+- 收敛 Agent 重启边界：`install-agent-release.sh` 支持 `CCV_HUB_AGENT_RESTART=0` 只安装不重启，`deploy:dev` 与 `deploy:dev:service` 由调用方显式执行 `systemctl restart` 并验证 active，避免安装脚本重启 systemd 误伤当前 deploy 进程。
 - 固化 dev 验证入口：`dev:web` 加载 `.env.dev`，`dev:service` 与 `smoke:dev` 加载 `deploy/.env.agent.dev`，`smoke:dev` 在 dev wrapper 中派生登录口令，开发态变量链与 release 变量链分离。
 
 ## 5. 下一步任务拆分

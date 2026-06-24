@@ -118,7 +118,7 @@ CCV_HUB_SMOKE_VIEWER_URL='https://<CCV_HUB_PUBLIC_HOST>/viewer/<bridgeId>/?token
 bun run smoke:release
 ```
 
-脚本输出 `[ok]` 代表对应阶段通过，`[skip]` 代表缺少可选环境变量。`CCV_HUB_SMOKE_CHECK_HOME=1` 会检查 Hub 首页，`CCV_HUB_SMOKE_CHECK_INVALID_PATH=1` 会检查非法启动路径错误结构，HTTPS viewer WebSocket 会通过 TLS upgrade handshake 自动验证。
+脚本输出 `[ok]` 代表对应阶段通过，`[skip]` 代表缺少可选环境变量。`CCV_HUB_SMOKE_CHECK_HOME=1` 会检查 Hub 首页，`CCV_HUB_SMOKE_CHECK_INVALID_PATH=1` 会检查非法启动路径错误结构。viewer 深度 smoke 要求 HTML 返回 `200 text/html`，SSE 返回 `200 text/event-stream`；HTTPS SSE 使用 HTTP/2 header 检查，HTTP 或 HTTPS viewer WebSocket 必须完成 `101 Switching Protocols` handshake。
 
 ## 8. 手工深度验证
 
@@ -127,9 +127,9 @@ bun run smoke:release
 3. 访问 `/api/instances`，确认只返回 `running`。
 4. 从启动弹窗选择 allowlist 内项目。
 5. 打开返回的 viewer path。
-6. 刷新 viewer 页面，确认 HTML、JS、CSS 加载。
+6. 刷新 viewer 页面，确认 HTML、JS、CSS、字体与图片资源都经 `/viewer/<bridgeId>/` 加载。
 7. 观察 viewer API 请求返回 2xx。
-8. 观察 `/api/events` SSE 长连接保持。
+8. 观察 `/events` SSE 长连接保持。
 9. 使用 `smoke:release` 的 TLS WebSocket handshake 结果或浏览器 DevTools 确认 WebSocket upgrade 成功。
 10. 停止实例后轮询列表，确认实例消失。
 11. 查看 Agent journal，确认注册、bridge、停止记录。

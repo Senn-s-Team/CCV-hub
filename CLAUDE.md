@@ -7,14 +7,14 @@ docs/ - 产品、架构、设计与部署文档（7 子目录: prd, ia, system, 
 prototype/ - 高保真静态原型目录（4 文件: index.html, styles.css, app.js, docker-compose.yml）
 apps/ - 运行时应用目录（2 子目录: hub-web, hub-service）
 packages/ - 共享模块目录（1 子目录: shared-contracts）
-scripts/ - release、安装与验证脚本目录（6 文件: CLAUDE.md, package-agent-release.mjs, package-web-release.mjs, rehearse-release.mjs, install-agent-release.sh, smoke-release.mjs）
+scripts/ - release、安装与验证脚本目录（7 文件: CLAUDE.md, package-agent-release.mjs, package-web-release.mjs, deploy-dev-release.mjs, rehearse-release.mjs, install-agent-release.sh, smoke-release.mjs）
 deploy/ - Web 入口、logger 插件与宿主机 Agent release 部署目录（9 文件: docker-compose.hub.yml, docker-compose.standalone.yml, Caddyfile.example, nginx.hub.conf.example, kubernetes-web.yaml, ccv-hub-agent.service, ccv-hub-service.service, .env.agent.example, ccv-hub-plugin.mjs）
 </directory>
 
 <config>
 README.md - 开源项目入口文档，定义项目定位、架构、快速开始、配置、部署、release、安全边界与贡献路径
 CLAUDE.md - ccv-hub 模块地图、职责边界与文档协议
-package.json - workspace 根配置，定义 Bun 脚本、工作区、根级类型依赖、Agent/Web release 打包命令、release smoke/rehearsal 验证命令、会先停旧 service 与按 `.env.dev` Web 端口收敛旧容器的 dev 部署命令
+package.json - workspace 根配置，定义 Bun 脚本、工作区、根级类型依赖、Agent/Web release 打包命令、release smoke/rehearsal 验证命令与 `bun run deploy:dev` 稳定 dev/public 重新部署入口
 tsconfig.json - ccv-hub 根 TypeScript 基线配置
 .gitignore - 本地依赖、锁文件、构建产物、release 打包产物、正式 `.env` 与开发 `.env.dev` 忽略规则
 .env.example - 可提交 Web/adapter 环境变量模板，覆盖 release Web image、Agent upstream、Dokploy 网络、公网域名、稳定 viewer path 前缀；真实 `.env` 用于正式 Web 环境，`.env.dev` 用于开发环境，宿主机 Agent 使用 `deploy/.env.agent.example`
@@ -35,10 +35,10 @@ bun.lock - Bun 锁文件，固定 workspace 依赖解析结果
 - `docs/adr/` - 存放架构决策记录，固定关键技术取舍、阶段边界、viewer bridge 与 path 入口迁移原则。
 - `docs/deploy/` - 存放开源部署文档，定义 Web 控制面、宿主机 Agent、同 host `/viewer/*` 平台适配文档、release 产物、验证清单、故障排查与开发进度。
 - `apps/hub-service/` - 本地常驻服务实现，负责健康检查、实例查询、统一入口启动、viewer path bridge 与状态收敛。
-- `apps/hub-web/` - 总览页实现，负责实例展示、项目名筛选、启动弹窗、复制、轮询刷新与 `/viewer/*` dev/prod 分流。
+- `apps/hub-web/` - 总览页实现，负责实例展示、项目名筛选、启动弹窗、复制、轮询刷新、静态 assets 404 边界与 `/viewer/*` dev/prod 分流。
 - `packages/shared-contracts/` - 前后端共享契约实现，负责 Instance schema、响应结构与错误码。
 - `deploy/` - 部署资产目录，负责 Web image-only 公网入口、Compose/Caddy/Nginx/Kubernetes 同 host viewer path 平台模板、宿主机 `ccv-hub-agent` release systemd 单元、含 Hub 插件回连地址的 .env.agent 模板与 cc-viewer logger 插件安装源。
-- `scripts/` - 存放 release 打包、演练与安装脚本，负责 Web/Agent tarball 产物、checksums、rehearsal evidence、path viewer smoke 和宿主机安装流程。
+- `scripts/` - 存放 release 打包、dev redeploy 编排、演练与安装脚本，负责 Web/Agent tarball 产物、checksums、rehearsal evidence、path viewer smoke、宿主机安装流程和 public dev SOP 收敛。
 
 ## 设计法则
 

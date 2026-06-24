@@ -1,11 +1,12 @@
 /**
  * [INPUT]: 依赖 node:http、node:net、node:tls、FastifyInstance、bridge path 解析、multipart raw parser、实例级 viewer token、公网协议环境变量与实例注册表 upstream 记录
- * [OUTPUT]: 对外提供 registerViewerBridgeRoute，用于按 /viewer/<bridgeId> path 反代已鉴权 HTTP/SSE、multipart 上传与 WebSocket 请求
- * [POS]: hub-service 的公网 viewer 桥接面，把稳定 Hub host path 流量转发到对应 cc-viewer 内网实例
+ * [OUTPUT]: 对外提供 registerViewerBridgeRoute，用于按 /viewer/<bridgeId> path 反代已鉴权 HTTP/SSE、multipart 上传、WebSocket 请求、viewer 文本资产路径重写与 cookie 透传
+ * [POS]: hub-service 的公网 viewer 桥接面，把稳定 Hub host path 流量转发到对应 cc-viewer 内网实例，并把 viewer HTML/CSS/JS 资产路径收敛到 bridge base path
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
+import { brotliDecompressSync, gunzipSync, inflateSync } from 'node:zlib';
 import type { IncomingHttpHeaders, IncomingMessage } from 'node:http';
 import { connect as netConnect, type Socket } from 'node:net';
 import { connect as tlsConnect } from 'node:tls';
@@ -110,15 +111,33 @@ function viewerSessionHeader(resolved: ResolvedBridgeRequest): string | undefine
   return `${viewerSessionCookie(resolved.bridgeId)}=${encodeURIComponent(token)}; Path=${resolved.publicBasePath}; HttpOnly; SameSite=Lax; Max-Age=604800${secure}`;
 }
 
+function upstreamSetCookies(value: IncomingHttpHeaders['set-cookie']): string[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') return [value];
+  return [];
+}
+
+function scopedUpstreamCookie(value: string, resolved: ResolvedBridgeRequest): string | undefined {
+  const [nameValue = '', ...attributes] = value.split(';');
+  const cookieName = nameValue.split('=')[0]?.trim();
+  if (!cookieName || cookieName === 'ccv_hub_session' || cookieName.startsWith(viewerSessionCookiePrefix)) return undefined;
+  const scopedAttributes = attributes.filter((attribute) => {
+    const normalized = attribute.trim().toLowerCase();
+    return !normalized.startsWith('path=') && !normalized.startsWith('domain=');
+  });
+  return [nameValue.trim(), `Path=${resolved.publicBasePath}`, ...scopedAttributes.map((attribute) => attribute.trim()).filter(Boolean)].join('; ');
+}
+
 function withViewerSession(headers: IncomingHttpHeaders, resolved: ResolvedBridgeRequest): IncomingHttpHeaders {
-  const cookie = viewerSessionHeader(resolved);
   const safeHeaders = { ...headers };
+  const upstreamCookies = upstreamSetCookies(headers['set-cookie']).flatMap((value) => {
+    const scoped = scopedUpstreamCookie(value, resolved);
+    return scoped ? [scoped] : [];
+  });
+  const sessionCookie = viewerSessionHeader(resolved);
   delete safeHeaders['set-cookie'];
-  if (!cookie) return safeHeaders;
-  return {
-    ...safeHeaders,
-    'set-cookie': [cookie],
-  };
+  const cookies = sessionCookie ? [...upstreamCookies, sessionCookie] : upstreamCookies;
+  return cookies.length > 0 ? { ...safeHeaders, 'set-cookie': cookies } : safeHeaders;
 }
 
 function toProxyHeaders(headers: IncomingHttpHeaders, target: URL, body?: Buffer): IncomingHttpHeaders {
@@ -160,6 +179,56 @@ function responseHeaders(upstreamHeaders: IncomingHttpHeaders, resolved: Resolve
   return withViewerSession(headers, resolved);
 }
 
+function rewritableContentType(headers: IncomingHttpHeaders): 'html' | 'javascript' | 'css' | undefined {
+  const contentType = String(headers['content-type'] ?? '').toLowerCase();
+  if (contentType.includes('text/html')) return 'html';
+  if (contentType.includes('javascript')) return 'javascript';
+  if (contentType.includes('text/css')) return 'css';
+  return undefined;
+}
+
+function rewrittenTextHeaders(upstreamHeaders: IncomingHttpHeaders, resolved: ResolvedBridgeRequest, body: string): IncomingHttpHeaders {
+  const headers = { ...responseHeaders(upstreamHeaders, resolved) };
+  delete headers['content-encoding'];
+  delete headers['transfer-encoding'];
+  headers['content-length'] = String(Buffer.byteLength(body));
+  return headers;
+}
+
+function decodedBody(buffer: Buffer, headers: IncomingHttpHeaders): Buffer {
+  const encoding = String(headers['content-encoding'] ?? '').toLowerCase();
+  if (encoding === 'gzip' || encoding === 'x-gzip') return gunzipSync(buffer);
+  if (encoding === 'br') return brotliDecompressSync(buffer);
+  if (encoding === 'deflate') return inflateSync(buffer);
+  return buffer;
+}
+
+function rewriteViewerRootPaths(body: string, resolved: ResolvedBridgeRequest): string {
+  const relativeBasePath = resolved.publicBasePath.slice(1);
+  return body
+    .replaceAll('="/assets/', `="${resolved.publicBasePath}/assets/`)
+    .replaceAll("='/assets/", `='${resolved.publicBasePath}/assets/`)
+    .replaceAll('"/assets/', `"${resolved.publicBasePath}/assets/`)
+    .replaceAll("'/assets/", `'${resolved.publicBasePath}/assets/`)
+    .replaceAll('"assets/', `"${relativeBasePath}/assets/`)
+    .replaceAll("'assets/", `'${relativeBasePath}/assets/`)
+    .replaceAll('@import "/assets/', `@import "${resolved.publicBasePath}/assets/`)
+    .replaceAll("@import '/assets/", `@import '${resolved.publicBasePath}/assets/`)
+    .replaceAll('url(/assets/', `url(${resolved.publicBasePath}/assets/`)
+    .replaceAll('url("/assets/', `url("${resolved.publicBasePath}/assets/`)
+    .replaceAll("url('/assets/", `url('${resolved.publicBasePath}/assets/`)
+    .replaceAll('"/api/', `"${resolved.publicBasePath}/api/`)
+    .replaceAll("'/api/", `'${resolved.publicBasePath}/api/`)
+    .replaceAll('`/api/', `\`${resolved.publicBasePath}/api/`)
+    .replaceAll('"/ws/', `"${resolved.publicBasePath}/ws/`)
+    .replaceAll("'/ws/", `'${resolved.publicBasePath}/ws/`)
+    .replaceAll('`/ws/', `\`${resolved.publicBasePath}/ws/`)
+    .replaceAll('${getBasePath().replace(/\\/$/,"")}/ws/', `${resolved.publicBasePath}/ws/`)
+    .replaceAll('"/events', `"${resolved.publicBasePath}/events`)
+    .replaceAll("'/events", `'${resolved.publicBasePath}/events`)
+    .replaceAll('`/events', `\`${resolved.publicBasePath}/events`);
+}
+
 function sendUnauthorized(reply: FastifyReply): void {
   reply.code(401).send({
     ok: false,
@@ -190,9 +259,27 @@ async function proxyHttp(request: BridgeRequest, reply: FastifyReply, resolved: 
       method: request.method,
       headers: toProxyHeaders(request.headers, target, body),
     }, (upstreamResponse) => {
-      reply.raw.writeHead(upstreamResponse.statusCode ?? 502, responseHeaders(upstreamResponse.headers, resolved));
-      upstreamResponse.pipe(reply.raw);
-      upstreamResponse.on('end', resolve);
+      if (!rewritableContentType(upstreamResponse.headers)) {
+        reply.raw.writeHead(upstreamResponse.statusCode ?? 502, responseHeaders(upstreamResponse.headers, resolved));
+        reply.raw.flushHeaders();
+        upstreamResponse.pipe(reply.raw);
+        upstreamResponse.on('end', resolve);
+        return;
+      }
+
+      const chunks: Buffer[] = [];
+      upstreamResponse.on('data', (chunk: Buffer) => chunks.push(chunk));
+      upstreamResponse.on('end', () => {
+        try {
+          const decoded = decodedBody(Buffer.concat(chunks), upstreamResponse.headers);
+          const body = rewriteViewerRootPaths(decoded.toString('utf8'), resolved);
+          reply.raw.writeHead(upstreamResponse.statusCode ?? 502, rewrittenTextHeaders(upstreamResponse.headers, resolved, body));
+          reply.raw.end(body);
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      });
     });
 
     upstreamRequest.on('error', reject);

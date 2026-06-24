@@ -1,9 +1,25 @@
 <!doctype html>
+<!--
+  [INPUT]: 依赖 Vite 入口脚本、浏览器 localStorage 与根节点挂载容器
+  [OUTPUT]: 对外提供 hub-web HTML 壳、字体资源预连接与 React 启动前主题预设
+  [POS]: hub-web 的页面入口，先固定主题语义，再把运行时交给 src/main.tsx
+  [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+-->
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CCV Hub</title>
+    <script>
+      (() => {
+        try {
+          const mode = localStorage.getItem('ccv-hub.theme-mode');
+          document.documentElement.dataset.theme = ['system', 'light', 'dark'].includes(mode) ? mode : 'system';
+        } catch {
+          document.documentElement.dataset.theme = 'system';
+        }
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />

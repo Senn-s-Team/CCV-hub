@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # [INPUT]: 依赖 Agent release tarball 或解包目录、/opt/ccv-hub-agent、/etc/ccv-hub、systemd、Node/Bun 运行环境与 bun.lock 生产依赖
-# [OUTPUT]: 对外提供 tarball 解包、版本目录安装、production 依赖安装、current symlink 切换、.env.agent 初始化与 ccv-hub-agent.service 安装能力
-# [POS]: scripts 的 Agent 安装入口，把 release 产物安装为宿主机 systemd release
+# [OUTPUT]: 对外提供 tarball 解包、版本目录安装、production 依赖安装、current symlink 切换、.env.agent 初始化、ccv-hub-agent.service 安装与可选重启能力
+# [POS]: scripts 的 Agent 安装入口，把 release 产物安装为宿主机 systemd release，重启边界由调用方显式控制
 # [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 set -euo pipefail
 
@@ -10,6 +10,7 @@ install_root="${CCV_HUB_AGENT_INSTALL_ROOT:-/opt/ccv-hub-agent}"
 env_dir="${CCV_HUB_AGENT_ENV_DIR:-/etc/ccv-hub}"
 service_dir="${CCV_HUB_SYSTEMD_DIR:-/etc/systemd/system}"
 bun_bin="${BUN_BIN:-}"
+restart_service="${CCV_HUB_AGENT_RESTART:-1}"
 staging_dir=""
 
 cleanup() {
@@ -108,5 +109,9 @@ fi
 install -m 0644 "$target_dir/deploy/ccv-hub-agent.service" "$service_dir/ccv-hub-agent.service"
 systemctl daemon-reload
 systemctl enable ccv-hub-agent.service
-systemctl restart ccv-hub-agent.service
-systemctl is-active ccv-hub-agent.service
+if [ "$restart_service" = "1" ]; then
+  systemctl restart ccv-hub-agent.service
+  systemctl is-active ccv-hub-agent.service
+else
+  echo "ccv-hub-agent.service installed; restart skipped by CCV_HUB_AGENT_RESTART=$restart_service"
+fi

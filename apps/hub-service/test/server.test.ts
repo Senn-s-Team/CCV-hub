@@ -8,6 +8,7 @@ import { EventEmitter } from 'node:events';
 import { mkdtemp, mkdir, symlink, rm, readFile, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
+import { gzipSync } from 'node:zlib';
 import { join } from 'node:path';
 import { createConnection } from 'node:net';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -446,6 +447,7 @@ describe('hub-service routes', () => {
     expect(() => createBridgeConfig({ CCV_HUB_ENV: 'production' })).toThrow('CCV_HUB_PUBLIC_HOST is required in production');
     expect(() => createBridgeConfig({ CCV_HUB_PUBLIC_HOST: 'bad host' })).toThrow('CCV_HUB_PUBLIC_HOST must be a DNS host');
     expect(() => createBridgeConfig({ CCV_HUB_PUBLIC_HOST: 'ccv-hub.test', CCV_HUB_VIEWER_PATH_PREFIX: '/api' })).toThrow('CCV_HUB_VIEWER_PATH_PREFIX conflicts with reserved Hub paths');
+    expect(() => createBridgeConfig({ CCV_HUB_PUBLIC_HOST: 'ccv-hub.test', CCV_HUB_VIEWER_PATH_PREFIX: '/assets' })).toThrow('CCV_HUB_VIEWER_PATH_PREFIX conflicts with reserved Hub paths');
     expect(() => createBridgeConfig({ CCV_HUB_PUBLIC_HOST: 'ccv-hub.test', CCV_HUB_VIEWER_PATH_PREFIX: '/../viewer' })).toThrow('CCV_HUB_VIEWER_PATH_PREFIX must be a safe absolute path prefix');
     expect(createBridgeConfig({
       CCV_HUB_PUBLIC_HOST: 'ccv-hub.test',
@@ -517,7 +519,7 @@ describe('hub-service routes', () => {
   it('bridges viewer pages with the URL token and sets an instance session cookie', async () => {
     const upstream = createServer((request, response) => {
       response.setHeader('content-type', 'text/html');
-      response.setHeader('set-cookie', 'ccv_hub_session=evil; Path=/');
+      response.setHeader('set-cookie', ['viewer_pref=compact; Path=/; SameSite=Lax', 'ccv_hub_session=evil; Path=/']);
       response.end(`page:${request.url}`);
     });
     const upstreamPort = await listen(upstream);
@@ -550,7 +552,9 @@ describe('hub-service routes', () => {
         url: `${bridgePath}/?token=abc`,
         headers: { host: viewerUrl.host },
       });
-      const cookie = String(firstResponse.headers['set-cookie']).split(';')[0]!;
+      const setCookies = firstResponse.headers['set-cookie'];
+      const cookies = Array.isArray(setCookies) ? setCookies : [String(setCookies)];
+      const cookie = cookies.find((value) => value.startsWith(`ccv_viewer_session_${bridgeId}=`))?.split(';')[0]!;
       const nextResponse = await app.inject({
         method: 'GET',
         url: `${bridgePath}/assets/app.js`,
@@ -560,11 +564,208 @@ describe('hub-service routes', () => {
       expect(firstResponse.statusCode).toBe(200);
       expect(firstResponse.body).toBe('page:/?token=abc');
       expect(cookie).toBe(`ccv_viewer_session_${bridgeId}=abc`);
-      expect(String(firstResponse.headers['set-cookie'])).toContain(`Path=${bridgePath}`);
-      expect(String(firstResponse.headers['set-cookie'])).toContain('Secure');
-      expect(String(firstResponse.headers['set-cookie'])).not.toContain('ccv_hub_session=evil');
+      expect(cookies).toContain(`viewer_pref=compact; Path=${bridgePath}; SameSite=Lax`);
+      expect(cookies).toContain(`ccv_viewer_session_${bridgeId}=abc; Path=${bridgePath}; HttpOnly; SameSite=Lax; Max-Age=604800; Secure`);
+      expect(cookies.join('\n')).not.toContain('ccv_hub_session=evil');
       expect(nextResponse.statusCode).toBe(200);
       expect(nextResponse.body).toBe('page:/assets/app.js?token=abc');
+    } finally {
+      await app.close();
+      await close(upstream);
+    }
+  });
+
+  it('rewrites viewer HTML root assets to the bridge path', async () => {
+    const upstream = createServer((_, response) => {
+      response.setHeader('content-type', 'text/html; charset=utf-8');
+      response.end('<script type="module" src="/assets/vendor-antd-Bur5ZxWE.js"></script><link rel="stylesheet" href="/assets/index-Cy7Xfu81.css">');
+    });
+    const upstreamPort = await listen(upstream);
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    try {
+      const registerResponse = await app.inject({
+        method: 'POST',
+        url: '/api/instances/register',
+        payload: {
+          id: 'manual-bridge-html-assets',
+          projectName: 'cc-viewer',
+          projectPath: '/home/opc/projects/ccvs/cc-viewer',
+          url: `http://127.0.0.1:${upstreamPort}?token=abc`,
+          port: upstreamPort,
+          pid: 4321,
+          source: 'manual',
+          startedAt: '2026-04-22T10:00:00.000Z',
+        },
+      });
+      const viewerUrl = new URL(registerResponse.json().data.instance.url);
+      const bridgeId = viewerUrl.pathname.split('/')[2]!;
+      const bridgePath = buildBridgeBasePath(bridgeId);
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `${bridgePath}/?token=abc`,
+        headers: { host: viewerUrl.host },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain(`src="${bridgePath}/assets/vendor-antd-Bur5ZxWE.js"`);
+      expect(response.body).toContain(`href="${bridgePath}/assets/index-Cy7Xfu81.css"`);
+      expect(response.body).not.toContain('src="/assets/vendor-antd-Bur5ZxWE.js"');
+    } finally {
+      await app.close();
+      await close(upstream);
+    }
+  });
+
+  it('rewrites viewer CSS root asset references to the bridge path', async () => {
+    const upstream = createServer((_, response) => {
+      response.setHeader('content-type', 'text/css; charset=utf-8');
+      response.end('@import "/assets/theme.css"; .hero{background:url(/assets/bg.png)} @font-face{src:url("/assets/font.woff2")} .icon{background:url(\'/assets/icon.svg\')}');
+    });
+    const upstreamPort = await listen(upstream);
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    try {
+      const registerResponse = await app.inject({
+        method: 'POST',
+        url: '/api/instances/register',
+        payload: {
+          id: 'manual-bridge-css-assets',
+          projectName: 'cc-viewer',
+          projectPath: '/home/opc/projects/ccvs/cc-viewer',
+          url: `http://127.0.0.1:${upstreamPort}?token=abc`,
+          port: upstreamPort,
+          pid: 4321,
+          source: 'manual',
+          startedAt: '2026-04-22T10:00:00.000Z',
+        },
+      });
+      const viewerUrl = new URL(registerResponse.json().data.instance.url);
+      const bridgeId = viewerUrl.pathname.split('/')[2]!;
+      const bridgePath = buildBridgeBasePath(bridgeId);
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `${bridgePath}/assets/index.css?token=abc`,
+        headers: { host: viewerUrl.host },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain(`@import "${bridgePath}/assets/theme.css"`);
+      expect(response.body).toContain(`url(${bridgePath}/assets/bg.png)`);
+      expect(response.body).toContain(`url("${bridgePath}/assets/font.woff2")`);
+      expect(response.body).toContain(`url('${bridgePath}/assets/icon.svg')`);
+      expect(response.body).not.toContain('url(/assets/');
+    } finally {
+      await app.close();
+      await close(upstream);
+    }
+  });
+
+  it('decodes compressed viewer text before rewriting root assets', async () => {
+    const upstream = createServer((_, response) => {
+      response.setHeader('content-type', 'text/html; charset=utf-8');
+      response.setHeader('content-encoding', 'gzip');
+      response.end(gzipSync('<script src="/assets/app.js"></script>'));
+    });
+    const upstreamPort = await listen(upstream);
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    try {
+      const registerResponse = await app.inject({
+        method: 'POST',
+        url: '/api/instances/register',
+        payload: {
+          id: 'manual-bridge-gzip-html',
+          projectName: 'cc-viewer',
+          projectPath: '/home/opc/projects/ccvs/cc-viewer',
+          url: `http://127.0.0.1:${upstreamPort}?token=abc`,
+          port: upstreamPort,
+          pid: 4321,
+          source: 'manual',
+          startedAt: '2026-04-22T10:00:00.000Z',
+        },
+      });
+      const viewerUrl = new URL(registerResponse.json().data.instance.url);
+      const bridgeId = viewerUrl.pathname.split('/')[2]!;
+      const bridgePath = buildBridgeBasePath(bridgeId);
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `${bridgePath}/?token=abc`,
+        headers: { host: viewerUrl.host, 'accept-encoding': 'gzip' },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['content-encoding']).toBeUndefined();
+      expect(response.body).toBe(`<script src="${bridgePath}/assets/app.js"></script>`);
+    } finally {
+      await app.close();
+      await close(upstream);
+    }
+  });
+
+  it('rewrites viewer JavaScript root asset preload literals to the bridge path', async () => {
+    const upstream = createServer((request, response) => {
+      if (request.url?.startsWith('/assets/vendor-mdxeditor-Cco3AQJS.js')) {
+        response.setHeader('content-type', 'application/javascript');
+        response.end('const deps=["assets/App-DVWiEmB2.js","assets/seqResourceLoaders-CX6xejM7.css"]; const endpoints={status:"/api/im/feishu/status"}; const ws=`${getBasePath().replace(/\\/$/,"")}/ws/terminal`; let sse="/events"; sse=`/events?since=${encodeURIComponent("x")}`;');
+        return;
+      }
+      response.setHeader('content-type', 'text/html');
+      response.end('ok');
+    });
+    const upstreamPort = await listen(upstream);
+    const app = buildServer({
+      launcher: { launch: vi.fn() },
+      auth: authConfig,
+    });
+
+    try {
+      const registerResponse = await app.inject({
+        method: 'POST',
+        url: '/api/instances/register',
+        payload: {
+          id: 'manual-bridge-js-assets',
+          projectName: 'cc-viewer',
+          projectPath: '/home/opc/projects/ccvs/cc-viewer',
+          url: `http://127.0.0.1:${upstreamPort}?token=abc`,
+          port: upstreamPort,
+          pid: 4321,
+          source: 'manual',
+          startedAt: '2026-04-22T10:00:00.000Z',
+        },
+      });
+      const viewerUrl = new URL(registerResponse.json().data.instance.url);
+      const bridgeId = viewerUrl.pathname.split('/')[2]!;
+      const bridgePath = buildBridgeBasePath(bridgeId);
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `${bridgePath}/assets/vendor-mdxeditor-Cco3AQJS.js?token=abc`,
+        headers: { host: viewerUrl.host },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain(`"${bridgePath.slice(1)}/assets/App-DVWiEmB2.js"`);
+      expect(response.body).toContain(`"${bridgePath.slice(1)}/assets/seqResourceLoaders-CX6xejM7.css"`);
+      expect(response.body).toContain(`"${bridgePath}/api/im/feishu/status"`);
+      expect(response.body).toContain(`${bridgePath}/ws/terminal`);
+      expect(response.body).toContain(`"${bridgePath}/events"`);
+      expect(response.body).toContain(`\`${bridgePath}/events?since=`);
+      expect(response.body).not.toContain(`"${bridgePath}/assets/App-DVWiEmB2.js"`);
+      expect(response.body).not.toContain('"assets/App-DVWiEmB2.js"');
+      expect(response.body).not.toContain('"/api/im/feishu/status"');
     } finally {
       await app.close();
       await close(upstream);
