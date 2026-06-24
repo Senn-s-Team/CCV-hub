@@ -9,7 +9,7 @@
           "path": "index.html",
           "createdAt": "2026-06-24T06:10:40.836Z",
           "status": "needs-review",
-          "subtitle": "单页工作台、实例卡片、状态演示与启动弹窗",
+          "subtitle": "实例优先总览、移动端折叠信息、三段式启动弹窗与顶部 Toast",
           "viewport": {
             "width": 1440,
             "height": 1100
@@ -19,5 +19,5 @@
     }
   },
   "createdAt": "2026-06-24T06:10:40.836Z",
-  "updatedAt": "2026-06-24T06:14:24.997Z"
+  "updatedAt": "2026-06-24T06:50:21.361Z"
 }

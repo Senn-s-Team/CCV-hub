@@ -1,6 +1,6 @@
 <!--
   [INPUT]: 依赖 styles.css 的视觉系统与 app.js 的状态控制器，依赖 ccv-hub 文档定义的实例字段、状态和总览页边界
-  [OUTPUT]: 对外提供 ccv-hub redesign 高保真交互原型入口，展示总览页、状态演示、实例卡片与启动弹窗
+  [OUTPUT]: 对外提供 ccv-hub redesign 高保真交互原型入口，展示实例优先总览页、状态演示、实例卡片与三段式移动端启动弹窗
   [POS]: designs/ccv-hub-redesign 的用户可评审页面，是业务分析转化为界面方案的主交付物
   [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 -->
@@ -26,8 +26,8 @@
           </div>
         </div>
 
-        <section class="rail-panel agent-panel" aria-label="Agent 状态">
-          <div class="rail-section-title">宿主机 Agent</div>
+        <details class="rail-panel rail-fold agent-panel" open>
+          <summary>宿主机 Agent</summary>
           <div class="agent-state">
             <span class="status-orb live" aria-hidden="true"></span>
             <div>
@@ -39,34 +39,34 @@
             <span><strong id="railOnlineCount">4</strong> online</span>
             <span><strong>24</strong> node</span>
           </div>
-        </section>
+        </details>
 
-        <section class="rail-panel" aria-label="业务边界">
-          <div class="rail-section-title">当前边界</div>
+        <details class="rail-panel rail-fold">
+          <summary>当前边界</summary>
           <ul class="boundary-list">
             <li>只展示 running 实例</li>
             <li>Viewer 走 /viewer/* 稳定入口</li>
             <li>启动路径由 Agent allowlist 控制</li>
           </ul>
-        </section>
+        </details>
 
-        <section class="rail-panel state-switcher" aria-label="状态演示">
-          <div class="rail-section-title">评审状态</div>
+        <details class="rail-panel rail-fold state-switcher" open>
+          <summary>评审状态</summary>
           <div class="state-buttons" role="group" aria-label="切换页面状态">
             <button type="button" class="state-button active" data-state="ready">list-ready</button>
             <button type="button" class="state-button" data-state="loading">loading</button>
             <button type="button" class="state-button" data-state="empty">empty</button>
             <button type="button" class="state-button" data-state="error">discovery-error</button>
           </div>
-        </section>
+        </details>
       </aside>
 
       <main class="hub-main">
         <header class="topbar panel" data-screen-label="topbar">
-          <div class="hero-copy">
-            <span class="eyebrow">本机实例总览台</span>
-            <h1>把所有 cc-viewer 入口收进一个工作面。</h1>
-            <p>扫项目名，开实例，复制链接，启动新工作区；所有主任务留在当前视野。</p>
+          <div class="page-title-block">
+            <span class="eyebrow">running instances</span>
+            <h1>在线实例</h1>
+            <p>按启动时间降序，打开与复制入口保持在卡片内。</p>
           </div>
           <div class="topbar-actions">
             <div class="theme-control" aria-label="主题模式">
@@ -74,27 +74,9 @@
               <button type="button" class="theme-pill" data-theme-option="light">浅色</button>
             </div>
             <button type="button" class="ghost-button" id="refreshButton">刷新列表</button>
-            <button type="button" class="primary-button" id="openLaunch">启动新实例</button>
+            <button type="button" class="primary-button" id="openLaunch">启动</button>
           </div>
         </header>
-
-        <section class="summary-strip" aria-label="实例状态摘要">
-          <article class="summary-card panel">
-            <span class="summary-label">在线实例</span>
-            <strong id="summaryTotal">4</strong>
-            <small>按启动时间降序</small>
-          </article>
-          <article class="summary-card panel">
-            <span class="summary-label">可见结果</span>
-            <strong id="summaryVisible">4</strong>
-            <small>项目名即时筛选</small>
-          </article>
-          <article class="summary-card panel accent-summary">
-            <span class="summary-label">稳定入口</span>
-            <strong>/viewer/*</strong>
-            <small>同 host path bridge</small>
-          </article>
-        </section>
 
         <section class="toolbar panel" aria-label="筛选和页面状态">
           <label class="search-box">
@@ -110,21 +92,19 @@
         <section class="stage panel" aria-labelledby="stageTitle" data-screen-label="instance-stage">
           <div class="stage-head">
             <div>
-              <span class="eyebrow">instance runway</span>
-              <h2 id="stageTitle">实例工作面</h2>
+              <span class="eyebrow">viewer entries</span>
+              <h2 id="stageTitle">实例列表</h2>
             </div>
             <span class="last-sync" id="lastSync">刚刚同步</span>
           </div>
 
           <div class="state-view active" id="readyView">
-            <div class="featured-card" id="featuredCard" aria-label="首个运行实例"></div>
-            <div class="instance-grid" id="instanceGrid" aria-label="实例列表"></div>
+            <div class="instance-grid priority-grid" id="instanceGrid" aria-label="实例列表"></div>
           </div>
 
           <div class="state-view" id="loadingView" aria-label="加载中">
-            <div class="skeleton-feature"></div>
-            <div class="skeleton-grid">
-              <span></span><span></span><span></span>
+            <div class="skeleton-grid priority-grid">
+              <span></span><span></span><span></span><span></span>
             </div>
           </div>
 
@@ -159,6 +139,27 @@
             </div>
           </div>
         </section>
+
+        <details class="secondary-drawer panel">
+          <summary>运行环境与入口摘要</summary>
+          <div class="summary-strip" aria-label="实例状态摘要">
+            <article class="summary-card">
+              <span class="summary-label">在线实例</span>
+              <strong id="summaryTotal">4</strong>
+              <small>按启动时间降序</small>
+            </article>
+            <article class="summary-card">
+              <span class="summary-label">可见结果</span>
+              <strong id="summaryVisible">4</strong>
+              <small>项目名即时筛选</small>
+            </article>
+            <article class="summary-card accent-summary">
+              <span class="summary-label">稳定入口</span>
+              <strong>/viewer/*</strong>
+              <small>同 host path bridge</small>
+            </article>
+          </div>
+        </details>
       </main>
     </div>
 
@@ -168,13 +169,19 @@
           <div>
             <span class="eyebrow">new instance</span>
             <h2 id="launchTitle">启动新的 cc-viewer 实例</h2>
-            <p>先定项目路径，再补启动参数。失败会留在这里继续修改。</p>
+            <p>移动端按路径、参数、确认三段推进。</p>
           </div>
           <button type="button" class="icon-button" id="closeLaunch" aria-label="关闭">×</button>
         </header>
 
+        <nav class="launch-steps" aria-label="启动步骤">
+          <button type="button" class="launch-step-button active" data-launch-step-target="path">1 路径</button>
+          <button type="button" class="launch-step-button" data-launch-step-target="config">2 参数</button>
+          <button type="button" class="launch-step-button" data-launch-step-target="confirm">3 确认</button>
+        </nav>
+
         <div class="launch-layout">
-          <section class="path-column" aria-label="项目路径">
+          <section class="path-column launch-pane active" data-launch-step="path" aria-label="项目路径">
             <label class="path-input priority">
               <span>项目绝对路径</span>
               <input id="launchPath" type="text" placeholder="/home/opc/projects/ccvs/ccv-hub" />
@@ -206,13 +213,7 @@
             </div>
           </section>
 
-          <section class="config-column" aria-label="启动配置">
-            <div class="launch-summary">
-              <span class="summary-label">将启动</span>
-              <strong id="launchSummary">等待项目路径</strong>
-              <small id="launchModeSummary">普通启动</small>
-            </div>
-
+          <section class="config-column launch-pane" data-launch-step="config" aria-label="启动配置">
             <label class="path-input">
               <span>启动模式</span>
               <select id="launchMode">
@@ -233,12 +234,23 @@
               <label><input type="checkbox" /> 跳过权限确认 (--d)</label>
               <label><input type="checkbox" /> 允许跳过权限确认 (--ad)</label>
             </div>
+          </section>
+
+          <section class="confirm-column launch-pane" data-launch-step="confirm" aria-label="启动确认">
+            <div class="launch-summary">
+              <span class="summary-label">将启动</span>
+              <strong id="launchSummary">等待项目路径</strong>
+              <small id="launchModeSummary">普通启动</small>
+            </div>
+            <p class="confirm-copy">确认后 Hub Agent 会在允许路径内启动 cc-viewer，成功后实例回到总览列表。</p>
             <p class="modal-error" id="modalError" hidden>路径需要是绝对路径，并位于 Agent allowlist 中。</p>
           </section>
         </div>
 
         <footer class="modal-actions">
           <button type="button" class="ghost-button" id="cancelLaunch">关闭</button>
+          <button type="button" class="ghost-button mobile-step-prev" id="launchPrev">上一步</button>
+          <button type="button" class="primary-button mobile-step-next" id="launchNext">下一步</button>
           <button type="button" class="primary-button" id="submitLaunch">启动实例</button>
         </footer>
       </section>

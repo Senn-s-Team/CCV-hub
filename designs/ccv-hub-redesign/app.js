@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 依赖 index.html 暴露的 DOM 节点与 ccv-hub 实例模型字段
- * [OUTPUT]: 对外提供 redesign 原型交互：实例渲染、筛选、状态切换、主题切换、启动弹窗、路径选择与 Toast
+ * [OUTPUT]: 对外提供 redesign 原型交互：实例渲染、筛选、状态切换、主题切换、三段式启动弹窗、路径选择与 Toast
  * [POS]: designs/ccv-hub-redesign 的轻量状态控制器，用静态数据模拟真实 Hub Web 行为
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -59,10 +59,11 @@ const folders = [
   { name: 'mobile-client', path: '/home/opc/projects/labs/mobile-client' },
 ];
 
+const launchSteps = ['path', 'config', 'confirm'];
+
 const els = {
   grid: document.querySelector('#instanceGrid'),
   errorGrid: document.querySelector('#errorGrid'),
-  featured: document.querySelector('#featuredCard'),
   search: document.querySelector('#projectSearch'),
   visible: document.querySelector('#summaryVisible'),
   total: document.querySelector('#summaryTotal'),
@@ -72,6 +73,7 @@ const els = {
   lastSync: document.querySelector('#lastSync'),
   toast: document.querySelector('#toast'),
   modal: document.querySelector('#launchModal'),
+  launchModalPanel: document.querySelector('.launch-modal'),
   launchPath: document.querySelector('#launchPath'),
   launchSummary: document.querySelector('#launchSummary'),
   launchMode: document.querySelector('#launchMode'),
@@ -80,9 +82,13 @@ const els = {
   folderList: document.querySelector('#folderList'),
   pathSearch: document.querySelector('#pathSearch'),
   modalError: document.querySelector('#modalError'),
+  launchPrev: document.querySelector('#launchPrev'),
+  launchNext: document.querySelector('#launchNext'),
+  submitLaunch: document.querySelector('#submitLaunch'),
 };
 
 let currentState = 'ready';
+let currentLaunchStep = 'path';
 let toastTimer = 0;
 
 function escapeHtml(value) {
@@ -118,20 +124,6 @@ function cardTemplate(instance) {
         </div>
       </div>
     </article>`;
-}
-
-function featuredTemplate(instance) {
-  return `
-    <div>
-      <h3 class="featured-title">${escapeHtml(instance.projectName)}</h3>
-      <p class="featured-path">${escapeHtml(instance.projectPath)}</p>
-      <div class="featured-meta">${badge(instance.status, 'live')}${badge(instance.source)}${badge(`启动 ${instance.startedAt}`)}</div>
-    </div>
-    <div class="featured-actions">
-      <button type="button" class="primary-button" data-featured-action="open">打开 viewer</button>
-      <button type="button" class="ghost-button" data-featured-action="copy">复制稳定入口</button>
-      <span class="micro-copy">${escapeHtml(instance.url)}</span>
-    </div>`;
 }
 
 function showToast(message) {
@@ -178,16 +170,33 @@ function renderInstances() {
     document.querySelector('#readyView').classList.add('active');
   }
 
-  const [first, ...rest] = visible.length ? visible : instances;
-  els.featured.innerHTML = featuredTemplate(first);
-  els.grid.innerHTML = rest.map(cardTemplate).join('');
+  els.grid.innerHTML = visible.map(cardTemplate).join('');
   els.errorGrid.innerHTML = instances.slice(0, 3).map(cardTemplate).join('');
+}
+
+function setLaunchStep(step) {
+  currentLaunchStep = step;
+  els.launchModalPanel.dataset.step = step;
+  document.querySelectorAll('.launch-step-button').forEach((button) => {
+    button.classList.toggle('active', button.dataset.launchStepTarget === step);
+  });
+  document.querySelectorAll('.launch-pane').forEach((pane) => {
+    pane.classList.toggle('active', pane.dataset.launchStep === step);
+  });
+  els.launchNext.textContent = step === 'config' ? '确认' : '下一步';
+}
+
+function moveLaunchStep(delta) {
+  const index = launchSteps.indexOf(currentLaunchStep);
+  const nextIndex = Math.max(0, Math.min(launchSteps.length - 1, index + delta));
+  setLaunchStep(launchSteps[nextIndex]);
 }
 
 function openLaunch() {
   els.modal.hidden = false;
-  els.launchPath.focus();
+  setLaunchStep('path');
   updateLaunchSummary();
+  els.launchPath.focus();
 }
 
 function closeLaunch() {
@@ -222,6 +231,18 @@ function handleInstanceAction(event) {
   if (button.dataset.action === 'stop') showToast(`${instance.projectName} 停止请求已发送`);
 }
 
+function submitLaunch() {
+  const path = els.launchPath.value.trim();
+  if (!path.startsWith('/')) {
+    els.modalError.hidden = false;
+    setLaunchStep('confirm');
+    return;
+  }
+  els.modalError.hidden = true;
+  closeLaunch();
+  showToast('实例已加入总览台');
+}
+
 function bindEvents() {
   document.querySelectorAll('.state-button').forEach((button) => {
     button.addEventListener('click', () => {
@@ -237,14 +258,13 @@ function bindEvents() {
     });
   });
 
+  document.querySelectorAll('[data-launch-step-target]').forEach((button) => {
+    button.addEventListener('click', () => setLaunchStep(button.dataset.launchStepTarget));
+  });
+
   els.search.addEventListener('input', renderInstances);
   els.grid.addEventListener('click', handleInstanceAction);
   els.errorGrid.addEventListener('click', handleInstanceAction);
-  els.featured.addEventListener('click', (event) => {
-    const button = event.target.closest('button');
-    if (!button) return;
-    showToast(button.dataset.featuredAction === 'copy' ? '已复制 ccv-hub 稳定入口' : '打开 ccv-hub viewer');
-  });
 
   document.querySelector('#refreshButton').addEventListener('click', () => {
     els.lastSync.textContent = '正在同步…';
@@ -276,18 +296,12 @@ function bindEvents() {
   });
   els.launchPath.addEventListener('input', updateLaunchSummary);
   els.launchMode.addEventListener('change', updateLaunchSummary);
-  document.querySelector('#submitLaunch').addEventListener('click', () => {
-    const path = els.launchPath.value.trim();
-    if (!path.startsWith('/')) {
-      els.modalError.hidden = false;
-      return;
-    }
-    els.modalError.hidden = true;
-    closeLaunch();
-    showToast('实例已加入总览台');
-  });
+  els.launchPrev.addEventListener('click', () => moveLaunchStep(-1));
+  els.launchNext.addEventListener('click', () => moveLaunchStep(1));
+  els.submitLaunch.addEventListener('click', submitLaunch);
 }
 
 bindEvents();
 renderFolders();
+setLaunchStep('path');
 renderInstances();
