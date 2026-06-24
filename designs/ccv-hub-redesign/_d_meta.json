@@ -1,0 +1,23 @@
+{
+  "type": "design",
+  "designSystems": [],
+  "primaryDesignSystem": null,
+  "assets": {
+    "ccv-hub 总览页 redesign": {
+      "versions": [
+        {
+          "path": "index.html",
+          "createdAt": "2026-06-24T06:10:40.836Z",
+          "status": "needs-review",
+          "subtitle": "单页工作台、实例卡片、状态演示与启动弹窗",
+          "viewport": {
+            "width": 1440,
+            "height": 1100
+          }
+        }
+      ]
+    }
+  },
+  "createdAt": "2026-06-24T06:10:40.836Z",
+  "updatedAt": "2026-06-24T06:14:24.997Z"
+}

@@ -1,0 +1,250 @@
+<!--
+  [INPUT]: 依赖 styles.css 的视觉系统与 app.js 的状态控制器，依赖 ccv-hub 文档定义的实例字段、状态和总览页边界
+  [OUTPUT]: 对外提供 ccv-hub redesign 高保真交互原型入口，展示总览页、状态演示、实例卡片与启动弹窗
+  [POS]: designs/ccv-hub-redesign 的用户可评审页面，是业务分析转化为界面方案的主交付物
+  [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+-->
+<!doctype html>
+<html lang="zh" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ccv-hub redesign prototype</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell" data-screen-label="ccv-hub-overview-redesign">
+      <aside class="hub-rail" aria-label="总览导航">
+        <div class="brand-lockup">
+          <span class="brand-mark" aria-hidden="true">ccv</span>
+          <div>
+            <strong>Hub</strong>
+            <span>local viewer console</span>
+          </div>
+        </div>
+
+        <section class="rail-panel agent-panel" aria-label="Agent 状态">
+          <div class="rail-section-title">宿主机 Agent</div>
+          <div class="agent-state">
+            <span class="status-orb live" aria-hidden="true"></span>
+            <div>
+              <strong>已连接</strong>
+              <span>polling every 2s</span>
+            </div>
+          </div>
+          <div class="rail-metrics">
+            <span><strong id="railOnlineCount">4</strong> online</span>
+            <span><strong>24</strong> node</span>
+          </div>
+        </section>
+
+        <section class="rail-panel" aria-label="业务边界">
+          <div class="rail-section-title">当前边界</div>
+          <ul class="boundary-list">
+            <li>只展示 running 实例</li>
+            <li>Viewer 走 /viewer/* 稳定入口</li>
+            <li>启动路径由 Agent allowlist 控制</li>
+          </ul>
+        </section>
+
+        <section class="rail-panel state-switcher" aria-label="状态演示">
+          <div class="rail-section-title">评审状态</div>
+          <div class="state-buttons" role="group" aria-label="切换页面状态">
+            <button type="button" class="state-button active" data-state="ready">list-ready</button>
+            <button type="button" class="state-button" data-state="loading">loading</button>
+            <button type="button" class="state-button" data-state="empty">empty</button>
+            <button type="button" class="state-button" data-state="error">discovery-error</button>
+          </div>
+        </section>
+      </aside>
+
+      <main class="hub-main">
+        <header class="topbar panel" data-screen-label="topbar">
+          <div class="hero-copy">
+            <span class="eyebrow">本机实例总览台</span>
+            <h1>把所有 cc-viewer 入口收进一个工作面。</h1>
+            <p>扫项目名，开实例，复制链接，启动新工作区；所有主任务留在当前视野。</p>
+          </div>
+          <div class="topbar-actions">
+            <div class="theme-control" aria-label="主题模式">
+              <button type="button" class="theme-pill active" data-theme-option="dark">深色</button>
+              <button type="button" class="theme-pill" data-theme-option="light">浅色</button>
+            </div>
+            <button type="button" class="ghost-button" id="refreshButton">刷新列表</button>
+            <button type="button" class="primary-button" id="openLaunch">启动新实例</button>
+          </div>
+        </header>
+
+        <section class="summary-strip" aria-label="实例状态摘要">
+          <article class="summary-card panel">
+            <span class="summary-label">在线实例</span>
+            <strong id="summaryTotal">4</strong>
+            <small>按启动时间降序</small>
+          </article>
+          <article class="summary-card panel">
+            <span class="summary-label">可见结果</span>
+            <strong id="summaryVisible">4</strong>
+            <small>项目名即时筛选</small>
+          </article>
+          <article class="summary-card panel accent-summary">
+            <span class="summary-label">稳定入口</span>
+            <strong>/viewer/*</strong>
+            <small>同 host path bridge</small>
+          </article>
+        </section>
+
+        <section class="toolbar panel" aria-label="筛选和页面状态">
+          <label class="search-box">
+            <span>项目名关键字</span>
+            <input id="projectSearch" type="search" autocomplete="off" placeholder="输入 viewer / hub / mobile" />
+          </label>
+          <div class="toolbar-status">
+            <span class="state-chip live" id="stateChip">list-ready</span>
+            <span class="micro-copy" id="toolbarHint">4 个运行实例，点击打开可直达 viewer。</span>
+          </div>
+        </section>
+
+        <section class="stage panel" aria-labelledby="stageTitle" data-screen-label="instance-stage">
+          <div class="stage-head">
+            <div>
+              <span class="eyebrow">instance runway</span>
+              <h2 id="stageTitle">实例工作面</h2>
+            </div>
+            <span class="last-sync" id="lastSync">刚刚同步</span>
+          </div>
+
+          <div class="state-view active" id="readyView">
+            <div class="featured-card" id="featuredCard" aria-label="首个运行实例"></div>
+            <div class="instance-grid" id="instanceGrid" aria-label="实例列表"></div>
+          </div>
+
+          <div class="state-view" id="loadingView" aria-label="加载中">
+            <div class="skeleton-feature"></div>
+            <div class="skeleton-grid">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+
+          <div class="state-view" id="emptyView" aria-label="空状态">
+            <div class="empty-card">
+              <span class="state-chip neutral">empty</span>
+              <h3>当前还没有运行中的实例</h3>
+              <p>从允许的项目路径启动一个 cc-viewer，新的入口会回到这个工作面。</p>
+              <button type="button" class="primary-button" id="emptyLaunch">启动新实例</button>
+            </div>
+          </div>
+
+          <div class="state-view" id="errorView" aria-label="读取异常">
+            <div class="error-card">
+              <span class="status-orb danger" aria-hidden="true"></span>
+              <div>
+                <span class="state-chip danger">discovery-error</span>
+                <h3>实例读取出现异常</h3>
+                <p>已知内容保留在工作面，刷新动作继续可达。</p>
+              </div>
+              <button type="button" class="ghost-button" id="errorRefresh">再次刷新</button>
+            </div>
+            <div class="instance-grid dimmed" id="errorGrid"></div>
+          </div>
+
+          <div class="state-view" id="filterEmptyView" aria-label="筛选空状态">
+            <div class="empty-card compact">
+              <span class="state-chip neutral">list-ready</span>
+              <h3>没有匹配项目名的运行实例</h3>
+              <p>实例数据仍然可用，清空筛选后继续浏览。</p>
+              <button type="button" class="ghost-button" id="clearSearch">清空筛选</button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="modal-backdrop" id="launchModal" hidden>
+      <section class="launch-modal panel" role="dialog" aria-modal="true" aria-labelledby="launchTitle" data-screen-label="launch-dialog">
+        <header class="modal-head">
+          <div>
+            <span class="eyebrow">new instance</span>
+            <h2 id="launchTitle">启动新的 cc-viewer 实例</h2>
+            <p>先定项目路径，再补启动参数。失败会留在这里继续修改。</p>
+          </div>
+          <button type="button" class="icon-button" id="closeLaunch" aria-label="关闭">×</button>
+        </header>
+
+        <div class="launch-layout">
+          <section class="path-column" aria-label="项目路径">
+            <label class="path-input priority">
+              <span>项目绝对路径</span>
+              <input id="launchPath" type="text" placeholder="/home/opc/projects/ccvs/ccv-hub" />
+            </label>
+
+            <div class="quick-paths">
+              <span class="field-hint">最近使用</span>
+              <button type="button" data-path="/home/opc/projects/ccvs/ccv-hub">ccv-hub</button>
+              <button type="button" data-path="/home/opc/projects/ccvs/cc-viewer">cc-viewer</button>
+              <button type="button" data-path="/home/opc/projects/claude-sdk-lab">claude-sdk-lab</button>
+            </div>
+
+            <div class="host-browser">
+              <div class="browser-actions">
+                <button type="button" class="ghost-button" id="showBrowser">选择宿主机路径</button>
+                <span>仅展示服务端允许目录。</span>
+              </div>
+              <div class="browser-panel" id="browserPanel" hidden>
+                <div class="root-row">
+                  <button type="button" class="root-chip active">/home/opc/projects</button>
+                  <button type="button" class="root-chip">/home/opc/work</button>
+                </div>
+                <label class="path-input small">
+                  <span>搜索当前目录</span>
+                  <input id="pathSearch" type="search" placeholder="输入目录名" />
+                </label>
+                <div class="folder-list" id="folderList"></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="config-column" aria-label="启动配置">
+            <div class="launch-summary">
+              <span class="summary-label">将启动</span>
+              <strong id="launchSummary">等待项目路径</strong>
+              <small id="launchModeSummary">普通启动</small>
+            </div>
+
+            <label class="path-input">
+              <span>启动模式</span>
+              <select id="launchMode">
+                <option value="普通启动">普通启动</option>
+                <option value="继续最近会话 (-c)">继续最近会话 (-c)</option>
+                <option value="选择历史会话 (-r)">选择历史会话 (-r)</option>
+              </select>
+            </label>
+            <label class="path-input">
+              <span>模型</span>
+              <input type="text" placeholder="留空沿用默认模型" />
+            </label>
+            <label class="path-input">
+              <span>初始提示词</span>
+              <textarea placeholder="可选：启动后交给 Claude Code 的第一句话"></textarea>
+            </label>
+            <div class="permission-box">
+              <label><input type="checkbox" /> 跳过权限确认 (--d)</label>
+              <label><input type="checkbox" /> 允许跳过权限确认 (--ad)</label>
+            </div>
+            <p class="modal-error" id="modalError" hidden>路径需要是绝对路径，并位于 Agent allowlist 中。</p>
+          </section>
+        </div>
+
+        <footer class="modal-actions">
+          <button type="button" class="ghost-button" id="cancelLaunch">关闭</button>
+          <button type="button" class="primary-button" id="submitLaunch">启动实例</button>
+        </footer>
+      </section>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
