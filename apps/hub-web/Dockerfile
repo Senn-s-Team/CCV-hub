@@ -17,7 +17,6 @@ RUN bun run --filter hub-web build
 
 FROM nginx:1.27-alpine
 ENV CCV_HUB_AGENT_UPSTREAM=http://host.docker.internal:4318 \
-    CCV_HUB_AGENT_PROXY_TOKEN= \
     CCV_HUB_VIEWER_PATH_PREFIX=/viewer
 COPY apps/hub-web/nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /workspace/apps/hub-web/dist /usr/share/nginx/html

@@ -1,0 +1,47 @@
+{
+  "projectId": "7971312314989119193",
+  "title": "CCV Hub Redesign",
+  "designSystems": [
+    {
+      "name": "assets/6197240275735676145",
+      "displayName": "CCV Hub Workbench",
+      "mode": "light",
+      "summary": "实用工作台浅色主题，实例列表优先，低饱和主操作色，中等圆角。"
+    },
+    {
+      "name": "assets/12474430232958851309",
+      "displayName": "CCV Hub Workbench Dark",
+      "mode": "dark",
+      "summary": "实用工作台深色主题，保持浅色版布局密度与信息优先级。"
+    }
+  ],
+  "screens": [
+    {
+      "screenId": "86aa6be31c3a4ad38760f2155843cf66",
+      "name": "projects/7971312314989119193/screens/86aa6be31c3a4ad38760f2155843cf66",
+      "title": "CCV Hub Workbench Dashboard",
+      "deviceType": "DESKTOP",
+      "mode": "light",
+      "html": ".stitch/designs/ccv-hub-desktop-light.html",
+      "screenshot": ".stitch/designs/ccv-hub-desktop-light.png"
+    },
+    {
+      "screenId": "a4cb602a7fe7465a807112af75503ce6",
+      "name": "projects/7971312314989119193/screens/a4cb602a7fe7465a807112af75503ce6",
+      "title": "CCV Hub Workbench - Dark Mode Dashboard",
+      "deviceType": "DESKTOP",
+      "mode": "dark",
+      "html": ".stitch/designs/ccv-hub-desktop-dark.html",
+      "screenshot": ".stitch/designs/ccv-hub-desktop-dark.png"
+    },
+    {
+      "screenId": "8cdb869a779c4caf82fdd624993c59c7",
+      "name": "projects/7971312314989119193/screens/8cdb869a779c4caf82fdd624993c59c7",
+      "title": "CCV Hub Mobile Dashboard",
+      "deviceType": "MOBILE",
+      "mode": "dark",
+      "html": ".stitch/designs/ccv-hub-mobile-dark.html",
+      "screenshot": ".stitch/designs/ccv-hub-mobile-dark.png"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖实例查询与启动 hooks，依赖 InstanceCard、LaunchDialog、Toast 组件、主题模式、退出动作与响应式工作台样式类名
- * [OUTPUT]: 对外提供 OverviewPage 页面，完成左侧状态驾驶舱、右侧实例列表、移动端状态抽屉、抽象主题切换、浮动启动入口与 Toast 闭环
+ * [OUTPUT]: 对外提供 OverviewPage 页面，完成顶部工具条、紧凑摘要条、实例列表主体、按需状态抽屉、主题切换、启动弹窗、生命周期停止动作与 Toast 闭环
  * [POS]: hub-web 的唯一主页面，承接 ccv-hub MVP 的所有前端主路径能力
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -23,7 +23,7 @@ type OverviewPageProps = {
 
 const themeCycle: ThemeMode[] = ['system', 'light', 'dark'];
 const themeLabels: Record<ThemeMode, string> = {
-  system: '系统',
+  system: '自动',
   light: '浅色',
   dark: '深色',
 };
@@ -33,7 +33,15 @@ function filterInstances(instances: Instance[], query: string): Instance[] {
   if (!normalized) {
     return instances;
   }
-  return instances.filter((instance) => instance.projectName.toLowerCase().includes(normalized));
+
+  return instances.filter((instance) => [
+    instance.projectName,
+    instance.projectPath,
+    instance.url,
+    instance.source,
+    instance.status,
+    String(instance.port ?? ''),
+  ].some((value) => value.toLowerCase().includes(normalized)));
 }
 
 function formatSyncTime(value: number): string {
@@ -56,7 +64,7 @@ export default function OverviewPage({ onLogout, themeMode, onThemeModeChange }:
   const [isModalOpen, setModalOpen] = useState(false);
   const [launchError, setLaunchError] = useState('');
   const [toastMessage, setToastMessage] = useState('');
-  const [isStatusRailOpen, setStatusRailOpen] = useState(false);
+  const [isStatusSheetOpen, setStatusSheetOpen] = useState(false);
   const instancesQuery = useInstances();
   const launchMutation = useLaunchInstance();
   const lifecycleMutation = useInstanceLifecycle();
@@ -64,7 +72,6 @@ export default function OverviewPage({ onLogout, themeMode, onThemeModeChange }:
   const instances = instancesQuery.data?.instances ?? [];
   const filteredInstances = useMemo(() => filterInstances(instances, query), [instances, query]);
   const hasFilterMiss = !instancesQuery.isLoading && !instancesQuery.isError && instances.length > 0 && filteredInstances.length === 0;
-
   const stageStateLabel = (() => {
     if (instancesQuery.isLoading) return 'loading';
     if (instancesQuery.isError) return 'discovery-error';
@@ -73,14 +80,14 @@ export default function OverviewPage({ onLogout, themeMode, onThemeModeChange }:
   })();
 
   useEffect(() => {
-    function closeRailWithEscape(event: KeyboardEvent) {
+    function closeSheetWithEscape(event: KeyboardEvent) {
       if (event.key === 'Escape') {
-        setStatusRailOpen(false);
+        setStatusSheetOpen(false);
       }
     }
 
-    window.addEventListener('keydown', closeRailWithEscape);
-    return () => window.removeEventListener('keydown', closeRailWithEscape);
+    window.addEventListener('keydown', closeSheetWithEscape);
+    return () => window.removeEventListener('keydown', closeSheetWithEscape);
   }, []);
 
   async function handleLaunch(request: CreateInstanceRequest) {
@@ -116,7 +123,7 @@ export default function OverviewPage({ onLogout, themeMode, onThemeModeChange }:
   }
 
   function openLaunchDialog() {
-    setStatusRailOpen(false);
+    setStatusSheetOpen(false);
     setModalOpen(true);
   }
 
@@ -124,131 +131,106 @@ export default function OverviewPage({ onLogout, themeMode, onThemeModeChange }:
     onThemeModeChange(getNextThemeMode(themeMode));
   }
 
+  function renderThemeControl(className: string) {
+    const isSheetTheme = className.includes('sheet');
+    return (
+      <div className={`theme-control segmented-theme ${className}`} role="group" aria-label="颜色模式">
+        {themeCycle.map((mode) => {
+          const currentLabel = `切换颜色模式，当前${mode === 'system' ? '系统' : themeLabels[mode]}`;
+          const nextLabel = `切换到${themeLabels[mode]}模式`;
+          return (
+            <button
+              key={mode}
+              className="theme-option"
+              type="button"
+              aria-pressed={themeMode === mode}
+              aria-label={isSheetTheme ? `状态面板${themeMode === mode ? currentLabel : nextLabel}` : themeMode === mode ? currentLabel : nextLabel}
+              onClick={() => (themeMode === mode ? cycleThemeMode() : onThemeModeChange(mode))}
+            >
+              {themeLabels[mode]}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <>
       <button
-        className="theme-art-button"
-        type="button"
-        aria-label={`切换颜色模式，当前${themeLabels[themeMode]}`}
-        title={`当前${themeLabels[themeMode]}模式`}
-        onClick={cycleThemeMode}
-      >
-        <span className="theme-art-shape shape-one" aria-hidden="true"></span>
-        <span className="theme-art-shape shape-two" aria-hidden="true"></span>
-        <span className="theme-art-shape shape-three" aria-hidden="true"></span>
-      </button>
-      <button
-        className="mobile-rail-toggle"
-        type="button"
-        aria-controls="statusRail"
-        aria-expanded={isStatusRailOpen}
-        onClick={() => setStatusRailOpen((isOpen) => !isOpen)}
-      >
-        状态
-      </button>
-      <button
         className="mobile-rail-scrim"
         type="button"
-        aria-label="关闭状态菜单"
-        hidden={!isStatusRailOpen}
-        onClick={() => setStatusRailOpen(false)}
+        aria-hidden="true"
+        tabIndex={-1}
+        hidden={!isStatusSheetOpen}
+        onClick={() => setStatusSheetOpen(false)}
       ></button>
 
-      <div className={`app-shell${isStatusRailOpen ? ' status-rail-open' : ''}`}>
-        <aside className="status-rail" id="statusRail" aria-label="实例状态信息">
-          <section className="brand-card panel rise" aria-label="Hub 标识">
-            <div>
-              <strong>Hub</strong>
-              <span>local viewer console</span>
-            </div>
-          </section>
+      <div className={`app-shell workbench-shell${isStatusSheetOpen ? ' status-sheet-open' : ''}`}>
+        <header className="topbar panel rise" aria-label="全局工具条">
+          <div className="topbar-brand" aria-label="CCV Hub">
+            <span className="brand-mark" aria-hidden="true">⌘</span>
+            <strong>CCV Hub</strong>
+          </div>
 
-          <section className="status-command panel rise" aria-label="当前总览状态">
-            <span className="section-kicker">status center</span>
-            <div className="status-command-headline">
-              <span className={`state-badge ${instancesQuery.isError ? 'error' : instancesQuery.isLoading ? 'neutral' : 'running'}`}>{stageStateLabel}</span>
-              <strong>{instances.length}</strong>
-            </div>
-            <p>{instances.length} 个运行实例，{filteredInstances.length} 个当前可见。</p>
-            <div className="sync-row">
-              <span>同步</span>
-              <strong>{formatSyncTime(instancesQuery.dataUpdatedAt)}</strong>
-            </div>
-          </section>
+          <label className="search-field topbar-search">
+            <span className="visually-hidden">实例筛选</span>
+            <input
+              type="text"
+              placeholder="搜项目名、路径、端口"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </label>
 
-          <section className="status-card panel" aria-label="宿主机 Agent">
-            <div className="status-card-title">
-              <span className="section-kicker">host agent</span>
-              <span className="status-led live" aria-hidden="true"></span>
-            </div>
-            <strong>已连接</strong>
-            <p>实例列表轮询与 viewer path bridge 保持运行。</p>
-          </section>
+          {renderThemeControl('topbar-theme')}
 
-          <section className="rail-summary panel" aria-label="实例状态摘要">
-            <article className="summary-card">
-              <span className="section-kicker">在线实例</span>
-              <strong>{instances.length}</strong>
-              <small>按启动时间降序</small>
-            </article>
-            <article className="summary-card">
-              <span className="section-kicker">可见结果</span>
-              <strong>{filteredInstances.length}</strong>
-              <small>项目名即时筛选</small>
-            </article>
-            <article className="summary-card accent-summary">
-              <span className="section-kicker">稳定入口</span>
-              <strong>/viewer/*</strong>
-              <small>同 host path bridge</small>
-            </article>
-          </section>
-
-          <section className="status-card panel" aria-label="当前边界">
-            <span className="section-kicker">boundary</span>
-            <ul className="boundary-list">
-              <li>只展示 running 实例</li>
-              <li>Viewer 走 /viewer/* 稳定入口</li>
-              <li>启动路径由 Agent allowlist 控制</li>
-            </ul>
-          </section>
-
-          <div className="rail-actions panel" aria-label="全局动作">
-            <button className="button button-secondary" type="button" onClick={() => void instancesQuery.refetch()}>
-              刷新列表
+          <div className="topbar-actions">
+            <button className="button button-secondary compact-button refresh-button" type="button" onClick={() => void instancesQuery.refetch()}>
+              刷新
             </button>
-            <button className="button button-secondary" type="button" onClick={() => void onLogout()}>
-              退出
+            <button className="button button-primary compact-button" type="button" onClick={openLaunchDialog}>
+              启动
+            </button>
+            <button
+              className="button button-secondary status-sheet-toggle"
+              type="button"
+              aria-controls="statusSheet"
+              aria-expanded={isStatusSheetOpen}
+              onClick={() => setStatusSheetOpen((isOpen) => !isOpen)}
+            >
+              状态
             </button>
           </div>
-        </aside>
+        </header>
+
+        <section className="summary-strip panel" aria-label="实例摘要">
+          <article className="summary-pill">
+            <span>运行中</span>
+            <strong>{instances.length}</strong>
+          </article>
+          <article className="summary-pill">
+            <span>可见</span>
+            <strong>{filteredInstances.length}</strong>
+          </article>
+          <article className="summary-pill">
+            <span>同步</span>
+            <strong>{formatSyncTime(instancesQuery.dataUpdatedAt)}</strong>
+          </article>
+          <article className="summary-pill agent-pill">
+            <span className="status-led live" aria-hidden="true"></span>
+            <strong>Agent 已连接</strong>
+          </article>
+        </section>
 
         <main className="workbench" aria-label="实例列表工作区">
-          <header className="app-header panel rise">
-            <div className="header-copy">
-              <span className="section-kicker">running instances</span>
-              <h1>在线实例</h1>
-              <p className="subtitle">右侧工作区只处理实例发现、筛选、打开和复制，状态决策全部沉到左侧。</p>
-            </div>
-          </header>
-
-          <section className="toolbar panel" aria-label="筛选实例">
-            <label className="search-field toolbar-search">
-              <span>项目筛选</span>
-              <input
-                type="text"
-                placeholder="例如：viewer / sdk / mobile"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-              />
-            </label>
-          </section>
-
-          <section className="instance-stage panel sunken" aria-labelledby="instanceStageTitle">
-            <div className="stage-header">
+          <section className={`instance-stage panel sunken${!instancesQuery.isLoading && !instancesQuery.isError && (instances.length === 0 || hasFilterMiss) ? ' empty-stage' : ''}`} aria-labelledby="instanceStageTitle">
+            <div className="stage-header compact-stage-header">
               <div>
                 <span className="section-kicker">viewer entries</span>
-                <h2 id="instanceStageTitle">实例列表</h2>
+                <h1 id="instanceStageTitle">实例列表</h1>
               </div>
+              <span className="visually-hidden">{stageStateLabel}</span>
             </div>
 
             <div className="stage-content">
@@ -275,7 +257,7 @@ export default function OverviewPage({ onLogout, themeMode, onThemeModeChange }:
                     </button>
                   </div>
                   {instances.length > 0 ? (
-                    <div className="card-grid dimmed">
+                    <div className="instance-list dimmed">
                       {filteredInstances.map((instance) => (
                         <InstanceCard
                           key={instance.id}
@@ -293,13 +275,9 @@ export default function OverviewPage({ onLogout, themeMode, onThemeModeChange }:
 
               {!instancesQuery.isLoading && !instancesQuery.isError && instances.length === 0 ? (
                 <section className="state-pane active">
-                  <div className="empty-state-card">
-                    <span className="state-flag neutral">empty</span>
-                    <h3>当前还没有运行中的实例</h3>
-                    <p>直接启动一个新的 cc-viewer 工作区，列表会在刷新后回到这里。</p>
-                    <button className="button button-primary inline-launch" type="button" onClick={openLaunchDialog}>
-                      启动新实例
-                    </button>
+                  <div className="empty-state-card compact-empty">
+                    <h3>暂无运行实例</h3>
+                    <p>点击顶部“启动”，选择项目路径后创建新的 cc-viewer 工作区。</p>
                   </div>
                 </section>
               ) : null}
@@ -307,9 +285,8 @@ export default function OverviewPage({ onLogout, themeMode, onThemeModeChange }:
               {hasFilterMiss ? (
                 <section className="state-pane active">
                   <div className="empty-state-card compact-empty">
-                    <span className="state-flag neutral">list-ready</span>
-                    <h3>没有匹配项目名的运行实例</h3>
-                    <p>清空筛选后查看当前所有运行实例。</p>
+                    <h3>没有匹配结果</h3>
+                    <p>试试项目名、路径、端口或来源关键字。</p>
                     <button className="button button-secondary inline-launch" type="button" onClick={() => setQuery('')}>
                       清空筛选
                     </button>
@@ -319,7 +296,7 @@ export default function OverviewPage({ onLogout, themeMode, onThemeModeChange }:
 
               {!instancesQuery.isLoading && !instancesQuery.isError && instances.length > 0 && filteredInstances.length > 0 ? (
                 <section className="state-pane active">
-                  <div className="card-grid">
+                  <div className="instance-list">
                     {filteredInstances.map((instance) => (
                       <InstanceCard
                         key={instance.id}
@@ -336,12 +313,49 @@ export default function OverviewPage({ onLogout, themeMode, onThemeModeChange }:
             </div>
           </section>
         </main>
-      </div>
 
-      <button className="floating-launch" type="button" aria-label="启动新实例" onClick={openLaunchDialog}>
-        <span aria-hidden="true">＋</span>
-        <strong>启动</strong>
-      </button>
+        <aside className="status-sheet panel rise" id="statusSheet" aria-label="状态与设置">
+          <div className="sheet-grip" aria-hidden="true"></div>
+          <div className="status-sheet-header">
+            <div>
+              <span className="section-kicker">status</span>
+              <h2>状态与设置</h2>
+            </div>
+            <button className="icon-button" type="button" aria-label="关闭状态菜单" onClick={() => setStatusSheetOpen(false)}>
+              ×
+            </button>
+          </div>
+
+          <section className="status-card compact-panel" aria-label="宿主机 Agent">
+            <div className="status-card-title">
+              <span className="section-kicker">host agent</span>
+              <span className="status-led live" aria-hidden="true"></span>
+            </div>
+            <strong>已连接</strong>
+            <p>实例轮询、启动请求与 /viewer/* path bridge 保持运行。</p>
+          </section>
+
+          <section className="compact-panel mobile-theme-panel" aria-label="主题设置">
+            <span className="section-kicker">theme</span>
+            {renderThemeControl('sheet-theme')}
+          </section>
+
+          <section className="compact-panel" aria-label="当前边界">
+            <span className="section-kicker">boundary</span>
+            <ul className="boundary-list">
+              <li>只展示 running 实例</li>
+              <li>Viewer 走 /viewer/* 稳定入口</li>
+              <li>启动路径由 Agent allowlist 控制</li>
+            </ul>
+          </section>
+
+          <div className="sheet-actions">
+            <button className="button button-secondary" type="button" onClick={() => void onLogout()}>
+              退出
+            </button>
+          </div>
+        </aside>
+      </div>
 
       <LaunchDialog
         isOpen={isModalOpen}

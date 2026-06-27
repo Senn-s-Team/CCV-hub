@@ -10,6 +10,6 @@ workbench-core.css: 工作台核心层，定义工具栏、实例舞台、实例
 launch-dialog.css: 启动弹窗层，定义宿主机路径浏览、最近路径、启动参数、错误提示与提交栏样式
 focus-motion.css: 交互动效层，定义统一 focus-visible、骨架动画、hover motion 与动效入口
 responsive-core.css: 基础响应式层，定义平板、手机、bottom sheet 与 reduced-motion 规则
-workbench-redesign.css: redesign 覆盖层，定义左侧状态驾驶舱、移动状态抽屉、抽象主题图形与浮动启动入口
+workbench-redesign.css: redesign 覆盖层，定义顶部工具条、摘要条、桌面行式实例列表、移动单列卡片、按需状态抽屉与浅色/深色同构响应式布局
 
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md

@@ -10,6 +10,7 @@ packages/ - 共享模块目录（1 子目录: shared-contracts）
 scripts/ - release、安装与验证脚本目录（7 文件: CLAUDE.md, package-agent-release.mjs, package-web-release.mjs, deploy-dev-release.mjs, rehearse-release.mjs, install-agent-release.sh, smoke-release.mjs）
 deploy/ - Web 入口、logger 插件与宿主机 Agent release 部署目录（9 文件: docker-compose.hub.yml, docker-compose.standalone.yml, Caddyfile.example, nginx.hub.conf.example, kubernetes-web.yaml, ccv-hub-agent.service, ccv-hub-service.service, .env.agent.example, ccv-hub-plugin.mjs）
 designs/ - 设计交付物目录（1 子目录: ccv-hub-redesign；承载总览页 redesign 高保真交互原型）
+.stitch/ - Stitch 生成资产目录（2 条目: CLAUDE.md, metadata.json；designs 保存桌面浅色、桌面深色与移动端深色预览）
 </directory>
 
 <config>
@@ -41,6 +42,7 @@ bun.lock - Bun 锁文件，固定 workspace 依赖解析结果
 - `deploy/` - 部署资产目录，负责 Web image-only 公网入口、Compose/Caddy/Nginx/Kubernetes 同 host viewer path 平台模板、宿主机 `ccv-hub-agent` release systemd 单元、含 Hub 插件回连地址的 .env.agent 模板与 cc-viewer logger 插件安装源。
 - `scripts/` - 存放 release 打包、dev redeploy 编排、演练与安装脚本，负责 Web/Agent tarball 产物、checksums、rehearsal evidence、path viewer smoke、宿主机安装流程和 public dev SOP 收敛。
 - `designs/` - 存放设计交付物与评审原型，当前承载 ccv-hub 总览页 redesign 高保真交互原型。
+- `.stitch/` - 存放 Stitch 项目元数据与生成预览资产，当前记录 CCV Hub Workbench 浅色/深色设计系统与桌面/移动端预览。
 
 ## 设计法则
 

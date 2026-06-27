@@ -75,7 +75,7 @@ function renderApp() {
 }
 
 async function openLaunchDialog() {
-  fireEvent.click((await screen.findAllByText('启动新实例'))[0]!);
+  fireEvent.click(await screen.findByRole('button', { name: '启动' }));
   return screen.getByRole('dialog', { name: '启动新的 cc-viewer 实例' });
 }
 
@@ -193,7 +193,7 @@ describe('OverviewPage', () => {
     expect(await screen.findByText('cc-viewer')).toBeInTheDocument();
     expect(screen.getAllByText('list-ready')[0]).toBeInTheDocument();
     expect(screen.getAllByText('访问入口')[0]).toBeInTheDocument();
-    fireEvent.change(screen.getByPlaceholderText('例如：viewer / sdk / mobile'), { target: { value: 'sdk' } });
+    fireEvent.change(screen.getByPlaceholderText('搜项目名、路径、端口'), { target: { value: 'sdk' } });
 
     await waitFor(() => {
       expect(screen.queryByText('cc-viewer')).not.toBeInTheDocument();
@@ -212,13 +212,13 @@ describe('OverviewPage', () => {
     renderPage();
 
     expect(await screen.findByText('cc-viewer')).toBeInTheDocument();
-    fireEvent.change(screen.getByPlaceholderText('例如：viewer / sdk / mobile'), { target: { value: 'missing' } });
+    fireEvent.change(screen.getByPlaceholderText('搜项目名、路径、端口'), { target: { value: 'missing' } });
 
-    expect(await screen.findByText('没有匹配项目名的运行实例')).toBeInTheDocument();
+    expect(await screen.findByText('没有匹配结果')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '清空筛选' }));
 
     expect(screen.getByText('cc-viewer')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('例如：viewer / sdk / mobile')).toHaveValue('');
+    expect(screen.getByPlaceholderText('搜项目名、路径、端口')).toHaveValue('');
   });
 
   it('renders empty state when no running instances exist', async () => {
@@ -229,7 +229,7 @@ describe('OverviewPage', () => {
 
     renderPage();
 
-    expect(await screen.findByText('当前还没有运行中的实例')).toBeInTheDocument();
+    expect(await screen.findByText('暂无运行实例')).toBeInTheDocument();
   });
 
   it('defaults to system theme and cycles theme through the abstract control', async () => {
@@ -246,6 +246,7 @@ describe('OverviewPage', () => {
 
     renderApp();
 
+    fireEvent.click(await screen.findByRole('button', { name: '状态' }));
     const themeButton = await screen.findByRole('button', { name: '切换颜色模式，当前系统' });
     expect(document.documentElement.dataset.theme).toBe('system');
     expect(storage.get('ccv-hub.theme-mode')).toBe('system');

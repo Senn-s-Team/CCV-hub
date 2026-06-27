@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+
+<html class="light" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CCV Hub Workbench</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary": "#2f6a3e",
+                    "on-tertiary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "outline": "#838174",
+                    "on-surface": "#39382e",
+                    "on-primary-fixed-variant": "#2c673c",
+                    "on-primary-fixed": "#094a22",
+                    "on-primary": "#e4ffe3",
+                    "tertiary-container": "#fcae54",
+                    "on-primary-container": "#225d33",
+                    "tertiary-fixed-dim": "#eca148",
+                    "surface-bright": "#fffbff",
+                    "error": "#a54731",
+                    "secondary-fixed-dim": "#c5d6f0",
+                    "secondary-fixed": "#d3e4fe",
+                    "inverse-on-surface": "#9f9d97",
+                    "surface-dim": "#e6e3d1",
+                    "surface-container-high": "#f2eee0",
+                    "primary-container": "#b2f2ba",
+                    "on-tertiary-container": "#573200",
+                    "on-secondary": "#ffffff",
+                    "primary-fixed-dim": "#a4e3ad",
+                    "tertiary-dim": "#804c00",
+                    "tertiary": "#915700",
+                    "on-secondary-fixed-variant": "#4d5d73",
+                    "on-background": "#39382e",
+                    "on-tertiary-fixed-variant": "#633a00",
+                    "on-error-container": "#742410",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container": "#f7f3e8",
+                    "inverse-surface": "#0f0e0b",
+                    "surface-variant": "#ece8d9",
+                    "surface-container-low": "#fdf9f0",
+                    "surface-container-highest": "#ece8d9",
+                    "error-container": "#fe8b70",
+                    "background": "#fffbff",
+                    "surface-tint": "#2f6a3e",
+                    "primary-dim": "#225d33",
+                    "error-dim": "#5c1202",
+                    "on-secondary-container": "#435368",
+                    "inverse-primary": "#b7f7bf",
+                    "on-surface-variant": "#666559",
+                    "secondary": "#56657c",
+                    "primary-fixed": "#b2f2ba",
+                    "outline-variant": "#bcb9ab",
+                    "tertiary-fixed": "#fcae54",
+                    "secondary-container": "#d3e4fe",
+                    "on-tertiary-fixed": "#391f00",
+                    "surface": "#fffbff",
+                    "secondary-dim": "#49596f",
+                    "on-secondary-fixed": "#314055"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "display": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; display: inline-block; vertical-align: middle; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #bcb9ab; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-surface-container-low text-on-surface">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center h-[56px] px-4 w-full bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline">
+<div class="flex items-center gap-4 flex-1">
+<span class="font-headline text-[18px] font-bold tracking-tight text-on-surface dark:text-surface-bright">CCV Hub</span>
+<!-- Search Bar -->
+<div class="relative w-full max-w-md ml-4">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+<input class="w-full h-9 pl-10 pr-4 bg-surface-variant border-none rounded-lg text-sm focus:ring-1 focus:ring-primary placeholder:text-on-surface-variant/60 transition-all" placeholder="搜项目名、路径、端口" type="text"/>
+</div>
+<div class="flex items-center gap-2 px-2 py-1 bg-primary-container text-on-primary-container rounded-lg text-[12px] font-bold">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                12 ACTIVE
+            </div>
+</div>
+<div class="flex items-center gap-3">
+<button class="p-2 text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-lg active:scale-95">
+<span class="material-symbols-outlined" data-icon="refresh">refresh</span>
+</button>
+<button class="flex items-center gap-2 px-4 h-9 bg-primary text-on-primary font-bold rounded-lg hover:opacity-90 active:scale-[0.98] transition-all text-sm">
+<span class="material-symbols-outlined text-[20px]" data-icon="add">add</span>
+<span>启动新实例</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-variant rounded-lg">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="A professional studio headshot of a software developer with a focused expression, wearing a minimalist dark shirt. The lighting is soft and directional, typical of a modern workspace profile picture. The background is a subtle, clean office environment with a shallow depth of field." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA9iS2yGWjd0moGp0Dn5IQ8o0VU8QH8FSf6ubj3bQXhHQQLjhIYcBFqb8Vv4n6wVb4Ngbs7kyEyHC8lA0FHbUuZqSUCD1ugO8cQbhqfut2ZBodBGHYiOzIcJJ_GJFreEKUiA7efSXK6HXGhnNeXbBO4e0kVaD6Ljgq6lUyze12-6LVAdNRQja7qkPddKjyCafRK2SKEgTR9rjhFi0UxJ4mZyK1VylMJGftrHaTg1XDrfS4Ez1Y15PWI_xAJPctT921p07lBofn1LwI"/>
+</div>
+</div>
+</header>
+<!-- Sidebar (SideNavBar Implementation) -->
+<aside class="fixed right-0 top-[56px] h-[calc(100vh-56px)] w-64 z-40 bg-surface-container-low border-l border-outline-variant dark:border-outline shadow-sm flex flex-col p-[14px] gap-[10px]">
+<div class="mb-4">
+<div class="flex items-center gap-3 p-2">
+<div class="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">terminal</span>
+</div>
+<div>
+<div class="text-on-surface font-bold text-sm">Hub Admin</div>
+<div class="text-[12px] text-on-surface-variant">Local Node</div>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 bg-primary-container text-on-primary-container font-bold rounded-lg transition-all active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined" data-icon="dns">dns</span>
+<span class="font-body text-[14px]">Instances</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-variant rounded-lg transition-all active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined" data-icon="support_agent">support_agent</span>
+<span class="font-body text-[14px]">Agents</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-variant rounded-lg transition-all active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-body text-[14px]">Metrics</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-variant rounded-lg transition-all active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined" data-icon="shield">shield</span>
+<span class="font-body text-[14px]">Security</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-variant rounded-lg transition-all active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-body text-[14px]">Settings</span>
+</a>
+</nav>
+<!-- Right Drawer Sections as defined in prompt -->
+<div class="mt-auto space-y-6 pt-4 border-t border-outline-variant">
+<section>
+<h3 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Agent State</h3>
+<div class="bg-surface-variant/50 rounded-lg p-2 flex items-center justify-between">
+<span class="text-[12px] flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                        Connected
+                    </span>
+<span class="text-[11px] text-on-surface-variant font-mono">1.2.0-stable</span>
+</div>
+</section>
+<section>
+<h3 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Security</h3>
+<div class="bg-surface-variant/50 rounded-lg p-2 text-[12px]">
+<span class="text-on-surface-variant">Scope:</span>
+<code class="ml-1 text-primary">/viewer/* boundary</code>
+</div>
+</section>
+<section>
+<h3 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Theme Selector</h3>
+<div class="grid grid-cols-3 gap-1 bg-surface-variant p-1 rounded-lg">
+<button class="text-[11px] py-1 bg-surface-container-lowest text-on-surface font-bold rounded shadow-sm">自动</button>
+<button class="text-[11px] py-1 text-on-surface-variant hover:text-on-surface">浅色</button>
+<button class="text-[11px] py-1 text-on-surface-variant hover:text-on-surface">深色</button>
+</div>
+</section>
+<button class="w-full flex items-center justify-center gap-2 py-2 text-error text-[13px] font-bold hover:bg-error-container/20 rounded-lg transition-colors">
+<span class="material-symbols-outlined text-[18px]">logout</span>
+                退出登录
+            </button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="pt-[56px] pr-64 min-h-screen">
+<!-- Summary Strip -->
+<div class="h-[44px] px-6 bg-surface-container border-b border-outline-variant flex items-center justify-between text-[13px]">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-1.5 text-on-surface">
+<span class="text-on-surface-variant">运行中</span>
+<span class="font-bold">12</span>
+</div>
+<div class="flex items-center gap-1.5 text-on-surface">
+<span class="text-on-surface-variant">当前可见</span>
+<span class="font-bold">8</span>
+</div>
+<div class="flex items-center gap-1.5 text-on-surface">
+<span class="text-on-surface-variant">最近同步</span>
+<span class="font-bold">14:32</span>
+</div>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">circle</span>
+<span>Agent 已连接</span>
+</div>
+</div>
+<!-- Warning Banner -->
+<div class="bg-error-container/10 px-6 py-2.5 border-b border-error-container/20 flex items-center justify-between">
+<div class="flex items-center gap-3 text-error">
+<span class="material-symbols-outlined text-[20px]">warning</span>
+<span class="text-[14px] font-medium">实例列表刷新失败</span>
+</div>
+<button class="text-error text-[14px] font-bold hover:underline">再次刷新</button>
+</div>
+<!-- Data Table Container -->
+<div class="p-4">
+<div class="bg-surface rounded-xl border border-outline-variant overflow-hidden shadow-sm">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-variant/40 border-b border-outline-variant">
+<th class="px-4 py-3 text-[12px] font-bold text-on-surface-variant uppercase tracking-wider">Project Name</th>
+<th class="px-4 py-3 text-[12px] font-bold text-on-surface-variant uppercase tracking-wider">Status</th>
+<th class="px-4 py-3 text-[12px] font-bold text-on-surface-variant uppercase tracking-wider">Source</th>
+<th class="px-4 py-3 text-[12px] font-bold text-on-surface-variant uppercase tracking-wider">Path &amp; URL</th>
+<th class="px-4 py-3 text-[12px] font-bold text-on-surface-variant uppercase tracking-wider">Uptime/Last Seen</th>
+<th class="px-4 py-3 text-[12px] font-bold text-on-surface-variant uppercase tracking-wider text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container transition-colors group">
+<td class="px-4 py-3.5">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-primary-soft flex items-center justify-center text-primary font-bold">A</div>
+<span class="text-[14px] font-bold text-on-surface">Alpha Project Service</span>
+</div>
+</td>
+<td class="px-4 py-3.5">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-primary-container text-on-primary-container">Running</span>
+</td>
+<td class="px-4 py-3.5 text-[13px] text-on-surface-variant">Local</td>
+<td class="px-4 py-3.5">
+<div class="text-[12px] text-on-surface-variant leading-tight">/Users/dev/workspace/alpha-v2</div>
+<div class="text-[12px] text-primary font-medium hover:underline cursor-pointer">http://localhost:8080</div>
+</td>
+<td class="px-4 py-3.5 text-[13px] text-on-surface-variant">2h 15m</td>
+<td class="px-4 py-3.5 text-right">
+<div class="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+<button class="px-3 py-1.5 text-[12px] font-bold text-primary hover:bg-primary-soft rounded">打开</button>
+<button class="px-3 py-1.5 text-[12px] font-bold text-on-surface-variant hover:bg-surface-variant rounded">复制</button>
+<button class="px-3 py-1.5 text-[12px] font-bold text-error hover:bg-error-container/20 rounded">停止</button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container transition-colors group">
+<td class="px-4 py-3.5">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface-variant flex items-center justify-center text-on-surface-variant font-bold">I</div>
+<span class="text-[14px] font-bold text-on-surface">Inventory System</span>
+</div>
+</td>
+<td class="px-4 py-3.5">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-surface-variant text-on-surface-variant">Stopped</span>
+</td>
+<td class="px-4 py-3.5 text-[13px] text-on-surface-variant">Remote</td>
+<td class="px-4 py-3.5">
+<div class="text-[12px] text-on-surface-variant leading-tight">/opt/ccv/inventory</div>
+<div class="text-[12px] text-on-surface-variant/40 italic">---</div>
+</td>
+<td class="px-4 py-3.5 text-[13px] text-on-surface-variant italic">Last seen 2m ago</td>
+<td class="px-4 py-3.5 text-right">
+<div class="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+<button class="px-3 py-1.5 text-[12px] font-bold text-primary hover:bg-primary-soft rounded">启动</button>
+<button class="px-3 py-1.5 text-[12px] font-bold text-on-surface-variant hover:bg-surface-variant rounded">更多</button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container transition-colors group">
+<td class="px-4 py-3.5">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-primary-soft flex items-center justify-center text-primary font-bold">E</div>
+<span class="text-[14px] font-bold text-on-surface">Experiment Lab 04</span>
+</div>
+</td>
+<td class="px-4 py-3.5">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-primary-container text-on-primary-container">Running</span>
+</td>
+<td class="px-4 py-3.5 text-[13px] text-on-surface-variant">Remote</td>
+<td class="px-4 py-3.5">
+<div class="text-[12px] text-on-surface-variant leading-tight">/home/ccv/exp-04</div>
+<div class="text-[12px] text-primary font-medium hover:underline cursor-pointer">https://lab.internal/04</div>
+</td>
+<td class="px-4 py-3.5 text-[13px] text-on-surface-variant">4d 12h</td>
+<td class="px-4 py-3.5 text-right">
+<div class="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+<button class="px-3 py-1.5 text-[12px] font-bold text-primary hover:bg-primary-soft rounded">打开</button>
+<button class="px-3 py-1.5 text-[12px] font-bold text-error hover:bg-error-container/20 rounded">停止</button>
+</div>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container transition-colors group">
+<td class="px-4 py-3.5">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-primary-soft flex items-center justify-center text-primary font-bold">D</div>
+<span class="text-[14px] font-bold text-on-surface">Data Pipeline Worker</span>
+</div>
+</td>
+<td class="px-4 py-3.5">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-primary-container text-on-primary-container">Running</span>
+</td>
+<td class="px-4 py-3.5 text-[13px] text-on-surface-variant">Remote</td>
+<td class="px-4 py-3.5">
+<div class="text-[12px] text-on-surface-variant leading-tight">/srv/worker-pool/dp-1</div>
+<div class="text-[12px] text-on-surface-variant/40 italic">---</div>
+</td>
+<td class="px-4 py-3.5 text-[13px] text-on-surface-variant">12h 45m</td>
+<td class="px-4 py-3.5 text-right">
+<button class="p-2 text-on-surface-variant hover:bg-surface-variant rounded-lg">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</td>
+</tr>
+<!-- Row 5 -->
+<tr class="hover:bg-surface-container transition-colors group">
+<td class="px-4 py-3.5">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-primary-soft flex items-center justify-center text-primary font-bold">A</div>
+<span class="text-[14px] font-bold text-on-surface">Auth Gateway API</span>
+</div>
+</td>
+<td class="px-4 py-3.5">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-primary-container text-on-primary-container">Running</span>
+</td>
+<td class="px-4 py-3.5 text-[13px] text-on-surface-variant">Local</td>
+<td class="px-4 py-3.5">
+<div class="text-[12px] text-on-surface-variant leading-tight">/Users/dev/api/auth-gw</div>
+<div class="text-[12px] text-on-surface-variant/40 italic">---</div>
+</td>
+<td class="px-4 py-3.5 text-[13px] text-on-surface-variant">1d 04h</td>
+<td class="px-4 py-3.5 text-right">
+<button class="p-2 text-on-surface-variant hover:bg-surface-variant rounded-lg">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</td>
+</tr>
+<!-- Row 6 -->
+<tr class="hover:bg-surface-container transition-colors group">
+<td class="px-4 py-3.5">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface-variant flex items-center justify-center text-on-surface-variant font-bold">M</div>
+<span class="text-[14px] font-bold text-on-surface">Mockup Server</span>
+</div>
+</td>
+<td class="px-4 py-3.5">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-surface-variant text-on-surface-variant">Stopped</span>
+</td>
+<td class="px-4 py-3.5 text-[13px] text-on-surface-variant">Local</td>
+<td class="px-4 py-3.5">
+<div class="text-[12px] text-on-surface-variant leading-tight">~/mocks/web-app</div>
+<div class="text-[12px] text-on-surface-variant/40 italic">---</div>
+</td>
+<td class="px-4 py-3.5 text-[13px] text-on-surface-variant italic">Last seen 1h ago</td>
+<td class="px-4 py-3.5 text-right">
+<div class="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+<button class="px-3 py-1.5 text-[12px] font-bold text-primary hover:bg-primary-soft rounded">启动</button>
+<button class="px-3 py-1.5 text-[12px] font-bold text-on-surface-variant hover:bg-surface-variant rounded">更多</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Footer Meta -->
+<div class="mt-4 flex items-center justify-between text-[12px] text-on-surface-variant/60 px-2">
+<p>Workbench Node: host-x86-64-prod-22</p>
+<div class="flex items-center gap-4">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">bolt</span> 42ms Latency</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">database</span> DB Synced</span>
+</div>
+</div>
+</div>
+</main>
+<script>
+        // Micro-interactions for table rows
+        document.querySelectorAll('tr').forEach(row => {
+            row.addEventListener('mouseenter', () => {
+                row.style.transform = 'translateX(2px)';
+                row.style.transition = 'transform 0.1s ease-out';
+            });
+            row.addEventListener('mouseleave', () => {
+                row.style.transform = 'translateX(0)';
+            });
+        });
+
+        // Simple theme toggle visual response
+        const themeButtons = document.querySelectorAll('.grid-cols-3 button');
+        themeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                themeButtons.forEach(b => {
+                    b.classList.remove('bg-surface-container-lowest', 'text-on-surface', 'font-bold', 'shadow-sm');
+                    b.classList.add('text-on-surface-variant');
+                });
+                btn.classList.remove('text-on-surface-variant');
+                btn.classList.add('bg-surface-container-lowest', 'text-on-surface', 'font-bold', 'shadow-sm');
+            });
+        });
+    </script>
+</body></html>

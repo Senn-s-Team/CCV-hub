@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #201D19;
+            color: #F0E8DA;
+            margin: 0;
+            overflow: hidden;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+            font-size: 20px;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #171512;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #4C4338;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #665A4B;
+        }
+        .segmented-control-active {
+            background-color: #6FA879;
+            color: #171512;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        canvas: '#201D19',
+                        shell: '#171512',
+                        surface: '#28241F',
+                        "surface-muted": '#302B25',
+                        "surface-raised": '#343029',
+                        "text-primary": '#F0E8DA',
+                        "text-secondary": '#C9BEAD',
+                        "text-faint": '#9F9484',
+                        primary: '#6FA879',
+                        "primary-hover": '#82BB8C',
+                        "primary-soft": '#263A2A',
+                        warning: '#D19A3A',
+                        "warning-soft": '#3F3118',
+                        danger: '#D47A68',
+                        "danger-soft": '#43251F',
+                        "border-soft": '#4C4338',
+                        "border-strong": '#665A4B',
+                    },
+                    borderRadius: {
+                        'sm': '8px',
+                        'md': '12px',
+                        'lg': '16px',
+                        'pill': '999px',
+                    },
+                    fontSize: {
+                        'page-title': ['18px', { lineHeight: '24px', letterSpacing: '-0.01em', fontWeight: '700' }],
+                        'row-title': ['16px', { lineHeight: '22px', letterSpacing: '-0.01em', fontWeight: '700' }],
+                        'body': ['14px', { lineHeight: '20px', fontWeight: '400' }],
+                        'metadata': ['12px', { lineHeight: '16px', letterSpacing: '0.02em', fontWeight: '500' }],
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-canvas text-text-primary h-screen flex">
+<!-- SideNavBar (Shared Component) -->
+<aside class="h-screen w-64 hidden md:flex flex-col bg-shell border-r border-border-soft py-4 gap-2 z-50">
+<div class="px-4 mb-6 flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-primary flex items-center justify-center text-shell">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">hub</span>
+</div>
+<div>
+<h1 class="text-base font-bold text-primary">CCV Hub</h1>
+<p class="text-[10px] text-text-faint uppercase tracking-wider">v1.2.0</p>
+</div>
+</div>
+<nav class="flex-1 flex flex-col gap-1 px-2">
+<!-- Active Tab: 仪表板 -->
+<a class="flex items-center gap-3 px-3 py-2 bg-primary-soft text-primary rounded-lg transition-all duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm font-bold">仪表板</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-text-secondary hover:bg-surface-muted hover:text-text-primary rounded-lg transition-all duration-200" href="#">
+<span class="material-symbols-outlined">dataset</span>
+<span class="text-xs font-medium">运行实例</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-text-secondary hover:bg-surface-muted hover:text-text-primary rounded-lg transition-all duration-200" href="#">
+<span class="material-symbols-outlined">sync</span>
+<span class="text-xs font-medium">同步状态</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-text-secondary hover:bg-surface-muted hover:text-text-primary rounded-lg transition-all duration-200" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-xs font-medium">设置</span>
+</a>
+</nav>
+<div class="mt-auto px-2">
+<a class="flex items-center gap-3 px-3 py-2 text-text-faint hover:text-text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="text-xs font-medium">帮助</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col min-w-0">
+<!-- TopNavBar (Shared Component) -->
+<header class="sticky top-0 w-full h-[56px] bg-surface border-b border-border-soft flex justify-between items-center px-4 z-50">
+<div class="flex items-center gap-4 flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-faint">search</span>
+<input class="w-full bg-shell border border-border-soft rounded-md py-1.5 pl-10 pr-4 text-sm focus:outline-none focus:border-primary transition-colors" placeholder="搜索实例、容器或日志..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-3 ml-4">
+<button class="p-2 text-text-secondary hover:bg-surface-muted rounded-full transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-danger rounded-full border border-surface"></span>
+</button>
+<button class="p-2 text-text-secondary hover:bg-surface-muted rounded-full transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="p-2 text-text-secondary hover:bg-surface-muted rounded-full transition-colors">
+<span class="material-symbols-outlined">contrast</span>
+</button>
+<div class="h-8 w-[1px] bg-border-soft mx-1"></div>
+<div class="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
+<img class="w-8 h-8 rounded-full border border-border-strong object-cover" data-alt="A professional headshot of a technical system administrator in a high-contrast dark environment. The lighting is focused and cinematic with cool blue and warm amber tones reflecting off a glass surface in the foreground. The subject wears dark, tactical-style office wear. The background is a blurred server room with blinking status LEDs, maintaining the professional dark-mode workbench aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCPqAWhO3OcobOC6Q6wsAXQn0XWTGRSSH74UwrqIQPnKN8k8wv21VKU5R7BuZgZKsawHh35drs06RS8NnLAU1DbzXOu2N7QcMzEk8ejsrycVUAfAA31mt8nwFk-9gtqpsqu9FxpaDrggMu_lS4yAlg-9DJztNHAyfsKljqgJvBzZqRgtPatBxKlxphmrlG0JXIryv2AXXvrA_26KVQe8V5kJHfpvukqV5LQDVQTeEkPi58_5taiRXQihE9LkOHnjQ94vTfMGtfGL_Y"/>
+<span class="text-xs font-medium hidden lg:block">Admin.User</span>
+</div>
+</div>
+</header>
+<!-- Summary Metrics Bar -->
+<section class="h-[44px] bg-surface-muted border-b border-border-soft flex items-center px-4 gap-6 overflow-x-auto no-scrollbar">
+<div class="flex items-center gap-2 whitespace-nowrap">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-metadata text-text-secondary">Running</span>
+<span class="text-metadata font-bold text-primary">12</span>
+</div>
+<div class="flex items-center gap-2 whitespace-nowrap">
+<span class="w-2 h-2 rounded-full bg-warning"></span>
+<span class="text-metadata text-text-secondary">Pending</span>
+<span class="text-metadata font-bold text-warning">3</span>
+</div>
+<div class="flex items-center gap-2 whitespace-nowrap">
+<span class="w-2 h-2 rounded-full bg-text-faint"></span>
+<span class="text-metadata text-text-secondary">Visible</span>
+<span class="text-metadata font-bold">8</span>
+</div>
+<div class="ml-auto flex items-center gap-2 text-text-faint whitespace-nowrap">
+<span class="material-symbols-outlined text-[14px]">sync</span>
+<span class="text-[11px] font-medium">Last Sync: 14:32:05</span>
+</div>
+</section>
+<!-- Content Canvas -->
+<div class="flex-1 flex overflow-hidden">
+<!-- Instance List -->
+<section class="flex-1 overflow-y-auto custom-scrollbar p-4">
+<div class="flex items-center justify-between mb-4">
+<h2 class="text-page-title">运行实例</h2>
+<button class="bg-primary hover:bg-primary-hover text-shell text-xs font-bold px-4 py-2 rounded-md transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">add</span>
+                        启动新实例
+                    </button>
+</div>
+<!-- Table Header -->
+<div class="grid grid-cols-12 gap-4 px-4 py-2 text-metadata text-text-faint border-b border-border-soft uppercase">
+<div class="col-span-4">实例名称 / ID</div>
+<div class="col-span-2">状态</div>
+<div class="col-span-2">资源占用</div>
+<div class="col-span-2">运行时间</div>
+<div class="col-span-2 text-right">操作</div>
+</div>
+<!-- Instance Rows (High Density) -->
+<div class="flex flex-col">
+<!-- Row 1 -->
+<div class="grid grid-cols-12 gap-4 px-4 h-[84px] items-center border-b border-border-soft hover:bg-surface-raised transition-colors group">
+<div class="col-span-4 flex items-center gap-3">
+<div class="w-10 h-10 rounded bg-surface-muted flex items-center justify-center text-primary border border-border-soft">
+<span class="material-symbols-outlined">terminal</span>
+</div>
+<div>
+<div class="text-row-title">Worker-Node-Alpha</div>
+<div class="text-metadata text-text-faint">ID: CCV-88291-A</div>
+</div>
+</div>
+<div class="col-span-2">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary-soft text-primary text-[10px] font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                                ACTIVE
+                            </span>
+</div>
+<div class="col-span-2">
+<div class="flex flex-col gap-1">
+<div class="flex justify-between text-[10px] text-text-secondary">
+<span>CPU 42%</span>
+<span>RAM 1.2G</span>
+</div>
+<div class="w-full bg-shell h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full" style="width: 42%"></div>
+</div>
+</div>
+</div>
+<div class="col-span-2 text-body text-text-secondary">
+                            14h 22m
+                        </div>
+<div class="col-span-2 text-right flex justify-end gap-2">
+<button class="p-2 hover:bg-surface-muted rounded text-text-faint hover:text-text-primary transition-colors">
+<span class="material-symbols-outlined">monitoring</span>
+</button>
+<button class="p-2 hover:bg-surface-muted rounded text-text-faint hover:text-text-primary transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Row 2 -->
+<div class="grid grid-cols-12 gap-4 px-4 h-[84px] items-center border-b border-border-soft hover:bg-surface-raised transition-colors">
+<div class="col-span-4 flex items-center gap-3">
+<div class="w-10 h-10 rounded bg-surface-muted flex items-center justify-center text-warning border border-border-soft">
+<span class="material-symbols-outlined">database</span>
+</div>
+<div>
+<div class="text-row-title">DB-Sync-Service</div>
+<div class="text-metadata text-text-faint">ID: CCV-11042-S</div>
+</div>
+</div>
+<div class="col-span-2">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-warning-soft text-warning text-[10px] font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-warning"></span>
+                                PENDING
+                            </span>
+</div>
+<div class="col-span-2">
+<div class="flex flex-col gap-1">
+<div class="flex justify-between text-[10px] text-text-secondary">
+<span>CPU 0%</span>
+<span>RAM 128M</span>
+</div>
+<div class="w-full bg-shell h-1 rounded-full overflow-hidden">
+<div class="bg-warning h-full" style="width: 5%"></div>
+</div>
+</div>
+</div>
+<div class="col-span-2 text-body text-text-secondary">
+                            0m 45s
+                        </div>
+<div class="col-span-2 text-right flex justify-end gap-2">
+<button class="p-2 hover:bg-surface-muted rounded text-text-faint hover:text-text-primary transition-colors">
+<span class="material-symbols-outlined">play_arrow</span>
+</button>
+<button class="p-2 hover:bg-surface-muted rounded text-text-faint hover:text-text-primary transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Row 3 -->
+<div class="grid grid-cols-12 gap-4 px-4 h-[84px] items-center border-b border-border-soft hover:bg-surface-raised transition-colors">
+<div class="col-span-4 flex items-center gap-3">
+<div class="w-10 h-10 rounded bg-surface-muted flex items-center justify-center text-primary border border-border-soft">
+<span class="material-symbols-outlined">router</span>
+</div>
+<div>
+<div class="text-row-title">Edge-Gateway-04</div>
+<div class="text-metadata text-text-faint">ID: CCV-99300-E</div>
+</div>
+</div>
+<div class="col-span-2">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary-soft text-primary text-[10px] font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                                ACTIVE
+                            </span>
+</div>
+<div class="col-span-2">
+<div class="flex flex-col gap-1">
+<div class="flex justify-between text-[10px] text-text-secondary">
+<span>CPU 12%</span>
+<span>RAM 512M</span>
+</div>
+<div class="w-full bg-shell h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full" style="width: 12%"></div>
+</div>
+</div>
+</div>
+<div class="col-span-2 text-body text-text-secondary">
+                            102d 4h
+                        </div>
+<div class="col-span-2 text-right flex justify-end gap-2">
+<button class="p-2 hover:bg-surface-muted rounded text-text-faint hover:text-text-primary transition-colors">
+<span class="material-symbols-outlined">monitoring</span>
+</button>
+<button class="p-2 hover:bg-surface-muted rounded text-text-faint hover:text-text-primary transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Row 4 -->
+<div class="grid grid-cols-12 gap-4 px-4 h-[84px] items-center border-b border-border-soft hover:bg-surface-raised transition-colors">
+<div class="col-span-4 flex items-center gap-3">
+<div class="w-10 h-10 rounded bg-surface-muted flex items-center justify-center text-danger border border-border-soft">
+<span class="material-symbols-outlined">warning</span>
+</div>
+<div>
+<div class="text-row-title">Auth-Validator-Service</div>
+<div class="text-metadata text-text-faint">ID: CCV-77123-V</div>
+</div>
+</div>
+<div class="col-span-2">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-danger-soft text-danger text-[10px] font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-danger"></span>
+                                FAILED
+                            </span>
+</div>
+<div class="col-span-2">
+<div class="flex flex-col gap-1">
+<div class="flex justify-between text-[10px] text-text-secondary">
+<span>CPU 0%</span>
+<span>RAM 0M</span>
+</div>
+<div class="w-full bg-shell h-1 rounded-full overflow-hidden">
+<div class="bg-danger h-0" style="width: 0%"></div>
+</div>
+</div>
+</div>
+<div class="col-span-2 text-body text-text-secondary">
+                            --
+                        </div>
+<div class="col-span-2 text-right flex justify-end gap-2">
+<button class="p-2 hover:bg-surface-muted rounded text-text-faint hover:text-text-primary transition-colors">
+<span class="material-symbols-outlined">refresh</span>
+</button>
+<button class="p-2 hover:bg-surface-muted rounded text-text-faint hover:text-text-primary transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Right Sidebar: Status/Settings Drawer -->
+<aside class="w-72 bg-shell border-l border-border-soft flex flex-col custom-scrollbar overflow-y-auto">
+<div class="p-4 border-b border-border-soft">
+<h3 class="text-metadata font-bold text-text-faint uppercase mb-4">Agent State</h3>
+<div class="bg-surface-muted p-3 rounded-md border border-border-soft">
+<div class="flex items-center justify-between mb-2">
+<span class="text-xs text-text-secondary">System Health</span>
+<span class="text-xs text-primary font-bold">Stable</span>
+</div>
+<div class="grid grid-cols-4 gap-1">
+<div class="h-1 bg-primary rounded-full"></div>
+<div class="h-1 bg-primary rounded-full"></div>
+<div class="h-1 bg-primary rounded-full"></div>
+<div class="h-1 bg-border-strong rounded-full"></div>
+</div>
+<div class="mt-3 flex items-center justify-between text-[10px] text-text-faint">
+<span>Latency: 14ms</span>
+<span>Uptime: 99.9%</span>
+</div>
+</div>
+</div>
+<div class="p-4 border-b border-border-soft">
+<h3 class="text-metadata font-bold text-text-faint uppercase mb-4">Security</h3>
+<div class="flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-text-faint">vpn_key</span>
+<span class="text-xs">SSH Access</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-7 h-4 bg-shell peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-text-faint">policy</span>
+<span class="text-xs">Rule Engine</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox"/>
+<div class="w-7 h-4 bg-shell peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</div>
+<div class="p-4">
+<h3 class="text-metadata font-bold text-text-faint uppercase mb-4">Theme Selector</h3>
+<div class="flex bg-shell p-1 rounded-lg border border-border-soft">
+<button class="flex-1 py-1.5 text-xs rounded-md text-text-faint hover:text-text-primary transition-all">浅色</button>
+<button class="flex-1 py-1.5 text-xs rounded-md segmented-control-active font-bold transition-all shadow-sm">深色</button>
+<button class="flex-1 py-1.5 text-xs rounded-md text-text-faint hover:text-text-primary transition-all">跟随系统</button>
+</div>
+<div class="mt-8">
+<div class="aspect-square w-full rounded-lg border border-border-soft bg-surface-muted overflow-hidden relative">
+<div class="absolute inset-0 opacity-20 pointer-events-none" style="background-image: radial-gradient(#6FA879 1px, transparent 1px); background-size: 16px 16px;"></div>
+<div class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+<span class="material-symbols-outlined text-primary text-4xl mb-2" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<p class="text-metadata text-text-secondary mb-1">Node Analytics</p>
+<p class="text-[10px] text-text-faint">Real-time data visualization of current cluster load</p>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-auto p-4 bg-surface-raised border-t border-border-soft">
+<div class="flex items-center justify-between text-[11px] text-text-faint">
+<span>Storage</span>
+<span>84.2 GB / 256 GB</span>
+</div>
+<div class="w-full h-1.5 bg-shell rounded-full mt-2 overflow-hidden">
+<div class="h-full bg-primary" style="width: 32%"></div>
+</div>
+</div>
+</aside>
+</div>
+</main>
+<!-- BottomNavBar (Shared Component - Mobile Only) -->
+<nav class="fixed bottom-0 w-full md:hidden z-50 bg-surface border-t border-border-soft shadow-lg flex justify-around items-center h-16 px-2 pb-safe">
+<a class="flex flex-col items-center justify-center text-primary" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="text-[10px] font-medium">首页</span>
+</a>
+<a class="flex flex-col items-center justify-center text-text-secondary" href="#">
+<span class="material-symbols-outlined">list_alt</span>
+<span class="text-[10px] font-medium">实例</span>
+</a>
+<a class="flex flex-col items-center justify-center text-text-secondary" href="#">
+<span class="material-symbols-outlined">sync</span>
+<span class="text-[10px] font-medium">同步</span>
+</a>
+<a class="flex flex-col items-center justify-center text-text-secondary" href="#">
+<span class="material-symbols-outlined">more_horiz</span>
+<span class="text-[10px] font-medium">更多</span>
+</a>
+</nav>
+<script>
+        // Simple micro-interaction for the search bar
+        const searchInput = document.querySelector('input[type="text"]');
+        searchInput.addEventListener('focus', () => {
+            searchInput.parentElement.classList.add('ring-1', 'ring-primary/30');
+        });
+        searchInput.addEventListener('blur', () => {
+            searchInput.parentElement.classList.remove('ring-1', 'ring-primary/30');
+        });
+
+        // Hover effect for instance rows
+        const rows = document.querySelectorAll('.grid.grid-cols-12.h-\\[84px\\]');
+        rows.forEach(row => {
+            row.addEventListener('mouseenter', () => {
+                row.style.cursor = 'pointer';
+            });
+        });
+    </script>
+</body></html>
