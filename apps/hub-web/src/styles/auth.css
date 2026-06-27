@@ -1,0 +1,39 @@
+/*
+ * [INPUT]: 依赖 base.css 的 panel 与按钮基础能力
+ * [OUTPUT]: 对外提供登录守门页布局、登录卡片与检查态骨架样式
+ * [POS]: hub-web 样式层的鉴权页面规则，被 AuthGate 消费
+ * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ */
+.auth-shell {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.auth-card {
+  width: min(100%, 520px);
+  display: grid;
+  gap: 18px;
+  padding: 28px;
+}
+
+.auth-card h1 {
+  max-width: 12ch;
+  font-size: clamp(2rem, 6vw, 3rem);
+  line-height: 1;
+  letter-spacing: -0.035em;
+}
+
+.auth-field {
+  margin-top: 4px;
+}
+
+.auth-submit {
+  width: fit-content;
+  min-width: 150px;
+}
+
+.auth-skeleton {
+  height: 90px;
+}

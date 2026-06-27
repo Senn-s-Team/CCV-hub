@@ -1,0 +1,209 @@
+/*
+ * [INPUT]: 依赖 workbench-core.css、launch-dialog.css 与 auth.css 的组件类名
+ * [OUTPUT]: 对外提供通用平板、手机、bottom sheet 与 reduced-motion 规则
+ * [POS]: hub-web 样式层的基础响应式规则，先于 redesign 覆盖层加载
+ * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ */
+@media (max-width: 980px) {
+  .app-header,
+  .toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .header-actions,
+  .toolbar-stats {
+    justify-content: flex-start;
+  }
+
+  .instance-stage {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .launch-dialog-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-shell {
+    width: min(calc(100% - 20px), var(--content-max));
+    margin: 10px auto 18px;
+  }
+
+  .app-header,
+  .toolbar,
+  .instance-stage,
+  .modal,
+  .auth-card {
+    padding: 14px;
+  }
+
+  .header-actions,
+  .theme-control,
+  .toolbar-stats,
+  .host-path-picker-actions,
+  .host-path-current,
+  .action-row {
+    width: 100%;
+  }
+
+  .header-actions .button,
+  .theme-control,
+  .toolbar-search,
+  .launch-submit-actions .button,
+  .host-path-picker-actions .button,
+  .host-path-current .button,
+  .inline-launch,
+  .auth-submit {
+    flex: 1;
+    width: 100%;
+  }
+
+  .theme-option {
+    flex: 1;
+  }
+
+  .stage-header,
+  .card-top,
+  .card-bottom,
+  .status-banner {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .card-health {
+    width: 100%;
+  }
+
+  .action-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .action-row .instance-action:first-child,
+  .action-row .instance-action:last-child:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .launch-options-grid,
+  .launch-toggle-stack,
+  .host-path-entry,
+  .launch-submit-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .host-path-current .mono-inline,
+  .host-path-entry .mono-inline,
+  .recent-path-chip button:first-child {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .host-path-current .mono-inline {
+    flex: 1 1 100%;
+  }
+
+  .toast {
+    right: 10px;
+    bottom: 10px;
+    max-width: calc(100vw - 20px);
+    width: calc(100vw - 20px);
+  }
+}
+
+@media (max-width: 639px) {
+  .modal-backdrop {
+    align-items: end;
+    padding: 8px 0 0;
+  }
+
+  .modal {
+    width: 100%;
+    max-height: calc(100dvh - 8px);
+    gap: 12px;
+    padding: 0 14px 14px;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    margin: 0 -14px;
+    padding: 14px 14px 12px;
+    background: color-mix(in oklch, var(--surface-raised) 96%, transparent);
+    border-bottom: 1px solid var(--line-soft);
+  }
+
+  .launch-dialog-grid,
+  .launch-config-body,
+  .launch-path-panel,
+  .launch-config-panel {
+    gap: 12px;
+  }
+
+  .launch-panel {
+    padding: 12px;
+  }
+
+  .launch-config-panel {
+    padding-bottom: 0;
+  }
+
+  .launch-advanced-toggle {
+    min-height: 46px;
+  }
+
+  .launch-submit-bar {
+    position: sticky;
+    bottom: -14px;
+    z-index: 1;
+    margin: 0 -14px -14px;
+    padding: 12px 14px 14px;
+    border-radius: 0;
+  }
+
+  .launch-submit-summary {
+    gap: 6px;
+  }
+}
+
+@media (max-width: 430px) {
+  h1 {
+    font-size: 1.75rem;
+  }
+
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .action-row {
+    grid-template-columns: 1fr;
+  }
+
+  .action-row .instance-action {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition-duration: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .toast {
+    transform: none;
+  }
+}

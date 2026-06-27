@@ -1,0 +1,406 @@
+/*
+ * [INPUT]: 依赖 OverviewPage 的左侧状态 rail、抽象主题按钮、移动菜单和浮动启动按钮类名
+ * [OUTPUT]: 对外提供 redesign 双栏工作台、移动状态抽屉、抽象主题图形、浮动启动入口与对应响应式覆盖
+ * [POS]: hub-web 样式层的总览页 redesign 覆盖层，最后加载以保持设计意图
+ * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ */
+/* === ccv-hub redesign responsive workbench === */
+.theme-art-button {
+  position: fixed;
+  top: 18px;
+  left: 18px;
+  z-index: 16;
+  width: 62px;
+  height: 62px;
+  border: 1px solid var(--line-strong);
+  border-radius: 22px;
+  background: linear-gradient(135deg, var(--surface-raised), var(--surface-muted));
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.theme-art-shape {
+  position: absolute;
+  border-radius: 999px;
+  transition: transform 180ms ease;
+}
+
+.theme-art-shape.shape-one {
+  inset: 9px 22px 25px 9px;
+  background: var(--accent);
+}
+
+.theme-art-shape.shape-two {
+  inset: 24px 9px 8px 24px;
+  background: oklch(0.68 0.10 245);
+  opacity: 0.82;
+}
+
+.theme-art-shape.shape-three {
+  width: 18px;
+  height: 18px;
+  top: 22px;
+  left: 23px;
+  border: 1px solid var(--line-soft);
+  background: var(--bg-shell);
+}
+
+html[data-theme="light"] .theme-art-shape.shape-one {
+  transform: translate(18px, 18px) scale(0.92);
+}
+
+html[data-theme="light"] .theme-art-shape.shape-two {
+  transform: translate(-16px, -16px) scale(1.08);
+}
+
+html[data-theme="light"] .theme-art-shape.shape-three {
+  transform: scale(1.35);
+  background: var(--surface);
+}
+
+.mobile-rail-toggle,
+.mobile-rail-scrim {
+  display: none;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 14px;
+  width: min(calc(100% - 28px), 1680px);
+  min-height: calc(100dvh - 28px);
+  margin: 14px auto;
+}
+
+.status-rail {
+  position: sticky;
+  top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: calc(100dvh - 28px);
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.brand-card {
+  min-height: 92px;
+  display: flex;
+  align-items: center;
+  padding: 16px 16px 16px 82px;
+}
+
+.brand-card strong {
+  display: block;
+  font-size: 1.34rem;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.brand-card span,
+.status-command p,
+.status-card p,
+.sync-row,
+.summary-card small,
+.boundary-list {
+  color: var(--text-secondary);
+}
+
+.status-command,
+.status-card,
+.rail-summary,
+.rail-actions {
+  padding: 14px;
+}
+
+.status-command {
+  display: grid;
+  gap: 14px;
+}
+
+.status-command-headline {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.status-command-headline strong {
+  font-size: clamp(3.2rem, 8vw, 5.4rem);
+  line-height: 0.82;
+  letter-spacing: -0.09em;
+}
+
+.sync-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+}
+
+.sync-row strong {
+  color: var(--text-primary);
+  font-size: 0.92rem;
+}
+
+.status-card {
+  display: grid;
+  gap: 8px;
+}
+
+.status-card-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rail-summary {
+  display: grid;
+  gap: 10px;
+}
+
+.summary-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+
+.summary-card strong {
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  letter-spacing: -0.05em;
+}
+
+.accent-summary {
+  background: linear-gradient(135deg, var(--accent-soft), var(--surface-muted));
+}
+
+.boundary-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  line-height: 1.45;
+}
+
+.boundary-list li {
+  position: relative;
+  padding-left: 15px;
+}
+
+.boundary-list li::before {
+  content: "";
+  position: absolute;
+  top: 0.66em;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.rail-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.workbench {
+  align-content: start;
+}
+
+.app-header {
+  margin-bottom: 0;
+}
+
+.toolbar {
+  grid-template-columns: minmax(240px, 560px);
+}
+
+.instance-stage {
+  min-height: 680px;
+}
+
+.card-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+}
+
+.floating-launch {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 15;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 132px;
+  height: 58px;
+  padding: 0 20px;
+  border-radius: 22px;
+  background: var(--accent);
+  color: oklch(0.985 0.006 86);
+  box-shadow: var(--shadow-modal);
+  font-weight: 800;
+}
+
+.floating-launch:hover {
+  background: var(--accent-hover);
+}
+
+.floating-launch span {
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.toast {
+  bottom: 92px;
+}
+
+.theme-art-button:focus-visible,
+.mobile-rail-toggle:focus-visible,
+.mobile-rail-scrim:focus-visible,
+.floating-launch:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (max-width: 1120px) {
+  .app-shell {
+    grid-template-columns: 310px minmax(0, 1fr);
+  }
+
+  .brand-card {
+    padding-left: 74px;
+  }
+
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .theme-art-button {
+    top: 10px;
+    left: 10px;
+    z-index: 24;
+    width: 54px;
+    height: 54px;
+    border-radius: 19px;
+  }
+
+  .mobile-rail-toggle {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 24;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 72px;
+    height: 42px;
+    padding: 0 14px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-pill);
+    background: var(--surface);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-card);
+    font-weight: 800;
+  }
+
+  .mobile-rail-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 21;
+    display: block;
+    background: rgb(0 0 0 / 0.42);
+  }
+
+  .app-shell {
+    display: block;
+    width: min(calc(100% - 12px), 1680px);
+    min-height: calc(100dvh - 12px);
+    margin: 72px auto 6px;
+  }
+
+  .status-rail {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 22;
+    width: min(86vw, 342px);
+    height: 100dvh;
+    padding: 74px 10px 12px;
+    background: var(--bg-shell);
+    transform: translateX(-104%);
+    transition: transform 220ms ease;
+  }
+
+  .status-rail-open .status-rail {
+    transform: translateX(0);
+  }
+
+  .brand-card {
+    min-height: 62px;
+    padding: 12px 14px;
+  }
+
+  .status-command,
+  .status-card,
+  .rail-summary,
+  .rail-actions {
+    padding: 10px;
+  }
+
+  .rail-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .workbench {
+    gap: 8px;
+  }
+
+  .app-header,
+  .toolbar,
+  .instance-stage {
+    border-radius: var(--radius-md);
+  }
+
+  .app-header {
+    padding: 12px;
+  }
+
+  .toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .instance-stage {
+    min-height: auto;
+  }
+
+  .floating-launch {
+    right: 14px;
+    bottom: 14px;
+    min-width: 118px;
+    height: 54px;
+    border-radius: 20px;
+  }
+
+  .toast {
+    top: 12px;
+    right: 12px;
+    bottom: auto;
+    left: 12px;
+    width: auto;
+    max-width: none;
+    transform: translateY(-10px);
+  }
+}

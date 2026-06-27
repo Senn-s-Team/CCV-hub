@@ -1,0 +1,316 @@
+/*
+ * [INPUT]: 依赖 controls.css 的按钮、chip、输入与状态样式
+ * [OUTPUT]: 对外提供启动弹窗、宿主机路径浏览、最近路径、启动参数、错误与提交栏样式
+ * [POS]: hub-web 样式层的启动流程规则，被 LaunchDialog 消费
+ * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(29 24 18 / 0.34);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.modal {
+  width: min(960px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  overflow-y: auto;
+  box-shadow: var(--shadow-modal);
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.modal-header h3 {
+  font-size: 1.32rem;
+  letter-spacing: -0.02em;
+}
+
+.modal-copy {
+  margin-top: 6px;
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.launch-dialog-grid,
+.launch-panel,
+.launch-primary-block,
+.launch-advanced,
+.launch-config-body,
+.host-path-picker,
+.recent-paths,
+.launch-submit-summary,
+.launch-submit-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.launch-dialog-grid {
+  grid-template-columns: minmax(0, 1.12fr) minmax(320px, 0.88fr);
+  align-items: start;
+  gap: 14px;
+}
+
+.launch-panel {
+  min-width: 0;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  border: 1px solid var(--line-soft);
+}
+
+.launch-panel-header {
+  display: grid;
+  gap: 4px;
+}
+
+.launch-panel-header h4 {
+  font-size: 1.06rem;
+  letter-spacing: -0.02em;
+}
+
+.launch-primary-block {
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  border: 1px solid var(--line-soft);
+}
+
+.priority-field input {
+  min-height: 50px;
+  font-family: "JetBrains Mono", monospace;
+}
+
+.host-path-picker-actions,
+.host-path-current {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.host-path-browser {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+}
+
+.chip {
+  min-height: 34px;
+  padding: 0 11px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.chip.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: transparent;
+}
+
+.recent-path-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+}
+
+.recent-path-chip button {
+  min-height: 32px;
+  padding: 0 11px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.recent-path-chip button:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-path-chip button:last-child {
+  color: var(--text-faint);
+}
+
+.host-path-list {
+  display: grid;
+  gap: 7px;
+  max-height: min(280px, 34dvh);
+  overflow: auto;
+}
+
+.host-path-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 9px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+}
+
+.host-path-entry-main {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  text-align: left;
+}
+
+.host-path-entry-main span:first-child {
+  font-weight: 800;
+}
+
+.host-path-entry-drill {
+  min-height: 32px;
+  padding: 0 11px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.host-path-search input {
+  min-height: 40px;
+}
+
+.host-path-empty {
+  padding: 9px;
+}
+
+.danger-text {
+  color: var(--danger);
+}
+
+.launch-advanced {
+  gap: 12px;
+}
+
+.launch-advanced-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 48px;
+  width: 100%;
+  padding: 0 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  color: var(--text-primary);
+  font-weight: 800;
+  text-align: left;
+}
+
+.launch-advanced-state {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.launch-advanced-body {
+  display: grid;
+  gap: 10px;
+}
+
+.launch-options-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.launch-toggle-stack {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.launch-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 11px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+  border: 1px solid var(--line-soft);
+}
+
+.launch-toggle input {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  accent-color: var(--accent);
+}
+
+.inline-error {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--danger-soft);
+  border: 1px solid color-mix(in oklch, var(--danger) 26%, transparent);
+  color: var(--text-primary);
+}
+
+.launch-submit-bar {
+  position: sticky;
+  bottom: -14px;
+  display: grid;
+  gap: 12px;
+  margin: auto -14px -14px;
+  padding: 14px;
+  background: color-mix(in oklch, var(--surface-muted) 94%, transparent);
+  border-top: 1px solid var(--line-soft);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+.launch-summary-path {
+  overflow-wrap: anywhere;
+  font-size: 0.96rem;
+  line-height: 1.45;
+}
+
+.launch-summary-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.launch-submit-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}

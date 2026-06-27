@@ -1,0 +1,401 @@
+/*
+ * [INPUT]: 依赖 controls.css 的按钮、状态徽章和基础面板样式
+ * [OUTPUT]: 对外提供工具栏、实例舞台、实例卡片、空态、错误态、骨架屏与 Toast 基础样式
+ * [POS]: hub-web 样式层的列表工作区核心规则，被 OverviewPage 与 InstanceCard 消费
+ * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ */
+.workbench {
+  display: grid;
+  gap: 12px;
+}
+
+.toolbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 460px) 1fr;
+  align-items: end;
+  gap: 14px;
+  padding: 14px;
+}
+
+.search-field,
+.path-field {
+  display: grid;
+  gap: 8px;
+}
+
+.search-field span,
+.path-field span {
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.search-field input,
+.path-field input,
+.path-field select,
+.path-field textarea {
+  min-height: 44px;
+  width: 100%;
+  padding: 0 13px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  border: 1px solid var(--line-soft);
+}
+
+.path-field textarea {
+  min-height: 92px;
+  padding-top: 12px;
+  line-height: 1.45;
+}
+
+.toolbar-stats {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.stat-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 11px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.stat-item strong {
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.instance-stage {
+  min-height: calc(100dvh - 188px);
+  padding: 14px;
+}
+
+.stage-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.stage-header h2 {
+  font-size: 1.2rem;
+  letter-spacing: -0.02em;
+}
+
+.stage-state,
+.state-badge,
+.meta-badge,
+.state-flag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 9px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+}
+
+.state-badge.running,
+.state-flag.success {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: transparent;
+}
+
+.state-badge.refreshing,
+.state-flag.warm {
+  background: var(--warn-soft);
+  color: var(--warn);
+  border-color: transparent;
+}
+
+.state-badge.error,
+.state-flag.error {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: transparent;
+}
+
+.state-badge.neutral,
+.state-flag.neutral,
+.meta-badge {
+  background: var(--surface-raised);
+}
+
+.stage-content,
+.state-pane {
+  min-width: 0;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 12px;
+}
+
+.instance-card {
+  display: grid;
+  gap: 14px;
+  padding: 15px;
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  border: 1px solid var(--line-soft);
+  box-shadow: var(--shadow-card);
+}
+
+.instance-card.dimmed,
+.dimmed {
+  opacity: 0.78;
+}
+
+.card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.card-title-block {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.card-title {
+  overflow-wrap: anywhere;
+  font-size: 1.12rem;
+  font-weight: 800;
+  letter-spacing: -0.018em;
+}
+
+.card-tags,
+.action-row,
+.host-path-roots,
+.recent-path-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.card-health {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 9px;
+  min-height: 44px;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+  border: 1px solid var(--line-soft);
+}
+
+.status-led {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--danger);
+  box-shadow: 0 0 0 4px color-mix(in oklch, var(--danger) 18%, transparent);
+}
+
+.status-led.live {
+  background: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in oklch, var(--accent) 18%, transparent);
+}
+
+.status-led.warm {
+  background: var(--warn);
+  box-shadow: 0 0 0 4px color-mix(in oklch, var(--warn) 18%, transparent);
+}
+
+.card-health strong {
+  display: block;
+  font-size: 0.86rem;
+}
+
+.card-health p {
+  font-size: 0.78rem;
+}
+
+.meta-grid {
+  display: grid;
+  gap: 9px;
+}
+
+.meta-row {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+}
+
+.meta-row.emphasis {
+  border-color: color-mix(in oklch, var(--accent) 36%, var(--line-soft));
+}
+
+.meta-label {
+  color: var(--text-faint);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.meta-value {
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.started-at,
+.mono-inline {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.instance-action {
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+.instance-action.primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: oklch(0.985 0.006 86);
+}
+
+.instance-action.primary:hover {
+  background: var(--accent-hover);
+}
+
+.instance-action.danger {
+  background: var(--danger-soft);
+  border-color: color-mix(in oklch, var(--danger) 28%, transparent);
+  color: var(--danger);
+}
+
+.instance-action.danger:hover {
+  background: color-mix(in oklch, var(--danger-soft) 78%, var(--danger) 22%);
+}
+
+.skeleton-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.skeleton-card {
+  height: 154px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(90deg, transparent, color-mix(in oklch, var(--surface) 72%, white 28%), transparent), var(--surface-raised);
+  background-size: 220% 100%, 100% 100%;
+  border: 1px solid var(--line-soft);
+  animation: pulse-slide 1.4s linear infinite;
+}
+
+.empty-state-card {
+  min-height: 330px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+  padding: 30px;
+  text-align: center;
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  border: 1px solid var(--line-soft);
+}
+
+.empty-state-card h3 {
+  font-size: clamp(1.35rem, 2vw, 1.85rem);
+  letter-spacing: -0.02em;
+}
+
+.empty-state-card p {
+  max-width: 32rem;
+}
+
+.compact-empty {
+  min-height: 260px;
+}
+
+.status-banner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 13px;
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  border: 1px solid var(--line-soft);
+}
+
+.status-banner.error {
+  background: var(--danger-soft);
+  border-color: color-mix(in oklch, var(--danger) 28%, transparent);
+}
+
+.status-banner strong {
+  display: block;
+  margin-bottom: 3px;
+}
+
+.slim {
+  flex-shrink: 0;
+}
+
+.toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  min-width: 220px;
+  min-height: 48px;
+  max-width: min(520px, calc(100vw - 40px));
+  padding: 0 15px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: oklch(0.985 0.006 86);
+  box-shadow: var(--shadow-modal);
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+  transition: transform 140ms ease, opacity 140ms ease;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}

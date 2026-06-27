@@ -1,0 +1,44 @@
+/*
+ * [INPUT]: 依赖所有交互类名与 tokens.css 的 focus-ring 变量
+ * [OUTPUT]: 对外提供统一 focus-visible、骨架动画与 hover motion 规则
+ * [POS]: hub-web 样式层的交互动效收口，位于组件样式之后
+ * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ */
+.search-field input:focus-visible,
+.path-field input:focus-visible,
+.path-field select:focus-visible,
+.path-field textarea:focus-visible,
+.launch-toggle input:focus-visible,
+.launch-advanced-toggle:focus-visible,
+.button:focus-visible,
+.chip:focus-visible,
+.recent-path-chip button:focus-visible,
+.icon-button:focus-visible,
+.instance-action:focus-visible,
+.host-path-entry-main:focus-visible,
+.host-path-entry-drill:focus-visible,
+.theme-option:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@keyframes pulse-slide {
+  0% {
+    background-position: 120% 0, 0 0;
+  }
+  100% {
+    background-position: -120% 0, 0 0;
+  }
+}
+
+@media (hover: hover) {
+  .button:hover,
+  .chip:hover,
+  .icon-button:hover,
+  .instance-action:hover,
+  .host-path-entry-drill:hover,
+  .recent-path-chip button:hover,
+  .theme-option:hover {
+    transform: translateY(-1px);
+  }
+}

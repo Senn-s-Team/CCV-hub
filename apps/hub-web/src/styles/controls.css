@@ -1,0 +1,153 @@
+/*
+ * [INPUT]: 依赖 tokens.css 与 base.css 的字体、颜色和 surface 变量
+ * [OUTPUT]: 对外提供通用 kicker、按钮、chip、旧主题控件与交互过渡样式
+ * [POS]: hub-web 样式层的可复用控件规则，被页面、卡片和弹窗共享
+ * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ */
+.section-kicker,
+.stage-state,
+.state-badge,
+.meta-label,
+.meta-value,
+.mono-inline,
+.theme-option,
+.stat-item,
+.meta-badge,
+.state-flag {
+  font-family: "JetBrains Mono", monospace;
+}
+
+.section-kicker {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.app-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 18px;
+  margin-bottom: 12px;
+}
+
+.header-copy {
+  display: grid;
+  gap: 6px;
+}
+
+h1 {
+  font-size: clamp(1.8rem, 3vw, 2.45rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+}
+
+.subtitle,
+.stage-meta-text,
+.modal-copy,
+.input-hint,
+.status-banner p,
+.empty-state-card p,
+.card-health p {
+  color: var(--text-secondary);
+}
+
+.subtitle,
+.stage-meta-text,
+.modal-copy,
+.empty-state-card p {
+  line-height: 1.5;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.theme-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 40px;
+  padding: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+  border: 1px solid var(--line-soft);
+}
+
+.theme-option {
+  min-height: 32px;
+  padding: 0 11px;
+  border-radius: var(--radius-pill);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  transition: transform 140ms ease, background-color 140ms ease, color 140ms ease;
+}
+
+.theme-option[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px var(--line-soft);
+}
+
+.button,
+.chip,
+.icon-button,
+.instance-action,
+.host-path-entry-drill,
+.recent-path-chip button,
+.theme-option {
+  transition: transform 140ms ease, background-color 140ms ease, border-color 140ms ease, color 140ms ease, opacity 140ms ease;
+}
+
+.button:active,
+.chip:active,
+.icon-button:active,
+.instance-action:active,
+.host-path-entry-drill:active,
+.recent-path-chip button:active,
+.theme-option:active {
+  transform: scale(0.97);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line-soft);
+  font-weight: 800;
+}
+
+.button-primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: oklch(0.985 0.006 86);
+}
+
+.button-primary:hover {
+  background: var(--accent-hover);
+}
+
+.button-secondary {
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+.button-secondary:hover,
+.chip:hover,
+.icon-button:hover,
+.instance-action:hover,
+.host-path-entry-drill:hover {
+  background: var(--surface-muted);
+}

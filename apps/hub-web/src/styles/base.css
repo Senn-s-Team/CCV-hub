@@ -1,0 +1,85 @@
+/*
+ * [INPUT]: 依赖 tokens.css 的颜色、半径、阴影变量
+ * [OUTPUT]: 对外提供 reset、body、panel、通用 surface 与排版基线
+ * [POS]: hub-web 样式层的基础规则，位于主题之后、组件之前
+ * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  font-family: "Manrope", system-ui, sans-serif;
+  background: linear-gradient(180deg, var(--bg-shell), var(--bg-canvas));
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+input,
+select,
+textarea {
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+textarea {
+  resize: vertical;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+.app-shell {
+  width: min(calc(100% - 40px), var(--content-max));
+  margin: 20px auto 32px;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.rise {
+  background: var(--surface-raised);
+}
+
+.sunken {
+  background: var(--surface-muted);
+}
