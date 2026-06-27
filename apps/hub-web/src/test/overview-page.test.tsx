@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Vitest、Testing Library、React Query、App 与 OverviewPage
- * [OUTPUT]: 对外提供总览页列表、主题切换、筛选空态、加载态、发现失败态、启动弹窗、最近路径、目录搜索、启动参数提交和复制动作回归测试
+ * [OUTPUT]: 对外提供总览页列表、主题切换、筛选空态、加载态、发现失败态、两段式启动弹窗、最近路径、目录搜索、启动参数提交和复制动作回归测试
  * [POS]: hub-web 测试集的主页面状态守卫，覆盖 ccv-hub MVP 的总览页关键交互与主题入口
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -281,23 +281,35 @@ describe('OverviewPage', () => {
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('opens launch modal with an empty absolute path input', async () => {
+  it('opens launch modal with manual path as a secondary entry', async () => {
     mockFetchJsonSequence({
       ok: true,
       data: { instances: [] },
     });
 
+    storage.set('ccv-hub.recent-project-paths', JSON.stringify(['/tmp/recent-project']));
     renderPage();
 
     const dialog = await openLaunchDialog();
-    const input = within(dialog).getByPlaceholderText('输入项目绝对路径');
 
-    expect(input).toHaveValue('');
-    expect(within(dialog).getByText('等待输入绝对路径')).toBeInTheDocument();
-    expect(within(dialog).getByText('确认启动')).toBeDisabled();
+    const stepRail = within(dialog).getByLabelText('启动步骤');
+    expect(within(stepRail).getByText('路径')).toHaveClass('active');
+    expect(within(stepRail).getByText('参数')).toBeInTheDocument();
+    expect(within(stepRail).queryByText('确认')).not.toBeInTheDocument();
+    expect(within(dialog).getByText('等待选择项目')).toBeInTheDocument();
+    expect(within(dialog).getByText('浏览宿主机目录')).toBeInTheDocument();
+    const browserOffset = dialog.textContent?.indexOf('浏览宿主机目录') ?? -1;
+    const recentOffset = dialog.textContent?.indexOf('最近使用') ?? -1;
+    const manualOffset = dialog.textContent?.indexOf('粘贴绝对路径') ?? -1;
+    expect(within(dialog).getByRole('button', { name: '/tmp/recent-project' })).toBeInTheDocument();
+    expect(browserOffset).toBeGreaterThanOrEqual(0);
+    expect(recentOffset).toBeGreaterThan(browserOffset);
+    expect(manualOffset).toBeGreaterThan(recentOffset);
+    expect(within(dialog).getByText('粘贴绝对路径')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: '使用当前目录' })).toBeDisabled();
   });
 
-  it('shows launch summary after typing an absolute path and enables submit', async () => {
+  it('shows launch summary after pasting an absolute path and advances through the wizard', async () => {
     mockFetchJsonSequence({
       ok: true,
       data: { instances: [] },
@@ -306,15 +318,22 @@ describe('OverviewPage', () => {
     renderPage();
 
     const dialog = await openLaunchDialog();
-    const pathInput = within(dialog).getByPlaceholderText('输入项目绝对路径');
-    const submitButton = within(dialog).getByRole('button', { name: '确认启动' });
-
-    expect(submitButton).toBeDisabled();
-    fireEvent.change(pathInput, { target: { value: '/tmp/cc-viewer' } });
+    fireEvent.click(within(dialog).getByText('粘贴绝对路径'));
+    fireEvent.change(within(dialog).getByPlaceholderText('粘贴项目绝对路径'), { target: { value: '/tmp/cc-viewer' } });
 
     expect(within(dialog).getByText('将启动')).toBeInTheDocument();
-    expect(within(dialog).getByText('/tmp/cc-viewer')).toBeInTheDocument();
-    expect(submitButton).toBeEnabled();
+    expect(within(dialog).getByTitle('/tmp/cc-viewer')).toBeInTheDocument();
+    const pathNextButton = within(dialog).getAllByRole('button', { name: '下一步' }).at(-1);
+    expect(pathNextButton).toBeEnabled();
+    fireEvent.click(pathNextButton as HTMLElement);
+    expect(within(dialog).getByLabelText('启动步骤').querySelector('.active')).toHaveTextContent('参数');
+    expect(within(dialog).getByLabelText('跳过权限确认 (--d)')).toBeInTheDocument();
+    expect(within(dialog).getByLabelText('允许跳过权限确认 (--ad)')).toBeInTheDocument();
+    expect(within(dialog).queryByPlaceholderText('例如 claude-sonnet-4-6')).not.toBeInTheDocument();
+    expect(within(dialog).queryByPlaceholderText('可选，启动后直接发送给 Claude')).not.toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('button', { name: /高级设置/ }));
+    expect(within(dialog).getByPlaceholderText('例如 claude-sonnet-4-6')).toBeInTheDocument();
+    expect(within(dialog).getByPlaceholderText('可选，启动后直接发送给 Claude')).toBeInTheDocument();
   });
 
   it('selects a visible host directory into the launch path input', async () => {
@@ -342,10 +361,11 @@ describe('OverviewPage', () => {
     renderPage();
 
     const dialog = await openLaunchDialog();
-    fireEvent.click(within(dialog).getByText('选择宿主机路径'));
+    fireEvent.click(within(dialog).getByText('浏览宿主机目录'));
     fireEvent.click(await screen.findByRole('button', { name: '选择 /home/opc/projects/ccvs' }));
 
-    expect(within(dialog).getByPlaceholderText('输入项目绝对路径')).toHaveValue('/home/opc/projects/ccvs');
+    fireEvent.click(within(dialog).getByText('粘贴绝对路径'));
+    expect(within(dialog).getByPlaceholderText('粘贴项目绝对路径')).toHaveValue('/home/opc/projects/ccvs');
     expect(fetchMock).toHaveBeenCalledWith('/api/host-paths/roots', {
       method: 'GET',
     });
@@ -354,7 +374,7 @@ describe('OverviewPage', () => {
     });
   });
 
-  it('uses the current host directory and persists it to recent paths', async () => {
+  it('uses the current host directory without writing recent paths before launch', async () => {
     mockFetchJsonSequence(
       {
         ok: true,
@@ -379,12 +399,13 @@ describe('OverviewPage', () => {
     renderPage();
 
     const dialog = await openLaunchDialog();
-    fireEvent.click(within(dialog).getByText('选择宿主机路径'));
+    fireEvent.click(within(dialog).getByText('浏览宿主机目录'));
     fireEvent.click(await screen.findByRole('button', { name: '使用此目录' }));
 
-    expect(within(dialog).getByPlaceholderText('输入项目绝对路径')).toHaveValue('/home/opc/projects/ccvs');
-    expect(storage.get('ccv-hub.recent-project-paths')).toBe(JSON.stringify(['/home/opc/projects/ccvs']));
-    expect(within(dialog).getByRole('button', { name: '/home/opc/projects/ccvs' })).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByText('粘贴绝对路径'));
+    expect(within(dialog).getByPlaceholderText('粘贴项目绝对路径')).toHaveValue('/home/opc/projects/ccvs');
+    expect(storage.get('ccv-hub.recent-project-paths')).toBeUndefined();
+    expect(within(dialog).queryByRole('button', { name: '/home/opc/projects/ccvs' })).not.toBeInTheDocument();
   });
 
   it('filters the current host directory list by path search', async () => {
@@ -415,7 +436,7 @@ describe('OverviewPage', () => {
     renderPage();
 
     const dialog = await openLaunchDialog();
-    fireEvent.click(within(dialog).getByText('选择宿主机路径'));
+    fireEvent.click(within(dialog).getByText('浏览宿主机目录'));
     await screen.findByText('ccvs');
     fireEvent.change(within(dialog).getByPlaceholderText('输入目录名或路径'), { target: { value: 'sdk' } });
 
@@ -446,17 +467,18 @@ describe('OverviewPage', () => {
     renderPage();
 
     const dialog = await openLaunchDialog();
-    fireEvent.change(within(dialog).getByPlaceholderText('输入项目绝对路径'), {
+    fireEvent.click(within(dialog).getByText('粘贴绝对路径'));
+    fireEvent.change(within(dialog).getByPlaceholderText('粘贴项目绝对路径'), {
       target: { value: ' /tmp/cc-viewer ' },
     });
-    fireEvent.click(within(dialog).getByText('确认启动'));
+    fireEvent.click(within(dialog).getByRole('button', { name: '下一步' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: '启动' }));
 
     await waitFor(() => {
       expect(storage.get('ccv-hub.recent-project-paths')).toBe(JSON.stringify(['/tmp/cc-viewer']));
     });
     const reopenedDialog = await openLaunchDialog();
-    fireEvent.click(within(reopenedDialog).getByRole('button', { name: '/tmp/cc-viewer' }));
-    expect(within(reopenedDialog).getByPlaceholderText('输入项目绝对路径')).toHaveValue('/tmp/cc-viewer');
+    expect(within(reopenedDialog).getByRole('button', { name: '/tmp/cc-viewer' })).toBeInTheDocument();
     fireEvent.click(within(reopenedDialog).getByLabelText('移除最近路径 /tmp/cc-viewer'));
     expect(within(reopenedDialog).queryByRole('button', { name: '/tmp/cc-viewer' })).not.toBeInTheDocument();
   });
@@ -479,16 +501,19 @@ describe('OverviewPage', () => {
     renderPage();
 
     const dialog = await openLaunchDialog();
-    fireEvent.change(within(dialog).getByPlaceholderText('输入项目绝对路径'), {
+    fireEvent.click(within(dialog).getByText('粘贴绝对路径'));
+    fireEvent.change(within(dialog).getByPlaceholderText('粘贴项目绝对路径'), {
       target: { value: ' /tmp/cc-viewer ' },
     });
-    fireEvent.click(within(dialog).getByText('确认启动'));
+    fireEvent.click(within(dialog).getByRole('button', { name: '下一步' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: '启动' }));
 
-    expect(await screen.findByText('Project path is invalid')).toBeInTheDocument();
+    expect(await within(dialog).findByText('Project path is invalid')).toBeInTheDocument();
+    expect(within(dialog).getByLabelText('启动步骤').querySelector('.active')).toHaveTextContent('参数');
     expect(storage.get('ccv-hub.recent-project-paths')).toBeUndefined();
   });
 
-  it('submits launch options from the mobile advanced panel with the project path', async () => {
+  it('submits launch options from the mobile staged flow with the project path', async () => {
     mobileSheetEnabled = true;
     installMatchMediaStub();
     mockFetchJsonSequence(
@@ -511,22 +536,27 @@ describe('OverviewPage', () => {
     renderPage();
 
     const dialog = await openLaunchDialog();
+    expect(within(dialog).getByText('路径')).toHaveClass('active');
+    expect(within(dialog).getByLabelText('启动步骤')).toHaveTextContent('路径参数');
     expect(within(dialog).queryByPlaceholderText('例如 claude-sonnet-4-6')).not.toBeInTheDocument();
 
-    fireEvent.click(within(dialog).getByRole('button', { name: /启动参数/ }));
-    fireEvent.change(within(dialog).getByPlaceholderText('输入项目绝对路径'), {
+    fireEvent.click(within(dialog).getByText('粘贴绝对路径'));
+    fireEvent.change(within(dialog).getByPlaceholderText('粘贴项目绝对路径'), {
       target: { value: ' /tmp/cc-viewer ' },
     });
+    fireEvent.click(within(dialog).getByRole('button', { name: '下一步' }));
+    expect(within(dialog).getByLabelText('启动步骤').querySelector('.active')).toHaveTextContent('参数');
     fireEvent.change(within(dialog).getByDisplayValue('普通启动'), { target: { value: 'continue' } });
+    fireEvent.click(within(dialog).getByLabelText('跳过权限确认 (--d)'));
+    fireEvent.click(within(dialog).getByLabelText('允许跳过权限确认 (--ad)'));
+    fireEvent.click(within(dialog).getByRole('button', { name: /高级设置/ }));
     fireEvent.change(within(dialog).getByPlaceholderText('例如 claude-sonnet-4-6'), {
       target: { value: ' claude-sonnet-4-6 ' },
     });
     fireEvent.change(within(dialog).getByPlaceholderText('可选，启动后直接发送给 Claude'), {
       target: { value: ' inspect this project ' },
     });
-    fireEvent.click(within(dialog).getByLabelText('跳过权限确认 (--d)'));
-    fireEvent.click(within(dialog).getByLabelText('允许跳过权限确认 (--ad)'));
-    fireEvent.click(within(dialog).getByText('确认启动'));
+    fireEvent.click(within(dialog).getByRole('button', { name: '启动' }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith('/api/instances', {
@@ -564,11 +594,13 @@ describe('OverviewPage', () => {
     renderPage();
 
     const dialog = await openLaunchDialog();
-    const pathInput = within(dialog).getByPlaceholderText('输入项目绝对路径');
+    fireEvent.click(within(dialog).getByText('粘贴绝对路径'));
+    const pathInput = within(dialog).getByPlaceholderText('粘贴项目绝对路径');
     fireEvent.change(pathInput, {
       target: { value: ' /tmp/cc-viewer ' },
     });
-    fireEvent.click(within(dialog).getByText('确认启动'));
+    fireEvent.click(within(dialog).getByRole('button', { name: '下一步' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: '启动' }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenLastCalledWith('/api/instances', {
@@ -589,7 +621,54 @@ describe('OverviewPage', () => {
 
     const errorNode = await within(dialog).findByText('Project path is invalid');
     expect(errorNode).toBeInTheDocument();
+    expect(within(dialog).getByLabelText('启动步骤').querySelector('.active')).toHaveTextContent('参数');
+    fireEvent.click(within(dialog).getByText('上一步'));
     expect(pathInput).toHaveValue(' /tmp/cc-viewer ');
+  });
+
+  it('uses current host directory as the mobile path step action', async () => {
+    mobileSheetEnabled = true;
+    installMatchMediaStub();
+    mockFetchJsonSequence(
+      {
+        ok: true,
+        data: { instances: [] },
+      },
+      {
+        ok: true,
+        data: {
+          roots: [{ name: 'projects', path: '/home/opc/projects', readable: true }],
+        },
+      },
+      {
+        ok: true,
+        data: {
+          currentPath: '/home/opc/projects',
+          parentPath: null,
+          entries: [{ name: 'ccvs', path: '/home/opc/projects/ccvs', readable: true }],
+        },
+      },
+      {
+        ok: true,
+        data: {
+          currentPath: '/home/opc/projects/ccvs',
+          parentPath: '/home/opc/projects',
+          entries: [],
+        },
+      },
+    );
+
+    renderPage();
+
+    const dialog = await openLaunchDialog();
+    fireEvent.click(within(dialog).getByText('浏览宿主机目录'));
+    fireEvent.click(await screen.findByRole('button', { name: '进入 /home/opc/projects/ccvs' }));
+    fireEvent.click(await within(dialog).findByRole('button', { name: '使用当前目录' }));
+
+    expect(within(dialog).getByLabelText('启动步骤').querySelector('.active')).toHaveTextContent('参数');
+    fireEvent.click(within(dialog).getByText('上一步'));
+    fireEvent.click(within(dialog).getByText('粘贴绝对路径'));
+    expect(within(dialog).getByPlaceholderText('粘贴项目绝对路径')).toHaveValue('/home/opc/projects/ccvs');
   });
 
   it('calls logout from the topbar action', async () => {
