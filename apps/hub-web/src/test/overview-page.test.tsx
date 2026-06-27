@@ -232,7 +232,7 @@ describe('OverviewPage', () => {
     expect(await screen.findByText('当前还没有运行中的实例')).toBeInTheDocument();
   });
 
-  it('defaults to system theme and persists manual theme changes', async () => {
+  it('defaults to system theme and cycles theme through the abstract control', async () => {
     mockFetchJsonSequence(
       {
         ok: true,
@@ -246,19 +246,38 @@ describe('OverviewPage', () => {
 
     renderApp();
 
-    const systemButton = await screen.findByRole('button', { name: '系统' });
-    expect(systemButton).toHaveAttribute('aria-pressed', 'true');
+    const themeButton = await screen.findByRole('button', { name: '切换颜色模式，当前系统' });
     expect(document.documentElement.dataset.theme).toBe('system');
     expect(storage.get('ccv-hub.theme-mode')).toBe('system');
 
-    fireEvent.click(screen.getByRole('button', { name: '深色' }));
-    expect(document.documentElement.dataset.theme).toBe('dark');
-    expect(storage.get('ccv-hub.theme-mode')).toBe('dark');
-    expect(screen.getByRole('button', { name: '深色' })).toHaveAttribute('aria-pressed', 'true');
-
-    fireEvent.click(screen.getByRole('button', { name: '浅色' }));
+    fireEvent.click(themeButton);
     expect(document.documentElement.dataset.theme).toBe('light');
     expect(storage.get('ccv-hub.theme-mode')).toBe('light');
+
+    fireEvent.click(screen.getByRole('button', { name: '切换颜色模式，当前浅色' }));
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(storage.get('ccv-hub.theme-mode')).toBe('dark');
+  });
+
+  it('opens and closes the mobile status rail from the default collapsed state', async () => {
+    mockFetchJsonSequence({
+      ok: true,
+      data: { instances: [] },
+    });
+
+    renderPage();
+
+    const toggle = await screen.findByRole('button', { name: '状态' });
+    const scrim = document.querySelector('.mobile-rail-scrim');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(scrim).toHaveAttribute('hidden');
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(scrim).not.toHaveAttribute('hidden');
+
+    fireEvent.click(scrim as HTMLElement);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('opens launch modal with an empty absolute path input', async () => {
