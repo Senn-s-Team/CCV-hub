@@ -1,6 +1,6 @@
 /*
- * [INPUT]: 依赖 index.html 暴露的 DOM 节点与 ccv-hub 实例模型字段
- * [OUTPUT]: 对外提供 redesign 原型交互：实例渲染、筛选、状态切换、主题切换、三段式启动弹窗、路径选择与 Toast
+ * [INPUT]: 依赖 index.html 暴露的 DOM 节点、body.menu-open 移动菜单状态与 ccv-hub 实例模型字段
+ * [OUTPUT]: 对外提供 redesign 原型交互：实例渲染、筛选、状态切换、抽象主题切换、移动端菜单、三段式启动弹窗、路径选择与 Toast
  * [POS]: designs/ccv-hub-redesign 的轻量状态控制器，用静态数据模拟真实 Hub Web 行为
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -85,6 +85,9 @@ const els = {
   launchPrev: document.querySelector('#launchPrev'),
   launchNext: document.querySelector('#launchNext'),
   submitLaunch: document.querySelector('#submitLaunch'),
+  themeArt: document.querySelector('#themeArt'),
+  mobileMenuButton: document.querySelector('#mobileMenuButton'),
+  railScrim: document.querySelector('#railScrim'),
 };
 
 let currentState = 'ready';
@@ -138,8 +141,20 @@ function filteredInstances() {
   return instances.filter((instance) => instance.projectName.toLowerCase().includes(query));
 }
 
+function closeMobileMenu() {
+  document.body.classList.remove('menu-open');
+  els.mobileMenuButton.setAttribute('aria-expanded', 'false');
+}
+
+function toggleMobileMenu() {
+  const nextOpen = !document.body.classList.contains('menu-open');
+  document.body.classList.toggle('menu-open', nextOpen);
+  els.mobileMenuButton.setAttribute('aria-expanded', String(nextOpen));
+}
+
 function setState(state) {
   currentState = state;
+  closeMobileMenu();
   document.querySelectorAll('.state-button').forEach((button) => {
     button.classList.toggle('active', button.dataset.state === state);
   });
@@ -174,6 +189,14 @@ function renderInstances() {
   els.errorGrid.innerHTML = instances.slice(0, 3).map(cardTemplate).join('');
 }
 
+function toggleTheme() {
+  const current = document.documentElement.dataset.theme;
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next;
+  els.themeArt.setAttribute('aria-label', next === 'dark' ? '切换到浅色模式' : '切换到深色模式');
+  showToast(next === 'dark' ? '已切换到深色模式' : '已切换到浅色模式');
+}
+
 function setLaunchStep(step) {
   currentLaunchStep = step;
   els.launchModalPanel.dataset.step = step;
@@ -193,6 +216,7 @@ function moveLaunchStep(delta) {
 }
 
 function openLaunch() {
+  closeMobileMenu();
   els.modal.hidden = false;
   setLaunchStep('path');
   updateLaunchSummary();
@@ -251,17 +275,13 @@ function bindEvents() {
     });
   });
 
-  document.querySelectorAll('[data-theme-option]').forEach((button) => {
-    button.addEventListener('click', () => {
-      document.documentElement.dataset.theme = button.dataset.themeOption;
-      document.querySelectorAll('[data-theme-option]').forEach((item) => item.classList.toggle('active', item === button));
-    });
-  });
-
   document.querySelectorAll('[data-launch-step-target]').forEach((button) => {
     button.addEventListener('click', () => setLaunchStep(button.dataset.launchStepTarget));
   });
 
+  els.themeArt.addEventListener('click', toggleTheme);
+  els.mobileMenuButton.addEventListener('click', toggleMobileMenu);
+  els.railScrim.addEventListener('click', closeMobileMenu);
   els.search.addEventListener('input', renderInstances);
   els.grid.addEventListener('click', handleInstanceAction);
   els.errorGrid.addEventListener('click', handleInstanceAction);
@@ -274,7 +294,7 @@ function bindEvents() {
   document.querySelector('#errorRefresh').addEventListener('click', () => { setState('loading'); showToast('正在再次读取实例'); });
   document.querySelector('#clearSearch').addEventListener('click', () => { els.search.value = ''; renderInstances(); });
   document.querySelector('#openLaunch').addEventListener('click', openLaunch);
-  document.querySelector('#emptyLaunch').addEventListener('click', openLaunch);
+  document.querySelectorAll('.launch-trigger').forEach((button) => button.addEventListener('click', openLaunch));
   document.querySelector('#closeLaunch').addEventListener('click', closeLaunch);
   document.querySelector('#cancelLaunch').addEventListener('click', closeLaunch);
   els.modal.addEventListener('click', (event) => { if (event.target === els.modal) closeLaunch(); });
@@ -299,6 +319,12 @@ function bindEvents() {
   els.launchPrev.addEventListener('click', () => moveLaunchStep(-1));
   els.launchNext.addEventListener('click', () => moveLaunchStep(1));
   els.submitLaunch.addEventListener('click', submitLaunch);
+  window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closeMobileMenu();
+      if (!els.modal.hidden) closeLaunch();
+    }
+  });
 }
 
 bindEvents();

@@ -1,6 +1,6 @@
 <!--
-  [INPUT]: 依赖 styles.css 的视觉系统与 app.js 的状态控制器，依赖 ccv-hub 文档定义的实例字段、状态和总览页边界
-  [OUTPUT]: 对外提供 ccv-hub redesign 高保真交互原型入口，展示实例优先总览页、状态演示、实例卡片与三段式移动端启动弹窗
+  [INPUT]: 依赖 styles.css 的响应式视觉系统与 app.js 的状态控制器，依赖 ccv-hub 文档定义的实例字段、状态和总览页边界
+  [OUTPUT]: 对外提供 ccv-hub redesign 高保真交互原型入口，展示左侧状态驾驶舱、右侧实例列表、移动端折叠菜单与浮动启动入口
   [POS]: designs/ccv-hub-redesign 的用户可评审页面，是业务分析转化为界面方案的主交付物
   [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 -->
@@ -16,15 +16,35 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <button type="button" class="theme-art-button" id="themeArt" aria-label="切换颜色模式">
+      <span class="theme-art-button__shape theme-art-button__shape--one" aria-hidden="true"></span>
+      <span class="theme-art-button__shape theme-art-button__shape--two" aria-hidden="true"></span>
+      <span class="theme-art-button__shape theme-art-button__shape--three" aria-hidden="true"></span>
+    </button>
+    <button type="button" class="mobile-menu-button" id="mobileMenuButton" aria-controls="hubRail" aria-expanded="false">状态</button>
+    <button type="button" class="rail-scrim" id="railScrim" aria-label="关闭状态菜单"></button>
+
     <div class="app-shell" data-screen-label="ccv-hub-overview-redesign">
-      <aside class="hub-rail" aria-label="总览导航">
+      <aside class="hub-rail" id="hubRail" aria-label="状态信息与评审控制">
         <div class="brand-lockup">
-          <span class="brand-mark" aria-hidden="true">ccv</span>
-          <div>
+          <div class="brand-copy">
             <strong>Hub</strong>
             <span>local viewer console</span>
           </div>
         </div>
+
+        <section class="rail-panel status-command" aria-label="当前总览状态">
+          <span class="eyebrow">status center</span>
+          <div class="status-command__headline">
+            <span class="state-chip live" id="stateChip">list-ready</span>
+            <strong id="railOnlineCount">4</strong>
+          </div>
+          <p id="toolbarHint">4 个运行实例，点击打开可直达 viewer。</p>
+          <div class="sync-row">
+            <span>同步</span>
+            <strong id="lastSync">刚刚同步</strong>
+          </div>
+        </section>
 
         <details class="rail-panel rail-fold agent-panel" open>
           <summary>宿主机 Agent</summary>
@@ -36,12 +56,33 @@
             </div>
           </div>
           <div class="rail-metrics">
-            <span><strong id="railOnlineCount">4</strong> online</span>
             <span><strong>24</strong> node</span>
+            <span><strong>2s</strong> poll</span>
           </div>
         </details>
 
-        <details class="rail-panel rail-fold">
+        <details class="rail-panel rail-fold" open>
+          <summary>运行环境与入口摘要</summary>
+          <div class="summary-strip" aria-label="实例状态摘要">
+            <article class="summary-card">
+              <span class="summary-label">在线实例</span>
+              <strong id="summaryTotal">4</strong>
+              <small>按启动时间降序</small>
+            </article>
+            <article class="summary-card">
+              <span class="summary-label">可见结果</span>
+              <strong id="summaryVisible">4</strong>
+              <small>项目名即时筛选</small>
+            </article>
+            <article class="summary-card accent-summary">
+              <span class="summary-label">稳定入口</span>
+              <strong>/viewer/*</strong>
+              <small>同 host path bridge</small>
+            </article>
+          </div>
+        </details>
+
+        <details class="rail-panel rail-fold" open>
           <summary>当前边界</summary>
           <ul class="boundary-list">
             <li>只展示 running 实例</li>
@@ -66,27 +107,18 @@
           <div class="page-title-block">
             <span class="eyebrow">running instances</span>
             <h1>在线实例</h1>
-            <p>按启动时间降序，打开与复制入口保持在卡片内。</p>
+            <p>右侧工作区只处理实例发现、筛选、打开和复制，状态决策全部沉到左侧。</p>
           </div>
           <div class="topbar-actions">
-            <div class="theme-control" aria-label="主题模式">
-              <button type="button" class="theme-pill active" data-theme-option="dark">深色</button>
-              <button type="button" class="theme-pill" data-theme-option="light">浅色</button>
-            </div>
             <button type="button" class="ghost-button" id="refreshButton">刷新列表</button>
-            <button type="button" class="primary-button" id="openLaunch">启动</button>
           </div>
         </header>
 
-        <section class="toolbar panel" aria-label="筛选和页面状态">
+        <section class="toolbar panel" aria-label="筛选">
           <label class="search-box">
             <span>项目名关键字</span>
             <input id="projectSearch" type="search" autocomplete="off" placeholder="输入 viewer / hub / mobile" />
           </label>
-          <div class="toolbar-status">
-            <span class="state-chip live" id="stateChip">list-ready</span>
-            <span class="micro-copy" id="toolbarHint">4 个运行实例，点击打开可直达 viewer。</span>
-          </div>
         </section>
 
         <section class="stage panel" aria-labelledby="stageTitle" data-screen-label="instance-stage">
@@ -95,7 +127,6 @@
               <span class="eyebrow">viewer entries</span>
               <h2 id="stageTitle">实例列表</h2>
             </div>
-            <span class="last-sync" id="lastSync">刚刚同步</span>
           </div>
 
           <div class="state-view active" id="readyView">
@@ -113,7 +144,7 @@
               <span class="state-chip neutral">empty</span>
               <h3>当前还没有运行中的实例</h3>
               <p>从允许的项目路径启动一个 cc-viewer，新的入口会回到这个工作面。</p>
-              <button type="button" class="primary-button" id="emptyLaunch">启动新实例</button>
+              <button type="button" class="primary-button launch-trigger">启动新实例</button>
             </div>
           </div>
 
@@ -139,29 +170,13 @@
             </div>
           </div>
         </section>
-
-        <details class="secondary-drawer panel">
-          <summary>运行环境与入口摘要</summary>
-          <div class="summary-strip" aria-label="实例状态摘要">
-            <article class="summary-card">
-              <span class="summary-label">在线实例</span>
-              <strong id="summaryTotal">4</strong>
-              <small>按启动时间降序</small>
-            </article>
-            <article class="summary-card">
-              <span class="summary-label">可见结果</span>
-              <strong id="summaryVisible">4</strong>
-              <small>项目名即时筛选</small>
-            </article>
-            <article class="summary-card accent-summary">
-              <span class="summary-label">稳定入口</span>
-              <strong>/viewer/*</strong>
-              <small>同 host path bridge</small>
-            </article>
-          </div>
-        </details>
       </main>
     </div>
+
+    <button type="button" class="floating-launch" id="openLaunch" aria-label="启动新实例">
+      <span aria-hidden="true">＋</span>
+      <strong>启动</strong>
+    </button>
 
     <div class="modal-backdrop" id="launchModal" hidden>
       <section class="launch-modal panel" role="dialog" aria-modal="true" aria-labelledby="launchTitle" data-screen-label="launch-dialog">
